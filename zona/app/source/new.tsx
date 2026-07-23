@@ -119,7 +119,7 @@ export default function NewSourceScreen() {
         <Text style={styles.label}>HOSTNAME (OPTIONAL)</Text>
         <TextInput autoCapitalize="none" maxLength={255} onChangeText={setHostname} placeholder="e.g. OFFICE-01" placeholderTextColor={colors.muted} style={styles.input} value={hostname} />
         <Pressable accessibilityRole="button" disabled={working} onPress={submit} style={[styles.primary, working && styles.disabled]}>
-          {working ? <ActivityIndicator color={colors.white} /> : <><AppIcon color={colors.white} fallback="+" name="key.fill" size={16} /><Text style={styles.primaryText}>Create private token</Text></>}
+          {working ? <><ActivityIndicator color={colors.white} /><Text style={styles.primaryText}>Creating secure key…</Text></> : <><AppIcon color={colors.white} fallback="+" name="key.fill" size={16} /><Text style={styles.primaryText}>Create private token</Text></>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>

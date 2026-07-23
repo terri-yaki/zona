@@ -35,6 +35,11 @@ The deployed sender endpoint is
 `https://gerncrjtrdjtjvybvseb.supabase.co/functions/v1/notify`. The source token
 is the only sender credential; never use a Supabase secret key in a local app.
 
+The **API Keys** tab shows each key's name, safe prefix, last use, active state,
+per-source notification sound, and a reusable test-alert action. Settings
+includes server-backed switches for push delivery, global sound, and
+lock-screen message previews.
+
 ## Production-readiness documentation
 
 - `docs/PRD.md` — product scope, requirements, acceptance matrix, and blockers.

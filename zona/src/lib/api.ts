@@ -1,6 +1,8 @@
 import type { CreatedSource, DeleteAccountResult } from '@/types';
 
-import { functionError } from './errors';
+import { dataError, functionError } from './errors';
+import { env } from './env';
+import { createSourceCredential } from './source-token';
 import { supabase } from './supabase';
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -14,30 +16,71 @@ async function invoke<T>(name: string, body: Record<string, unknown>, validate: 
   return data;
 }
 
-export function createSource(displayName: string, hostname: string | null) {
-  return invoke<CreatedSource>('create-source', { displayName, hostname }, (value): value is CreatedSource => (
-    object(value)
-    && typeof value.sourceId === 'string'
-    && typeof value.displayName === 'string'
-    && (value.hostname === null || typeof value.hostname === 'string')
-    && typeof value.token === 'string'
-    && typeof value.ingestUrl === 'string'
-  ));
-}
-
-export function renameSource(sourceId: string, displayName: string) {
-  return invoke<{ sourceId: string; displayName: string }>('manage-source', {
-    action: 'rename',
+export async function createSource(displayName: string, hostname: string | null): Promise<CreatedSource> {
+  const credential = await createSourceCredential();
+  const { data: sourceId, error } = await supabase.rpc('create_source', {
+    p_display_name: displayName,
+    p_hostname: hostname,
+    p_key_prefix: credential.keyPrefix,
+    p_token_hash: credential.tokenHash,
+  });
+  if (error || typeof sourceId !== 'string') {
+    throw dataError(error, 'The API key could not be created. Try again.');
+  }
+  return {
     sourceId,
     displayName,
-  }, (value): value is { sourceId: string; displayName: string } => object(value) && typeof value.sourceId === 'string' && typeof value.displayName === 'string');
+    hostname,
+    token: credential.token,
+    ingestUrl: `${env.supabaseUrl}/functions/v1/notify`,
+  };
 }
 
-export function revokeSource(sourceId: string) {
-  return invoke<{ sourceId: string; revokedAt: string }>('manage-source', {
-    action: 'revoke',
-    sourceId,
-  }, (value): value is { sourceId: string; revokedAt: string } => object(value) && typeof value.sourceId === 'string' && typeof value.revokedAt === 'string');
+export async function renameSource(sourceId: string, displayName: string) {
+  const { data, error } = await supabase.rpc('manage_source', {
+    p_action: 'rename',
+    p_display_name: displayName,
+    p_is_active: null,
+    p_source_id: sourceId,
+  });
+  if (error || !object(data)) throw dataError(error, 'The API key could not be renamed.');
+  return data;
+}
+
+export async function revokeSource(sourceId: string) {
+  const { data, error } = await supabase.rpc('manage_source', {
+    p_action: 'revoke',
+    p_display_name: null,
+    p_is_active: null,
+    p_source_id: sourceId,
+  });
+  if (error || !object(data)) throw dataError(error, 'The API key could not be revoked.');
+  return data;
+}
+
+export async function setSourceActive(sourceId: string, isActive: boolean) {
+  const { data, error } = await supabase.rpc('manage_source', {
+    p_action: 'set_active',
+    p_display_name: null,
+    p_is_active: isActive,
+    p_source_id: sourceId,
+  });
+  if (error || !object(data)) throw dataError(error, 'The API key state could not be changed.');
+  return data;
+}
+
+export function testSource(sourceId: string) {
+  return invoke<{ notificationId: string; sourceId: string; pushAttempted: number; pushAccepted: number }>(
+    'test-source',
+    { sourceId },
+    (value): value is { notificationId: string; sourceId: string; pushAttempted: number; pushAccepted: number } => (
+      object(value)
+      && typeof value.notificationId === 'string'
+      && typeof value.sourceId === 'string'
+      && typeof value.pushAttempted === 'number'
+      && typeof value.pushAccepted === 'number'
+    ),
+  );
 }
 
 export function registerPushToken(token: string, deviceId: string) {

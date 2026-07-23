@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
       p_user_id: user.id,
       p_display_name: displayName,
       p_hostname: hostname,
+      p_key_prefix: token.slice(0, 18),
       p_token_hash: tokenHash,
     });
     if (error) {

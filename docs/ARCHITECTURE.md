@@ -114,6 +114,8 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | Relation | Purpose | Access path |
 | --- | --- | --- |
 | `public.sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
+| `public.api_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage | Owner RLS read; service-managed writes |
+| `public.app_options` | Push, sound, and lock-screen preview behavior | Owner RLS read/write |
 | `private.source_credentials` | SHA-256 credential hashes | Service-only |
 | `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
 | `public.notifications` | Seven-day durable inbox | Owner RLS read/read-state/delete |
@@ -137,11 +139,16 @@ event or account deletion.
 
 ### Source creation
 
-1. The app invokes `create-source` with a valid user session.
-2. The function generates an opaque `zona_live_…` token.
-3. The function stores only its hash and stable source UUID.
-4. The response is marked `Cache-Control: no-store` and presents the token once.
-5. The user moves it to the sender’s secret store.
+1. The app generates an opaque `zona_live_…` token using native secure random
+   bytes and hashes it locally.
+2. An authenticated PostgREST RPC atomically stores the stable source UUID,
+   credential hash, and safe API-key metadata without an Edge cold start.
+3. Row isolation comes from `auth.uid()` inside the owner-only wrapper; the
+   service-only internal function still enforces limits and validation.
+4. A safe `api_keys` metadata row stores the name, short prefix, active state,
+   timestamps, and optional expiry; it never stores the raw token or hash.
+5. The response is marked `Cache-Control: no-store` and presents the token once.
+6. The user moves it to the sender’s secret store.
 
 Losing a token does not make it recoverable. Create a replacement source,
 verify it, and revoke the old source.
@@ -152,12 +159,14 @@ verify it, and revoke the old source.
    `multipart/form-data` when attaching one evidence image.
 2. Edge Function hashes the token, validates the payload (image format comes
    from magic bytes, never from names or headers), and calls atomic ingestion.
-3. Database locks the source’s rate-limit key, verifies revocation, records the
-   request, snapshots the source name, and inserts the notification. The
-   image’s SHA-256 participates in the idempotency request hash.
+3. Database locks the source’s rate-limit key, verifies API-key active/expiry
+   state and revocation, records usage, snapshots the source name, and inserts
+   the notification. The image’s SHA-256 participates in the idempotency hash.
 4. A sent image is uploaded to the private `notification-attachments` bucket at
    `{user_id}/{notification_id}` and its metadata is written to the row.
-5. Function queries registered push devices and attempts Expo delivery.
+5. Function reads `app_options` and the originating API key's `sound_name`; it
+   may skip push, remove sound, choose a bundled per-source sound, or replace
+   lock-screen content with a generic private preview before Expo delivery.
 6. Function records tickets/failures and returns HTTP 202.
 7. The app receives a realtime event or fetches the row on refresh, and reads
    the image through an owner-scoped signed URL.
@@ -165,12 +174,14 @@ verify it, and revoke the old source.
 If step 4 or 5 fails, steps 3 and 7 remain valid; attachment storage is
 best-effort exactly like push.
 
-### Rename and revoke
+### Rename, pause, and revoke
 
-Rename changes only `sources.display_name`; existing notification snapshots do
-not change. Revoke sets `revoked_at`; ingestion requires it to be null. The
-credential hash remains for audit/reference until account deletion or a future
-approved purge policy.
+Rename updates the source and API-key metadata names; existing notification
+snapshots do not change. Pausing sets `api_keys.is_active = false` and is
+reversible. Revocation sets `revoked_at` and permanently deactivates the key.
+The credential hash remains until account deletion or an approved purge policy.
+Routine rename/pause actions also use authenticated PostgREST RPC wrappers so
+the API Keys screen does not wait for an Edge Function cold start.
 
 ### Push interaction
 
@@ -253,4 +264,3 @@ general remote-control capability. Any future design requires:
 - [Test plan](TEST_PLAN.md)
 - [Runbook](RUNBOOK.md)
 - [ADR 0001](adr/0001-source-token-architecture.md)
-

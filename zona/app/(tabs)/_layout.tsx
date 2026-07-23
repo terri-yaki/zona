@@ -26,7 +26,7 @@ export default function TabsLayout() {
       tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: 82, paddingBottom: 21, paddingTop: 8 },
     }}>
       <Tabs.Screen name="index" options={{ title: 'Inbox', tabBarIcon: ({ color }) => <TabIcon color={color} name="tray.full" /> }} />
-      <Tabs.Screen name="sources" options={{ title: 'Sources', tabBarIcon: ({ color }) => <TabIcon color={color} name="desktopcomputer" /> }} />
+      <Tabs.Screen name="sources" options={{ lazy: false, title: 'API Keys', tabBarIcon: ({ color }) => <TabIcon color={color} name="desktopcomputer" /> }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: ({ color }) => <TabIcon color={color} name="gearshape" /> }} />
     </Tabs>
   );

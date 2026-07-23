@@ -9,6 +9,7 @@ import {
   createPushMessage,
   type ExpoTicket,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveSound,
   ticketError,
 } from '../_shared/push.ts';
 import { service } from '../_shared/supabase.ts';
@@ -25,6 +26,14 @@ type IngestResult = {
 };
 
 type PushDevice = { id: string; expo_push_token: string };
+
+type AppOptions = {
+  push_enabled: boolean;
+  play_sound: boolean;
+  show_preview: boolean;
+};
+
+type SourceOptions = { sound_name: string };
 
 type NotifyPayload = {
   title: string;
@@ -229,13 +238,41 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: pushDevices, error: devicesError } = await service
-      .from('push_devices')
-      .select('id, expo_push_token')
-      .eq('user_id', accepted.owner_user_id)
-      .is('disabled_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(maximumPushDevices);
+    const [optionsResult, sourceOptionsResult] = await Promise.all([
+      service
+        .from('app_options')
+        .select('push_enabled, play_sound, show_preview')
+        .eq('user_id', accepted.owner_user_id)
+        .maybeSingle(),
+      service
+        .from('api_keys')
+        .select('sound_name')
+        .eq('user_id', accepted.owner_user_id)
+        .eq('source_id', accepted.source_id)
+        .maybeSingle(),
+    ]);
+
+    if (optionsResult.error) console.error('app options lookup', optionsResult.error);
+    if (sourceOptionsResult.error) console.error('source options lookup', sourceOptionsResult.error);
+    const appOptions = (optionsResult.data as AppOptions | null) ?? {
+      push_enabled: true,
+      play_sound: true,
+      show_preview: true,
+    };
+    const soundName = resolveSound(
+      appOptions.play_sound,
+      (sourceOptionsResult.data as SourceOptions | null)?.sound_name,
+    );
+
+    const { data: pushDevices, error: devicesError } = appOptions.push_enabled
+      ? await service
+        .from('push_devices')
+        .select('id, expo_push_token')
+        .eq('user_id', accepted.owner_user_id)
+        .is('disabled_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(maximumPushDevices)
+      : { data: [], error: null };
 
     if (devicesError) {
       console.error('push device lookup', devicesError);
@@ -253,6 +290,7 @@ Deno.serve(async (req) => {
           accepted.source_name,
           accepted.notification_id,
           accepted.source_id,
+          { soundName, showPreview: appOptions.show_preview },
         )
       );
 

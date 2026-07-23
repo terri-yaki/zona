@@ -20,6 +20,7 @@ Deno.serve(async (req) => {
         p_source_id: sourceId,
         p_action: 'rename',
         p_display_name: displayName,
+        p_is_active: null,
       });
       if (error) throw error;
       if (!data) return json({ error: 'SOURCE_NOT_FOUND' }, 404);
@@ -32,6 +33,21 @@ Deno.serve(async (req) => {
         p_source_id: sourceId,
         p_action: 'revoke',
         p_display_name: null,
+        p_is_active: null,
+      });
+      if (error) throw error;
+      if (!data) return json({ error: 'SOURCE_NOT_FOUND' }, 404);
+      return json(data, 200, { 'Cache-Control': 'no-store' });
+    }
+
+    if (action === 'set_active') {
+      if (typeof body.isActive !== 'boolean') return json({ error: 'INVALID_ACTION' }, 400);
+      const { data, error } = await service.rpc('manage_source_internal', {
+        p_user_id: user.id,
+        p_source_id: sourceId,
+        p_action: 'set_active',
+        p_display_name: null,
+        p_is_active: body.isActive,
       });
       if (error) throw error;
       if (!data) return json({ error: 'SOURCE_NOT_FOUND' }, 404);

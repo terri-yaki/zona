@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from '@std/assert';
 
-import { assertPushPayloadFits, byteLength, chunk, createPushMessage, MAX_EXPO_MESSAGE_BYTES, ticketError } from './push.ts';
+import { assertPushPayloadFits, byteLength, chunk, createPushMessage, MAX_EXPO_MESSAGE_BYTES, resolveSound, ticketError } from './push.ts';
 
 Deno.test('push batches never exceed the Expo request limit', () => {
   const batches = chunk(Array.from({ length: 201 }, (_, index) => index));
@@ -36,6 +36,39 @@ Deno.test('push data exposes only reserved routing identifiers', () => {
     notificationId: '00000000-0000-4000-8000-000000000000',
     sourceId: '00000000-0000-4000-8000-000000000001',
   });
+});
+
+Deno.test('push behavior can hide previews and disable sound', () => {
+  const message = createPushMessage(
+    'ExpoPushToken[token]',
+    'Private title',
+    'Private body',
+    'Office',
+    '00000000-0000-4000-8000-000000000000',
+    '00000000-0000-4000-8000-000000000001',
+    { soundName: null, showPreview: false },
+  );
+  assertEquals(message.title, 'New Zona alert');
+  assertEquals(message.body, 'Open Zona to view this notification.');
+  assertEquals('sound' in message, false);
+});
+
+Deno.test('per-source sounds are allowlisted and respect the global setting', () => {
+  assertEquals(resolveSound(true, 'zona-soft.wav'), 'zona-soft.wav');
+  assertEquals(resolveSound(true, 'not-bundled.wav'), 'default');
+  assertEquals(resolveSound(true, 'silent'), null);
+  assertEquals(resolveSound(false, 'zona-urgent.wav'), null);
+
+  const message = createPushMessage(
+    'ExpoPushToken[token]',
+    'Title',
+    'Body',
+    'Office',
+    '00000000-0000-4000-8000-000000000000',
+    '00000000-0000-4000-8000-000000000001',
+    { soundName: 'zona-bright.wav', showPreview: true },
+  );
+  assertEquals(message.sound, 'zona-bright.wav');
 });
 
 Deno.test('ticket errors are recorded even when Expo returns HTTP 200', () => {

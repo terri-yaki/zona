@@ -1,9 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
+import { getAppOptions, updateAppOptions } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
 import {
   enablePushNotifications,
@@ -14,6 +15,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius } from '@/theme';
+import type { AppOptions } from '@/types';
 
 function relayLabel(health: PushRegistrationHealth | null) {
   if (!health) return 'Not checked yet';
@@ -39,10 +41,19 @@ export default function SettingsScreen() {
   const [registering, setRegistering] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [options, setOptions] = useState<AppOptions | null>(null);
+  const [savingOption, setSavingOption] = useState<keyof Pick<AppOptions, 'push_enabled' | 'play_sound' | 'show_preview'> | null>(null);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
 
   const refreshStatus = useCallback(async () => {
     if (!userId) return;
     setHealth(await getPushRegistrationHealth(userId));
+    try {
+      setOptions(await getAppOptions(userId));
+      setOptionsError(null);
+    } catch (error) {
+      setOptionsError(error instanceof Error ? error.message : 'Notification options could not be loaded.');
+    }
     if (Platform.OS === 'web') {
       setPermission('Web preview');
       return;
@@ -83,6 +94,22 @@ export default function SettingsScreen() {
       Alert.alert('Registration failed', error instanceof Error ? error.message : 'Check your connection and try again.');
     } finally {
       setRegistering(false);
+    }
+  }
+
+  async function setOption(
+    key: keyof Pick<AppOptions, 'push_enabled' | 'play_sound' | 'show_preview'>,
+    value: boolean,
+  ) {
+    if (!userId || savingOption) return;
+    setSavingOption(key);
+    setOptionsError(null);
+    try {
+      setOptions(await updateAppOptions(userId, { [key]: value }));
+    } catch (error) {
+      setOptionsError(error instanceof Error ? error.message : 'The option could not be saved.');
+    } finally {
+      setSavingOption(null);
     }
   }
 
@@ -175,6 +202,34 @@ export default function SettingsScreen() {
 
       <Text style={styles.section}>NOTIFICATIONS</Text>
       <View style={styles.card}>
+        <OptionRow
+          description="Save alerts to the inbox but stop remote push when disabled."
+          disabled={!options || Boolean(savingOption)}
+          label="Push alerts"
+          onChange={(value) => void setOption('push_enabled', value)}
+          value={options?.push_enabled ?? true}
+        />
+        <View style={styles.divider} />
+        <OptionRow
+          description="Play the normal iOS notification sound."
+          disabled={!options || Boolean(savingOption) || !options.push_enabled}
+          label="Notification sound"
+          onChange={(value) => void setOption('play_sound', value)}
+          value={options?.play_sound ?? true}
+        />
+        <View style={styles.divider} />
+        <OptionRow
+          description="Show alert and source text on the lock screen."
+          disabled={!options || Boolean(savingOption) || !options.push_enabled}
+          label="Message previews"
+          onChange={(value) => void setOption('show_preview', value)}
+          value={options?.show_preview ?? true}
+        />
+        {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
+      </View>
+
+      <Text style={styles.section}>IPHONE DELIVERY</Text>
+      <View style={styles.card}>
         <SettingRow icon="bell" label="iOS permission" value={permission} />
         <View style={styles.divider} />
         <SettingRow icon="antenna.radiowaves.left.and.right" label="Zona relay" value={relayLabel(health)} />
@@ -220,6 +275,31 @@ function SettingRow({ icon, label, value }: { icon: SettingIcon; label: string; 
   );
 }
 
+function OptionRow({ description, disabled, label, onChange, value }: {
+  description: string;
+  disabled: boolean;
+  label: string;
+  onChange: (value: boolean) => void;
+  value: boolean;
+}) {
+  return (
+    <View style={styles.optionRow}>
+      <View style={styles.optionCopy}>
+        <Text style={styles.optionLabel}>{label}</Text>
+        <Text style={styles.optionDescription}>{description}</Text>
+      </View>
+      <Switch
+        accessibilityLabel={label}
+        disabled={disabled}
+        onValueChange={onChange}
+        thumbColor={value ? colors.primary : colors.mutedLight}
+        trackColor={{ false: colors.border, true: colors.primarySoft }}
+        value={value}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
   profile: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', marginBottom: 7, padding: 17 },
@@ -235,6 +315,11 @@ const styles = StyleSheet.create({
   value: { color: colors.muted, flexShrink: 1, fontSize: 12, maxWidth: '52%' },
   divider: { backgroundColor: colors.border, height: 1, marginLeft: 45 },
   healthError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12, paddingLeft: 45 },
+  optionRow: { alignItems: 'center', flexDirection: 'row', minHeight: 72, paddingVertical: 10 },
+  optionCopy: { flex: 1, paddingRight: 12 },
+  optionLabel: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
+  optionDescription: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  optionsError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12 },
   registerRow: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
   link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },
   signOut: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 24, minHeight: 52, padding: 15 },

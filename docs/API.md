@@ -9,6 +9,23 @@ token in the local application's secret store or environment and send it as a
 Bearer credential. Do not put it in source control, logs, query parameters, or
 notification metadata.
 
+The app displays a safe API-key registry backed by `public.api_keys`:
+
+| Field | Meaning |
+| --- | --- |
+| `name` | User-editable PC/application label. |
+| `key_prefix` | Short non-secret identifier; never the full key or its hash. |
+| `is_active` | Reversible pause/resume switch. Paused keys receive `401`. |
+| `sound_name` | Per-source choice: default, silent, soft, bright, or urgent. |
+| `last_used_at` | Last newly accepted notification. |
+| `expires_at` | Optional future expiry. |
+| `revoked_at` | Permanent revocation time. |
+
+Notification behavior is stored per account in `public.app_options`.
+`push_enabled=false` keeps accepting inbox records but skips remote push;
+`play_sound` and `show_preview` control the Expo/APNs payload. The global
+`play_sound=false` setting overrides every per-source sound choice.
+
 ## Send a notification
 
 ```http

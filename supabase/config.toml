@@ -36,3 +36,6 @@ verify_jwt = false
 
 [functions.cleanup-expired]
 verify_jwt = false
+
+[functions.test-source]
+verify_jwt = false

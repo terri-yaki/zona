@@ -6,11 +6,13 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo start --ios",
+    "generate:sounds": "node scripts/generate-sounds.mjs",
     "check:sdk54": "node scripts/check-sdk54.mjs",
     "release:check": "node scripts/check-release-config.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "node scripts/smoke-live.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

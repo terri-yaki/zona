@@ -17,7 +17,12 @@
       [
         "expo-notifications",
         {
-          "color": "#2F6B5F"
+          "color": "#2F6B5F",
+          "sounds": [
+            "./assets/sounds/zona-soft.wav",
+            "./assets/sounds/zona-bright.wav",
+            "./assets/sounds/zona-urgent.wav"
+          ]
         }
       ],
       "expo-secure-store"

@@ -121,6 +121,12 @@ The user must be able to:
   conflicts must fail closed.
 - **PUSH-04** Expo Go, web, and simulator states must degrade without invoking
   unavailable native notification APIs.
+- **PUSH-05** Per-account options control whether push is attempted, whether it
+  plays sound, and whether lock-screen content contains the alert preview.
+  Disabling push never prevents the durable inbox record.
+- **PUSH-06** Every active source can select default, silent, soft, bright, or
+  urgent notification sound independently. The global sound switch overrides
+  per-source choices.
 
 ### Source API
 
@@ -131,8 +137,10 @@ The user must be able to:
 - **API-03** The server enforces a 16 KiB request cap, field limits, 4 KiB
   metadata cap, and 60 accepted requests per rolling minute per source.
 - **API-04** Clients retry only network failures, HTTP 5xx, and HTTP 429 with
-  bounded exponential backoff. Version 1 is not idempotent; senders should put
-  their event ID in metadata when duplicate reconciliation matters.
+  bounded exponential backoff and reuse the same required idempotency key.
+- **API-05** The owner can pause and resume an API key independently. The safe
+  key registry exposes name, prefix, active state, usage, expiry, and revocation
+  timestamps but never the raw credential or credential hash.
 
 ## Non-functional requirements
 

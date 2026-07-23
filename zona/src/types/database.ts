@@ -3,6 +3,72 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      app_options: {
+        Row: {
+          created_at: string;
+          play_sound: boolean;
+          push_enabled: boolean;
+          show_preview: boolean;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          play_sound?: boolean;
+          push_enabled?: boolean;
+          show_preview?: boolean;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          play_sound?: boolean;
+          push_enabled?: boolean;
+          show_preview?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      api_keys: {
+        Row: {
+          created_at: string;
+          expires_at: string | null;
+          id: string;
+          is_active: boolean;
+          key_prefix: string | null;
+          last_used_at: string | null;
+          name: string;
+          revoked_at: string | null;
+          sound_name: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          source_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at?: string | null;
+          id?: string;
+          is_active?: boolean;
+          key_prefix?: string | null;
+          last_used_at?: string | null;
+          name: string;
+          revoked_at?: string | null;
+          sound_name?: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          source_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          expires_at?: string | null;
+          is_active?: boolean;
+          key_prefix?: string | null;
+          last_used_at?: string | null;
+          name?: string;
+          revoked_at?: string | null;
+          sound_name?: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       notifications: {
         Row: {
           attachment_bytes: number | null;
@@ -57,6 +123,7 @@ export type Database = {
       push_devices: {
         Row: {
           created_at: string;
+          disabled_at: string | null;
           device_id: string;
           expo_push_token: string;
           id: string;
@@ -66,6 +133,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          disabled_at?: string | null;
           device_id: string;
           expo_push_token: string;
           id?: string;
@@ -75,6 +143,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          disabled_at?: string | null;
           device_id?: string;
           expo_push_token?: string;
           id?: string;
@@ -115,8 +184,50 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      source_api_keys: {
+        Row: {
+          api_key_id: string;
+          api_key_name: string;
+          created_at: string;
+          display_name: string;
+          hostname: string | null;
+          id: string;
+          is_active: boolean;
+          key_created_at: string;
+          key_expires_at: string | null;
+          key_last_used_at: string | null;
+          key_prefix: string | null;
+          key_revoked_at: string | null;
+          key_updated_at: string;
+          last_seen_at: string | null;
+          revoked_at: string | null;
+          sound_name: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          user_id: string;
+        };
+        Relationships: [];
+      };
+    };
+    Functions: {
+      create_source: {
+        Args: {
+          p_display_name: string;
+          p_hostname: string | null;
+          p_key_prefix: string;
+          p_token_hash: string;
+        };
+        Returns: string;
+      };
+      manage_source: {
+        Args: {
+          p_action: string;
+          p_display_name: string | null;
+          p_is_active: boolean | null;
+          p_source_id: string;
+        };
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -26,12 +26,19 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Push-device lifecycle hardening: `DeviceNotRegistered` tickets disable the
   device, token format is validated in the database, and long-disabled
   devices are removed by the hourly cleanup.
+- Owner-visible API-key metadata, pause/resume controls, server-backed push
+  options, and a reusable per-source test-alert action.
+- Per-source notification sound presets (default, silent, soft, bright, and
+  urgent) with three bundled iOS sound assets.
 
 ### Changed
 
 - Replaced email magic-link sign-in with Supabase Auth anonymous sign-in; no
   email, password, or SMTP provider is required, and signing out an anonymous
   account now carries an explicit permanence warning (see ADR 0002).
+- API-key listing now uses one owner-isolated view query, screens preload and
+  cache by account, and routine key creation/management uses authenticated
+  PostgREST RPCs to avoid Edge Function cold-start delays.
 
 ### Security
 

@@ -1,6 +1,8 @@
 import type { Database, Json } from './types/database';
 
-export type Source = Database['public']['Tables']['sources']['Row'];
+export type ApiKey = Database['public']['Tables']['api_keys']['Row'];
+export type AppOptions = Database['public']['Tables']['app_options']['Row'];
+export type Source = Database['public']['Tables']['sources']['Row'] & { api_key: ApiKey | null };
 
 type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 export type InboxNotification = Omit<NotificationRow, 'data'> & { data: Record<string, Json | undefined> };

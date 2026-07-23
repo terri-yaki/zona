@@ -1,18 +1,29 @@
-import { useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { setApiKeySound } from '@/data/sources';
 import { useSources } from '@/hooks/useSources';
-import { renameSource, revokeSource } from '@/lib/api';
+import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
-import type { Source } from '@/types';
+import type { ApiKey, Source } from '@/types';
+
+type SoundName = ApiKey['sound_name'];
+
+const soundLabels: Record<SoundName, string> = {
+  default: 'Default',
+  silent: 'Silent',
+  'zona-soft.wav': 'Soft chime',
+  'zona-bright.wav': 'Bright chime',
+  'zona-urgent.wav': 'Urgent pulse',
+};
 
 function recentlyActive(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -20,7 +31,6 @@ function recentlyActive(lastSeenAt: string | null) {
 }
 
 export default function SourcesScreen() {
-  const router = useRouter();
   const { error, load, loading, refresh, refreshing, sources } = useSources(true);
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
 
@@ -79,23 +89,85 @@ export default function SourcesScreen() {
     );
   }
 
+  async function toggleActive(source: Source, isActive: boolean) {
+    if (busySourceId || source.revoked_at) return;
+    setBusySourceId(source.id);
+    try {
+      await setSourceActive(source.id, isActive);
+      await load();
+    } catch (caught) {
+      Alert.alert('Could not update API key', userMessage(caught));
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  async function updateSound(source: Source, soundName: SoundName) {
+    if (busySourceId || !source.api_key) return;
+    setBusySourceId(source.id);
+    try {
+      await setApiKeySound(source.api_key.id, soundName);
+      await load();
+    } catch (caught) {
+      Alert.alert('Could not update sound', userMessage(caught));
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  function askSound(source: Source) {
+    if (busySourceId || !source.api_key) return;
+    Alert.alert(
+      `Sound for ${source.display_name}`,
+      'Choose the sound used when this source sends an alert. Bundled sounds require an installed Zona build; Expo Go uses the system default.',
+      [
+        { text: 'Default', onPress: () => void updateSound(source, 'default') },
+        { text: 'Soft chime', onPress: () => void updateSound(source, 'zona-soft.wav') },
+        { text: 'Bright chime', onPress: () => void updateSound(source, 'zona-bright.wav') },
+        { text: 'Urgent pulse', onPress: () => void updateSound(source, 'zona-urgent.wav') },
+        { text: 'Silent', onPress: () => void updateSound(source, 'silent') },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  }
+
+  async function sendTest(source: Source) {
+    if (busySourceId || !source.api_key?.is_active || source.revoked_at) return;
+    setBusySourceId(source.id);
+    try {
+      const result = await testSource(source.id);
+      const message = result.pushAccepted > 0
+        ? 'The alert was saved and accepted by Expo Push Service.'
+        : result.pushAttempted > 0
+        ? 'The alert was saved, but Expo did not accept the push. Check notification permissions in Settings.'
+        : 'The alert was saved to your inbox. Open Settings and enable push notifications on this iPhone.';
+      Alert.alert('Test alert sent', message);
+      await load();
+    } catch (caught) {
+      Alert.alert('Test alert failed', userMessage(caught));
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
   if (loading && sources.length === 0) return <LoadingScreen />;
 
   return (
     <View style={styles.page}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <Text style={styles.title}>Your connected sources</Text>
-          <Text style={styles.subtitle}>One private token for every computer or app.</Text>
+          <Text style={styles.title}>API keys & sources</Text>
+          <Text style={styles.subtitle}>One independently controlled key for every computer or app.</Text>
         </View>
-        <Pressable
-          accessibilityLabel="Add source"
-          accessibilityRole="button"
-          onPress={() => router.push('/source/new')}
-          style={({ pressed }) => [styles.add, pressed && styles.addPressed]}
-        >
-          <AppIcon color={colors.white} fallback="+" name="plus" size={19} />
-        </Pressable>
+        <Link asChild href="/source/new" prefetch>
+          <Pressable
+            accessibilityLabel="Add source"
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.add, pressed && styles.addPressed]}
+          >
+            <AppIcon color={colors.white} fallback="+" name="plus" size={19} />
+          </Pressable>
+        </Link>
       </View>
 
       {error && sources.length > 0 ? <ErrorState compact error={error} onRetry={() => void load()} /> : null}
@@ -118,6 +190,7 @@ export default function SourcesScreen() {
         renderItem={({ item }) => {
           const busy = busySourceId === item.id;
           const online = !item.revoked_at && recentlyActive(item.last_seen_at);
+          const keyActive = Boolean(item.api_key?.is_active && !item.revoked_at);
           return (
             <View style={[styles.card, item.revoked_at && styles.revoked]}>
               <View style={styles.avatar}>
@@ -128,6 +201,7 @@ export default function SourcesScreen() {
                 <View style={styles.nameRow}>
                   <Text numberOfLines={1} style={styles.name}>{item.display_name}</Text>
                   {item.revoked_at ? <Text style={styles.revokedLabel}>REVOKED</Text> : null}
+                  {!item.revoked_at && !keyActive ? <Text style={styles.pausedLabel}>PAUSED</Text> : null}
                   {busy ? <ActivityIndicator accessibilityLabel="Updating source" color={colors.primary} size="small" /> : null}
                 </View>
                 <View style={styles.metaRow}>
@@ -137,8 +211,44 @@ export default function SourcesScreen() {
                 <Text style={styles.lastSeen}>
                   {item.last_seen_at ? `Last active ${relativeTime(item.last_seen_at)}` : 'Waiting for its first alert'}
                 </Text>
+                <View style={styles.keyRow}>
+                  <View style={styles.keyCopy}>
+                    <Text style={styles.keyLabel}>API KEY</Text>
+                    <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : 'Existing protected key'}</Text>
+                  </View>
+                  <Switch
+                    accessibilityLabel={`${keyActive ? 'Pause' : 'Activate'} ${item.display_name} API key`}
+                    disabled={Boolean(busySourceId) || Boolean(item.revoked_at)}
+                    onValueChange={(value) => void toggleActive(item, value)}
+                    trackColor={{ false: colors.border, true: colors.primarySoft }}
+                    thumbColor={keyActive ? colors.primary : colors.mutedLight}
+                    value={keyActive}
+                  />
+                </View>
                 {!item.revoked_at ? (
                   <View style={styles.actions}>
+                    <Pressable
+                      accessibilityLabel={`Send a test alert from ${item.display_name}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: Boolean(busySourceId) || !keyActive }}
+                      disabled={Boolean(busySourceId) || !keyActive}
+                      onPress={() => void sendTest(item)}
+                      style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed, !keyActive && styles.actionDisabled]}
+                    >
+                      <AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={12} />
+                      <Text style={[styles.action, styles.testAction]}>Test</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={`Change notification sound for ${item.display_name}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: Boolean(busySourceId) }}
+                      disabled={Boolean(busySourceId)}
+                      onPress={() => askSound(item)}
+                      style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+                    >
+                      <AppIcon color={colors.primary} fallback="♪" name="speaker.wave.2.fill" size={12} />
+                      <Text style={styles.action}>{soundLabels[item.api_key?.sound_name ?? 'default']}</Text>
+                    </Pressable>
                     <Pressable
                       accessibilityLabel={`Rename ${item.display_name}`}
                       accessibilityRole="button"
@@ -191,12 +301,19 @@ const styles = StyleSheet.create({
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   name: { color: colors.text, flexShrink: 1, fontSize: 16, fontWeight: '700' },
   revokedLabel: { backgroundColor: colors.dangerSoft, borderRadius: radius.full, color: colors.danger, fontSize: 8, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 3 },
+  pausedLabel: { backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 8, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 3 },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 5, marginTop: 5 },
   meta: { color: colors.muted, flex: 1, fontSize: 11 },
   lastSeen: { color: colors.mutedLight, fontSize: 10, marginTop: 3 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 7 },
+  keyRow: { alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.small, flexDirection: 'row', marginTop: 9, minHeight: 48, paddingHorizontal: 11, paddingVertical: 7 },
+  keyCopy: { flex: 1 },
+  keyLabel: { color: colors.mutedLight, fontSize: 8, fontWeight: '800', letterSpacing: 0.7 },
+  keyPrefix: { color: colors.textSoft, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 10, marginTop: 3 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 8 },
   actionButton: { alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.full, flexDirection: 'row', gap: 5, justifyContent: 'center', minHeight: 44, paddingHorizontal: 12 },
   actionPressed: { opacity: 0.62 },
+  actionDisabled: { opacity: 0.42 },
   action: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  testAction: { color: colors.accent },
   danger: { color: colors.danger },
 });

@@ -10,6 +10,23 @@ export type ExpoTicket = {
   details?: { error?: string };
 };
 
+export type PushBehavior = {
+  soundName: string | null;
+  showPreview: boolean;
+};
+
+const allowedSounds = new Set([
+  'default',
+  'zona-soft.wav',
+  'zona-bright.wav',
+  'zona-urgent.wav',
+]);
+
+export function resolveSound(playSound: boolean, soundName: string | null | undefined): string | null {
+  if (!playSound || soundName === 'silent') return null;
+  return soundName && allowedSounds.has(soundName) ? soundName : 'default';
+}
+
 export function chunk<T>(values: T[], size = EXPO_PUSH_BATCH_SIZE): T[][] {
   if (!Number.isSafeInteger(size) || size < 1 || size > EXPO_PUSH_BATCH_SIZE) {
     throw new Error('INVALID_BATCH_SIZE');
@@ -32,13 +49,14 @@ export function createPushMessage(
   sourceName: string,
   notificationId: string,
   sourceId: string,
+  behavior: PushBehavior = { soundName: 'default', showPreview: true },
 ) {
   return {
     to,
-    sound: 'default' as const,
-    title,
-    subtitle: `From ${sourceName}`,
-    body,
+    ...(behavior.soundName ? { sound: behavior.soundName } : {}),
+    title: behavior.showPreview ? title : 'New Zona alert',
+    subtitle: behavior.showPreview ? `From ${sourceName}` : 'Zona',
+    body: behavior.showPreview ? body : 'Open Zona to view this notification.',
     ttl: 3_600,
     data: { notificationId, sourceId },
   };
