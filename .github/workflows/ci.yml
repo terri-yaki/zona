@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zona
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: zona/package-lock.json
+      - run: npm ci
+      - run: npm run check:sdk54
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npx expo install --check
+      - run: npx expo-doctor
+      - run: npx expo export --platform web --output-dir dist-web
+      - run: npx expo export --platform ios --output-dir dist-ios
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno fmt --config functions/deno.json --check functions
+      - run: deno lint --config functions/deno.json functions
+      - run: deno test --config functions/deno.json functions/_shared
+      - run: deno check --config functions/deno.json functions/create-source/index.ts functions/manage-source/index.ts functions/notify/index.ts functions/register-push-token/index.ts functions/delete-account/index.ts functions/cleanup-expired/index.ts

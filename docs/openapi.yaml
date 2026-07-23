@@ -1,0 +1,692 @@
+openapi: 3.1.0
+info:
+  title: Zona Edge Function API
+  version: 1.0.0
+  summary: Source notification ingestion and authenticated mobile operations.
+  description: |
+    Zona's version 1 HTTP contract. All traffic uses TLS. Sender applications
+    normally use only `POST /functions/v1/notify`; the other operations are
+    invoked by the authenticated iPhone app.
+
+    A 202 response from `notify` means the seven-day inbox record exists. Push
+    delivery is best effort and `pushAccepted` is not APNs delivery proof.
+
+    Every JSON request has a 16 KiB transport limit. `notify.data` has an
+    additional 4 KiB UTF-8 serialized limit. These byte limits are normative
+    even where JSON Schema cannot express serialized byte size.
+  license:
+    name: Proprietary; private project
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://{projectRef}.supabase.co
+    description: Supabase project
+    variables:
+      projectRef:
+        default: gerncrjtrdjtjvybvseb
+        description: Supabase project reference.
+tags:
+  - name: Sender
+    description: Operations authenticated by an independent source credential.
+  - name: Mobile
+    description: Operations authenticated by a Supabase user access token.
+paths:
+  /functions/v1/notify:
+    post:
+      operationId: notify
+      tags: [Sender]
+      summary: Accept a notification from the authenticated source.
+      description: |
+        The source and owner are derived from the Bearer credential. Callers
+        cannot provide or override source/owner identity. Acceptance is
+        durable before the best-effort push attempt.
+
+        `Idempotency-Key` is required. Re-sending the same key with an
+        identical payload returns the stored notification with
+        `idempotentReplay: true` and does not create a duplicate or retry
+        push. Reusing the key with a different payload is rejected with
+        `409 IDEMPOTENCY_CONFLICT`.
+
+        One evidence image (PNG/JPEG/WebP, at most 5 MiB) may be attached by
+        sending `multipart/form-data` with an `attachment` file part. The
+        image's SHA-256 participates in idempotency: the same key with a
+        different image is a conflict.
+      security:
+        - sourceBearer: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyRequest'
+            examples:
+              buildComplete:
+                value:
+                  title: Build complete
+                  body: The release build finished successfully.
+                  category: build
+                  data:
+                    eventId: build-2026-07-20-14
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifyMultipartRequest'
+            encoding:
+              data:
+                contentType: application/json
+              attachment:
+                contentType: image/png, image/jpeg, image/webp
+      responses:
+        '200':
+          description: |
+            Idempotent replay: this source already sent the same
+            `Idempotency-Key` with an identical payload. The stored
+            notification is returned; no duplicate is created and push is not
+            re-attempted.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyAccepted'
+        '202':
+          description: Inbox record accepted; push may or may not have been attempted/accepted.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyAccepted'
+        '400':
+          $ref: '#/components/responses/InvalidPayload'
+        '401':
+          $ref: '#/components/responses/InvalidSourceToken'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          description: The `Idempotency-Key` was already used by this source with a different payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: IDEMPOTENCY_CONFLICT
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: Rate limit exceeded; 60 accepted requests per source or 300 per account in the rolling minute.
+          headers:
+            Retry-After:
+              description: Minimum retry delay in seconds.
+              schema:
+                type: integer
+                minimum: 1
+              example: 60
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                sourceLimited:
+                  value:
+                    error: RATE_LIMITED
+                accountLimited:
+                  value:
+                    error: ACCOUNT_RATE_LIMITED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /functions/v1/create-source:
+    post:
+      operationId: createSource
+      tags: [Mobile]
+      summary: Create a source and return its credential once.
+      description: |
+        The credential is never retrievable again. The response uses
+        `Cache-Control: no-store`; the client must move the token to the
+        sender's OS-backed secret store.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSourceRequest'
+      responses:
+        '201':
+          description: Source created.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedSource'
+        '400':
+          description: Source name/hostname or request JSON is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: INVALID_SOURCE
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          description: The account already has 100 active sources.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: SOURCE_LIMIT_REACHED
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: Source creation exceeded 10 requests per account per hour.
+          headers:
+            Retry-After:
+              description: Minimum retry delay in seconds.
+              schema:
+                type: integer
+                minimum: 1
+              example: 3600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: CREATE_RATE_LIMITED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /functions/v1/manage-source:
+    post:
+      operationId: manageSource
+      tags: [Mobile]
+      summary: Rename or revoke an owned source.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManageSourceRequest'
+      responses:
+        '200':
+          description: Requested source action completed.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RenamedSource'
+                  - $ref: '#/components/schemas/RevokedSource'
+        '400':
+          description: Invalid action, source UUID, display name, or JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidAction:
+                  value:
+                    error: INVALID_ACTION
+                invalidSource:
+                  value:
+                    error: INVALID_SOURCE
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+        '404':
+          description: Source is absent, revoked, or not owned by the current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: SOURCE_NOT_FOUND
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /functions/v1/register-push-token:
+    post:
+      operationId: managePushRegistration
+      tags: [Mobile]
+      summary: Register or remove one iPhone installation.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRegistrationRequest'
+      responses:
+        '200':
+          description: Registration action completed.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PushRegistered'
+                  - $ref: '#/components/schemas/PushUnregistered'
+        '400':
+          description: Invalid action, platform, installation ID, push token, or JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidDevice:
+                  value:
+                    error: INVALID_DEVICE
+                invalidAction:
+                  value:
+                    error: INVALID_ACTION
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          description: Push token is already owned by another account, or the account already has 10 active devices.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tokenConflict:
+                  value:
+                    error: TOKEN_CONFLICT
+                deviceLimit:
+                  value:
+                    error: DEVICE_LIMIT_REACHED
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: Device registration exceeded 120 requests per account per hour.
+          headers:
+            Retry-After:
+              description: Minimum retry delay in seconds.
+              schema:
+                type: integer
+                minimum: 1
+              example: 3600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: DEVICE_RATE_LIMITED
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    sourceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: zona_live_SOURCE_TOKEN
+      description: Independent one-time-issued source credential.
+    userBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase access JWT
+      description: Current Supabase Auth access token for the owner.
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Sender-chosen unique event ID. Replays with an identical payload
+        return the original notification; reuse with a different payload is
+        rejected with `409 IDEMPOTENCY_CONFLICT`.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$'
+      example: build-2026-07-20-14
+
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    NotifyRequest:
+      type: object
+      additionalProperties: false
+      required: [title, body]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Whitespace-trimmed title.
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Whitespace-trimmed message.
+        category:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+        data:
+          type: object
+          description: |
+            JSON object no more than 4096 UTF-8 bytes when serialized. Reserved
+            routing fields in the produced push are controlled by the server.
+          additionalProperties: true
+
+    NotifyAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - notificationId
+        - sourceId
+        - sourceName
+        - acceptedAt
+        - idempotentReplay
+        - attachmentAccepted
+        - attachmentError
+        - pushAttempted
+        - pushAccepted
+      properties:
+        notificationId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          format: uuid
+        sourceName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        acceptedAt:
+          type: string
+          format: date-time
+        idempotentReplay:
+          type: boolean
+          description: True when an existing record was replayed instead of newly accepted.
+        attachmentAccepted:
+          type: boolean
+          description: True when an evidence image is stored for this notification.
+        attachmentError:
+          type: [string, 'null']
+          description: Sanitized failure code (UPLOAD_FAILED) when a sent image was not stored.
+        pushAttempted:
+          type: integer
+          minimum: 0
+        pushAccepted:
+          type: integer
+          minimum: 0
+          description: Expo ticket successes, not confirmed APNs display.
+
+    NotifyMultipartRequest:
+      type: object
+      required: [title, body]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Whitespace-trimmed title.
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Whitespace-trimmed message.
+        category:
+          type: string
+          minLength: 1
+          maxLength: 80
+        data:
+          type: string
+          description: JSON-encoded object, at most 4096 UTF-8 bytes when serialized.
+        attachment:
+          type: string
+          format: binary
+          description: |
+            Optional evidence image, at most 5 MiB. Only magic bytes are
+            trusted: PNG, JPEG, and WebP are accepted; anything else (including
+            SVG and renamed executables) is rejected with `INVALID_PAYLOAD`.
+            The whole multipart request is limited to 6 MiB.
+
+    CreateSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        hostname:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 255
+
+    CreatedSource:
+      type: object
+      additionalProperties: false
+      required: [sourceId, displayName, hostname, token, ingestUrl]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        hostname:
+          type: [string, 'null']
+          maxLength: 255
+        token:
+          type: string
+          pattern: '^zona_live_[A-Za-z0-9_-]{43}$'
+          writeOnly: true
+          description: Returned once; move immediately to secure sender storage.
+        ingestUrl:
+          type: string
+          format: uri
+
+    RenameSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [action, sourceId, displayName]
+      properties:
+        action:
+          type: string
+          const: rename
+        sourceId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    RevokeSourceRequest:
+      type: object
+      additionalProperties: false
+      required: [action, sourceId]
+      properties:
+        action:
+          type: string
+          const: revoke
+        sourceId:
+          type: string
+          format: uuid
+
+    ManageSourceRequest:
+      oneOf:
+        - $ref: '#/components/schemas/RenameSourceRequest'
+        - $ref: '#/components/schemas/RevokeSourceRequest'
+      discriminator:
+        propertyName: action
+        mapping:
+          rename: '#/components/schemas/RenameSourceRequest'
+          revoke: '#/components/schemas/RevokeSourceRequest'
+
+    RenamedSource:
+      type: object
+      additionalProperties: false
+      required: [sourceId, displayName]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    RevokedSource:
+      type: object
+      additionalProperties: false
+      required: [sourceId, revokedAt]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        revokedAt:
+          type: string
+          format: date-time
+
+    RegisterPushRequest:
+      type: object
+      additionalProperties: false
+      required: [action, token, deviceId, platform]
+      properties:
+        action:
+          type: string
+          const: register
+        token:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^(Expo|Exponent)PushToken\[[A-Za-z0-9_-]+\]$'
+        deviceId:
+          type: string
+          minLength: 8
+          maxLength: 200
+        platform:
+          type: string
+          const: ios
+
+    UnregisterPushRequest:
+      type: object
+      additionalProperties: false
+      required: [action, deviceId]
+      properties:
+        action:
+          type: string
+          const: unregister
+        deviceId:
+          type: string
+          minLength: 8
+          maxLength: 200
+
+    PushRegistrationRequest:
+      oneOf:
+        - $ref: '#/components/schemas/RegisterPushRequest'
+        - $ref: '#/components/schemas/UnregisterPushRequest'
+      discriminator:
+        propertyName: action
+        mapping:
+          register: '#/components/schemas/RegisterPushRequest'
+          unregister: '#/components/schemas/UnregisterPushRequest'
+
+    PushRegistered:
+      type: object
+      additionalProperties: false
+      required: [registered]
+      properties:
+        registered:
+          type: boolean
+          const: true
+
+    PushUnregistered:
+      type: object
+      additionalProperties: false
+      required: [unregistered]
+      properties:
+        unregistered:
+          type: boolean
+          const: true
+
+  responses:
+    InvalidPayload:
+      description: Invalid JSON, content type, field, or size-constrained value.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            invalidPayload:
+              value:
+                error: INVALID_PAYLOAD
+            invalidIdempotencyKey:
+              value:
+                error: INVALID_IDEMPOTENCY_KEY
+    InvalidSourceToken:
+      description: Source token is absent, malformed, unknown, or revoked.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: INVALID_TOKEN
+    UnauthorizedUser:
+      description: Supabase user access token is absent, invalid, or expired.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: UNAUTHORIZED
+    MethodNotAllowed:
+      description: Endpoint accepts POST only, except for CORS preflight.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: METHOD_NOT_ALLOWED
+    PayloadTooLarge:
+      description: Request body exceeds 16 KiB (JSON) or 6 MiB (multipart).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: PAYLOAD_TOO_LARGE
+    InternalError:
+      description: Request was not accepted or the management operation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: INTERNAL_ERROR

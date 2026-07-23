@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Zona",
+    "slug": "zona",
+    "version": "1.0.0",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "zona",
+    "ios": {
+      "icon": "./assets/icon.png",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.terriyaki.zona"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#2F6B5F"
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "571437d3-1919-4bb5-870c-587bc7b59ef9"
+      }
+    },
+    "owner": "terriyaki"
+  }
+}

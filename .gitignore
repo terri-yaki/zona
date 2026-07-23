@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+.expo/
+dist/
+coverage/
+*.log
+supabase/.branches/
+supabase/.temp/
+zona/ios/
+zona/android/
+zona/dist-web/

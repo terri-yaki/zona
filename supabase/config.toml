@@ -1,0 +1,38 @@
+project_id = "zona"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "zona://auth/callback"
+additional_redirect_urls = ["zona://**", "exp://**"]
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[functions.create-source]
+verify_jwt = false
+
+[functions.manage-source]
+verify_jwt = false
+
+[functions.register-push-token]
+verify_jwt = false
+
+[functions.notify]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.cleanup-expired]
+verify_jwt = false
