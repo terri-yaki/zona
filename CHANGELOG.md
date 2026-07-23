@@ -39,6 +39,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 - API-key listing now uses one owner-isolated view query, screens preload and
   cache by account, and routine key creation/management uses authenticated
   PostgREST RPCs to avoid Edge Function cold-start delays.
+- The PowerShell sender uses `HttpClient` for multipart attachments so image
+  uploads work in both Windows PowerShell 5.1 and PowerShell 7.
 
 ### Security
 

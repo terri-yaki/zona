@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { Buffer } from 'node:buffer';
+import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
+import { rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 
 process.loadEnvFile('.env');
 
@@ -103,6 +108,40 @@ try {
     && activeBody.sourceId === sourceId
     && activeBody.pushAttempted === 0
   );
+
+  if (process.platform === 'win32') {
+    const attachmentPath = resolve(tmpdir(), `zona-smoke-${Date.now()}.png`);
+    writeFileSync(
+      attachmentPath,
+      Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
+    );
+    try {
+      const sender = spawnSync('powershell.exe', [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        resolve('..', 'examples', 'send-notification.ps1'),
+        '-Title',
+        'PowerShell attachment smoke test',
+        '-Body',
+        'Windows PowerShell multipart upload succeeded.',
+        '-Category',
+        'test',
+        '-Attachment',
+        attachmentPath,
+      ], {
+        encoding: 'utf8',
+        env: { ...process.env, ZONA_NOTIFY_URL: notifyUrl, ZONA_SOURCE_TOKEN: token },
+      });
+      if (sender.status !== 0) {
+        throw new Error(`PowerShell attachment sender failed: ${sender.stderr || sender.stdout}`);
+      }
+      result.powerShellAttachment = /attachmentAccepted\s*:\s*True/i.test(sender.stdout);
+    } finally {
+      rmSync(attachmentPath, { force: true });
+    }
+  }
 
   const { data: tested, error: testError } = await supabase.functions.invoke('test-source', {
     body: { sourceId },
