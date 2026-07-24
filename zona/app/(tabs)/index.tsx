@@ -151,6 +151,7 @@ export default function InboxScreen() {
             active={selectedSource === source.id}
             key={source.id}
             label={source.revoked_at ? `${source.display_name} · ${t('inbox.revokedSuffix')}` : source.display_name}
+            muted={Boolean(source.revoked_at)}
             onPress={() => setSelectedSource(source.id)}
             tone="source"
           />
@@ -214,11 +215,13 @@ export default function InboxScreen() {
 function FilterChip({
   active,
   label,
+  muted = false,
   onPress,
   tone,
 }: {
   active: boolean;
   label: string;
+  muted?: boolean;
   onPress: () => void;
   tone: 'default' | 'source';
 }) {
@@ -231,6 +234,7 @@ function FilterChip({
         styles.chip,
         tone === 'source' && styles.chipSource,
         active && (tone === 'source' ? styles.chipSourceActive : styles.chipActive),
+        muted && styles.chipMuted,
         pressed && styles.pressed,
       ]}
     >
@@ -240,6 +244,7 @@ function FilterChip({
           styles.chipText,
           tone === 'source' && styles.chipSourceText,
           active && styles.chipTextActive,
+          muted && styles.chipTextMuted,
         ]}
       >
         {label}
@@ -310,9 +315,11 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipSourceActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipMuted: { opacity: 0.52 },
   chipText: { color: colors.muted, fontSize: 12, fontWeight: '600', lineHeight: 16 },
   chipSourceText: { color: colors.accent },
   chipTextActive: { color: colors.white },
+  chipTextMuted: { fontWeight: '500' },
   list: { flexGrow: 1 },
   emptyList: { flexGrow: 1 },
   pagination: { alignItems: 'center', padding: 14 },
