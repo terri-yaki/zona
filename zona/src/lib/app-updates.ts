@@ -75,7 +75,7 @@ export async function promptForAppUpdateIfAvailable(options?: { silentWhenCurren
   return new Promise<UpdateCheckResult>((resolve) => {
     Alert.alert(
       'Update available',
-      'A new version of Zona is ready. Install it now? Your account stays on this iPhone.',
+      'A new version of Zona is ready. Install it now?',
       [
         {
           text: 'Later',
