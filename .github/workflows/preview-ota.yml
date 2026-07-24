@@ -1,0 +1,49 @@
+name: Preview OTA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'zona/**'
+      - '.github/workflows/preview-ota.yml'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: Update message
+        required: false
+        default: Manual preview OTA
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zona
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: zona/package-lock.json
+      - run: npm ci
+      - name: Require EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Add repository secret EXPO_TOKEN (Expo access token) to enable preview OTA CI."
+            exit 1
+          fi
+      - name: Publish OTA to preview channel
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          MESSAGE="${{ github.event.inputs.message }}"
+          if [ -z "$MESSAGE" ]; then
+            MESSAGE="main ${GITHUB_SHA}"
+          fi
+          npx eas-cli update --channel preview --non-interactive --auto --message "$MESSAGE"

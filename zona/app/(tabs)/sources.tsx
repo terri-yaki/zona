@@ -1,6 +1,20 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActionSheetIOS, ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
@@ -32,19 +46,18 @@ const soundLabels: Record<SoundName, string> = {
   'zona-bloom.wav': 'Bloom',
 };
 
-/** Ordered list for the sound picker (Silent last among real options). */
-const soundChoices: { label: string; value: SoundName }[] = [
-  { label: 'Default', value: 'default' },
-  { label: 'Soft', value: 'zona-soft.wav' },
-  { label: 'Bright', value: 'zona-bright.wav' },
-  { label: 'Urgent', value: 'zona-urgent.wav' },
-  { label: 'Chime', value: 'zona-chime.wav' },
-  { label: 'Crystal', value: 'zona-crystal.wav' },
-  { label: 'Warm', value: 'zona-warm.wav' },
-  { label: 'Pulse', value: 'zona-pulse.wav' },
-  { label: 'Signal', value: 'zona-signal.wav' },
-  { label: 'Bloom', value: 'zona-bloom.wav' },
-  { label: 'Silent', value: 'silent' },
+const soundChoices: { label: string; value: SoundName; description: string }[] = [
+  { label: 'Default', value: 'default', description: 'System notification sound' },
+  { label: 'Soft', value: 'zona-soft.wav', description: 'Gentle two-note chime' },
+  { label: 'Bright', value: 'zona-bright.wav', description: 'Quick rising sparkle' },
+  { label: 'Urgent', value: 'zona-urgent.wav', description: 'Repeated attention pulse' },
+  { label: 'Chime', value: 'zona-chime.wav', description: 'Classic doorbell pair' },
+  { label: 'Crystal', value: 'zona-crystal.wav', description: 'High sparkling cascade' },
+  { label: 'Warm', value: 'zona-warm.wav', description: 'Low major arpeggio' },
+  { label: 'Pulse', value: 'zona-pulse.wav', description: 'Soft double pulse' },
+  { label: 'Signal', value: 'zona-signal.wav', description: 'Short clean beeps' },
+  { label: 'Bloom', value: 'zona-bloom.wav', description: 'Rising open chord' },
+  { label: 'Silent', value: 'silent', description: 'No sound for this source' },
 ];
 
 function recentlyActive(lastSeenAt: string | null) {
@@ -57,6 +70,7 @@ export default function SourcesScreen() {
   const { error, load, loading, patchSource, refresh, refreshing, sources } = useSources(true);
   const bottomPad = useTabBarContentPadding();
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const [soundPickerSource, setSoundPickerSource] = useState<Source | null>(null);
 
   function askRename(source: Source) {
     if (busySourceId) return;
@@ -152,37 +166,14 @@ export default function SourcesScreen() {
 
   function askSound(source: Source) {
     if (busySourceId || !source.api_key) return;
-    const title = `Sound for ${source.display_name}`;
-    const message = 'Bundled sounds require an installed Zona build (not Expo Go).';
+    setSoundPickerSource(source);
+  }
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title,
-          message,
-          options: [...soundChoices.map((choice) => choice.label), 'Cancel'],
-          cancelButtonIndex: soundChoices.length,
-          userInterfaceStyle: 'light',
-        },
-        (index) => {
-          if (index === undefined || index >= soundChoices.length) return;
-          void updateSound(source, soundChoices[index].value);
-        },
-      );
-      return;
-    }
-
-    Alert.alert(
-      title,
-      message,
-      [
-        ...soundChoices.map((choice) => ({
-          text: choice.label,
-          onPress: () => void updateSound(source, choice.value),
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ],
-    );
+  function selectSound(soundName: SoundName) {
+    const source = soundPickerSource;
+    setSoundPickerSource(null);
+    if (!source) return;
+    void updateSound(source, soundName);
   }
 
   async function sendTest(source: Source) {
@@ -347,7 +338,94 @@ export default function SourcesScreen() {
           );
         }}
       />
+
+      <SoundPickerModal
+        current={soundPickerSource?.api_key?.sound_name ?? 'default'}
+        sourceName={soundPickerSource?.display_name ?? ''}
+        visible={Boolean(soundPickerSource)}
+        onClose={() => setSoundPickerSource(null)}
+        onSelect={selectSound}
+      />
     </TabScreen>
+  );
+}
+
+function SoundPickerModal({
+  visible,
+  sourceName,
+  current,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  sourceName: string;
+  current: SoundName;
+  onClose: () => void;
+  onSelect: (sound: SoundName) => void;
+}) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.sheetRoot}>
+        <Pressable accessibilityLabel="Dismiss sound picker" accessibilityRole="button" onPress={onClose} style={styles.sheetBackdrop} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Notification sound</Text>
+          <Text style={styles.sheetSubtitle} numberOfLines={2}>
+            {sourceName ? `Choose the ringtone for ${sourceName}.` : 'Choose a ringtone.'}
+          </Text>
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.sheetList}
+            showsVerticalScrollIndicator={false}
+            style={styles.sheetScroll}
+          >
+            {soundChoices.map((choice) => {
+              const selected = choice.value === current;
+              return (
+                <Pressable
+                  key={choice.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => onSelect(choice.value)}
+                  style={({ pressed }) => [
+                    styles.soundRow,
+                    selected && styles.soundRowSelected,
+                    pressed && styles.soundRowPressed,
+                  ]}
+                >
+                  <View style={[styles.soundGlyph, selected && styles.soundGlyphSelected]}>
+                    <AppIcon
+                      color={selected ? colors.white : colors.primary}
+                      fallback={choice.value === 'silent' ? '∅' : '♪'}
+                      name={choice.value === 'silent' ? 'speaker.slash.fill' : 'speaker.wave.2.fill'}
+                      size={16}
+                    />
+                  </View>
+                  <View style={styles.soundCopy}>
+                    <Text style={[styles.soundLabel, selected && styles.soundLabelSelected]}>{choice.label}</Text>
+                    <Text style={styles.soundDescription}>{choice.description}</Text>
+                  </View>
+                  {selected ? (
+                    <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} />
+                  ) : (
+                    <View style={styles.soundCheckPlaceholder} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.sheetCancel, pressed && styles.actionPressed]}
+          >
+            <Text style={styles.sheetCancelText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -440,4 +518,76 @@ const styles = StyleSheet.create({
   action: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   testAction: { color: colors.accent },
   danger: { color: colors.danger },
+  sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(23,34,30,0.42)' },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.large,
+    borderTopRightRadius: radius.large,
+    maxHeight: '78%',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#17382F',
+        shadowOffset: { width: 0, height: -6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: { elevation: 16 },
+      default: {},
+    }),
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    height: 4,
+    marginBottom: 12,
+    width: 40,
+  },
+  sheetTitle: { color: colors.text, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  sheetSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 18, marginBottom: 12, marginTop: 4 },
+  sheetScroll: { flexGrow: 0 },
+  sheetList: { gap: 8, paddingBottom: 8 },
+  soundRow: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radius.medium,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  soundRowSelected: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+  soundRowPressed: { opacity: 0.78 },
+  soundGlyph: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: 12,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  soundGlyphSelected: { backgroundColor: colors.primary },
+  soundCopy: { flex: 1, minWidth: 0 },
+  soundLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  soundLabelSelected: { color: colors.primaryDark },
+  soundDescription: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 2 },
+  soundCheckPlaceholder: { width: 20 },
+  sheetCancel: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.medium,
+    justifyContent: 'center',
+    marginTop: 10,
+    minHeight: 48,
+  },
+  sheetCancelText: { color: colors.textSoft, fontSize: 15, fontWeight: '700' },
 });

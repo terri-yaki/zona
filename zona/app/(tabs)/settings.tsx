@@ -7,6 +7,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { getAppOptions, updateAppOptions } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
+import { checkForAppUpdateInteractive } from '@/lib/app-updates';
 import {
   enablePushNotifications,
   getPushRegistrationHealth,
@@ -46,6 +47,7 @@ export default function SettingsScreen() {
   const [options, setOptions] = useState<AppOptions | null>(null);
   const [savingOption, setSavingOption] = useState<keyof Pick<AppOptions, 'push_enabled' | 'play_sound' | 'show_preview'> | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     if (!userId) return;
@@ -244,6 +246,23 @@ export default function SettingsScreen() {
         <Pressable accessibilityRole="button" disabled={registering} onPress={registerAgain} style={({ pressed }) => [styles.registerRow, registering && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↻" name="arrow.clockwise" size={17} /></View>
           <Text style={styles.link}>{registering ? 'Checking registration…' : 'Check and register this iPhone'}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable>
+      </View>
+
+      <Text style={styles.section}>APP</Text>
+      <View style={styles.card}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={checkingUpdate}
+          onPress={() => {
+            setCheckingUpdate(true);
+            void checkForAppUpdateInteractive().finally(() => setCheckingUpdate(false));
+          }}
+          style={({ pressed }) => [styles.registerRow, checkingUpdate && styles.disabled, pressed && styles.pressed]}
+        >
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
+          <Text style={styles.link}>{checkingUpdate ? 'Checking for updates…' : 'Check for app update'}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
       </View>

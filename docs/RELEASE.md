@@ -25,7 +25,9 @@ Assign before starting:
 - Native dependency or app-configuration changes require a new binary.
 - Expo SDK stays on major 54 for version 1. An SDK upgrade requires an ADR,
   compatible package plan, fresh native build, and full TestFlight matrix.
-- EAS Update/OTA is not currently configured or an approved release path.
+- Preview channel OTA (`eas update --channel preview`) is configured for
+  internal iteration; see [PREVIEW_UPDATES.md](PREVIEW_UPDATES.md). Production
+  OTA is not an approved App Store release path until explicitly enabled.
 - Tag the immutable source revision used for backend and app artifacts.
 
 ## External blockers

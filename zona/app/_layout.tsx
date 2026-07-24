@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
 import { isUuid } from '@/lib/validation';
@@ -88,6 +89,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
+          <AppUpdateSync />
           <PushRegistrationSync />
           <NotificationNavigation />
           <StatusBar style="dark" translucent={false} backgroundColor={colors.background} />

@@ -7,6 +7,14 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "zona",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/571437d3-1919-4bb5-870c-587bc7b59ef9",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": false,
