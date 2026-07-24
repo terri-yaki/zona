@@ -22,7 +22,7 @@ jobs:
           cache: npm
           cache-dependency-path: zona/package-lock.json
       - run: npm ci
-      - run: npm run check:sdk54
+      - run: npm run check:sdk56
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
