@@ -1,5 +1,6 @@
-import type { Database, Json } from './types/database';
+import type { Database, Json, NotificationSound } from './types/database';
 
+export type { NotificationSound };
 export type ApiKey = Database['public']['Tables']['api_keys']['Row'];
 export type AppOptions = Database['public']['Tables']['app_options']['Row'];
 export type Source = Database['public']['Tables']['sources']['Row'] & { api_key: ApiKey | null };

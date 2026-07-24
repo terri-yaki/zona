@@ -28,8 +28,8 @@ to use semantic application versions. Build numbers are managed by EAS.
   devices are removed by the hourly cleanup.
 - Owner-visible API-key metadata, pause/resume controls, server-backed push
   options, and a reusable per-source test-alert action.
-- Per-source notification sound presets (default, silent, soft, bright, and
-  urgent) with three bundled iOS sound assets.
+- Per-source notification sound presets (default, silent, soft, bright, urgent,
+  chime, crystal, warm, pulse, signal, and bloom) with bundled iOS sound assets.
 
 ### Changed
 

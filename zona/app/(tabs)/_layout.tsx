@@ -1,33 +1,56 @@
-import { Redirect, Tabs } from 'expo-router';
-import { type ColorValue } from 'react-native';
+import { Redirect } from 'expo-router';
+import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { DynamicColorIOS, Platform } from 'react-native';
 
-import { AppIcon } from '@/components/AppIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors } from '@/theme';
 
-function TabIcon({ name, color }: { name: 'tray.full' | 'desktopcomputer' | 'gearshape'; color: ColorValue }) {
-  return <AppIcon color={color} name={name} size={21} />;
-}
-
+/**
+ * Native liquid glass tab bar via Expo Router NativeTabs (SDK 54+).
+ * Uses the system UITabBarController on iOS — real liquid glass on iOS 26+,
+ * native translucent tab bar on earlier iOS — not a JS BlurView recreation.
+ * @see https://docs.expo.dev/router/advanced/native-tabs/
+ */
 export default function TabsLayout() {
   const { session, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
 
   return (
-    <Tabs screenOptions={{
-      headerShadowVisible: false,
-      headerStyle: { backgroundColor: colors.background },
-      headerTitleStyle: { color: colors.text, fontSize: 18, fontWeight: '700' },
-      tabBarActiveTintColor: colors.primary,
-      tabBarInactiveTintColor: colors.mutedLight,
-      tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 1 },
-      tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: 82, paddingBottom: 21, paddingTop: 8 },
-    }}>
-      <Tabs.Screen name="index" options={{ title: 'Inbox', tabBarIcon: ({ color }) => <TabIcon color={color} name="tray.full" /> }} />
-      <Tabs.Screen name="sources" options={{ lazy: false, title: 'API Keys', tabBarIcon: ({ color }) => <TabIcon color={color} name="desktopcomputer" /> }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: ({ color }) => <TabIcon color={color} name="gearshape" /> }} />
-    </Tabs>
+    <NativeTabs
+      backgroundColor={Platform.OS === 'ios' ? null : colors.surface}
+      blurEffect="systemChromeMaterial"
+      disableTransparentOnScrollEdge={false}
+      iconColor={Platform.OS === 'ios'
+        ? {
+            default: DynamicColorIOS({ light: colors.mutedLight, dark: '#A8B3AE' }),
+            selected: DynamicColorIOS({ light: colors.primary, dark: '#6FBFAD' }),
+          }
+        : {
+            default: colors.mutedLight,
+            selected: colors.primary,
+          }}
+      indicatorColor={colors.primarySoft}
+      labelStyle={{
+        default: { color: colors.mutedLight, fontSize: 11, fontWeight: '600' },
+        selected: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+      }}
+      minimizeBehavior="automatic"
+      tintColor={colors.primary}
+    >
+      <NativeTabs.Trigger name="index">
+        <Icon sf={{ default: 'tray', selected: 'tray.full.fill' }} />
+        <Label>Inbox</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="sources">
+        <Icon sf={{ default: 'key', selected: 'key.fill' }} />
+        <Label>Auth</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="settings">
+        <Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
+        <Label>Settings</Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

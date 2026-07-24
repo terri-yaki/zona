@@ -150,7 +150,20 @@ export async function unregisterThisInstallation(userId?: string) {
 
 export function addPushRegistrationRefreshListener(userId: string, onError?: (error: unknown) => void) {
   if (cannotUseNativePush()) return { remove() {} };
+
+  let inFlight = false;
+  let lastAt = 0;
+  const minIntervalMs = 90_000;
+
   return Notifications.addPushTokenListener(() => {
-    void syncPushRegistration(userId).catch((error) => onError?.(error));
+    const now = Date.now();
+    if (inFlight || now - lastAt < minIntervalMs) return;
+    lastAt = now;
+    inFlight = true;
+    void syncPushRegistration(userId)
+      .catch((error) => onError?.(error))
+      .finally(() => {
+        inFlight = false;
+      });
   });
 }

@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
+import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { getAppOptions, updateAppOptions } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
 import {
@@ -35,6 +36,7 @@ function relayLabel(health: PushRegistrationHealth | null) {
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const bottomPad = useTabBarContentPadding(16);
   const userId = session?.user.id;
   const [permission, setPermission] = useState('Checking…');
   const [health, setHealth] = useState<PushRegistrationHealth | null>(null);
@@ -184,7 +186,11 @@ export default function SettingsScreen() {
   const busy = signingOut || deleting;
 
   return (
-    <ScrollView contentContainerStyle={styles.page}>
+    <TabScreen>
+      <ScrollView
+        contentContainerStyle={[styles.page, { paddingBottom: bottomPad }]}
+        style={styles.scroll}
+      >
       <View style={styles.profile}>
         <View style={styles.profileIcon}><AppIcon color={colors.primary} fallback="•" name="person.crop.circle.fill" size={31} /></View>
         <View style={styles.profileCopy}>
@@ -259,7 +265,8 @@ export default function SettingsScreen() {
         <Text style={styles.deleteText}>{deleting ? 'Deleting account…' : 'Delete account and data'}</Text>
       </Pressable>
       <Text style={styles.footnote}>Source credentials are stored as hashes and can be revoked independently.</Text>
-    </ScrollView>
+      </ScrollView>
+    </TabScreen>
   );
 }
 
@@ -301,7 +308,8 @@ function OptionRow({ description, disabled, label, onChange, value }: {
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
+  scroll: { backgroundColor: colors.background, flex: 1 },
+  page: { backgroundColor: colors.background, flexGrow: 1, paddingHorizontal: 16, paddingTop: 8 },
   profile: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', marginBottom: 7, padding: 17 },
   profileIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 22, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
   profileCopy: { flex: 1 },

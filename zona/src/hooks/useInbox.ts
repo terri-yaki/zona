@@ -1,7 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listNotifications, type InboxCursor, type InboxFilters, unreadNotificationCount } from '@/data/notifications';
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  type InboxCursor,
+  type InboxFilters,
+  unreadNotificationCount,
+} from '@/data/notifications';
 import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
 
@@ -18,6 +24,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
 
@@ -63,6 +70,24 @@ export function useInbox(userId: string, filters: InboxFilters) {
     }
   }, [cursor, filters, hasMore, loadingMore]);
 
+  const markAllRead = useCallback(async () => {
+    if (markingAllRead || unreadCount === 0) return;
+    setMarkingAllRead(true);
+    setError(null);
+    try {
+      const readAt = new Date().toISOString();
+      await markAllNotificationsRead(readAt);
+      setItems((current) => current.map((item) => (
+        item.read_at ? item : { ...item, read_at: readAt }
+      )));
+      setUnreadCount(0);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught : new Error('Notifications could not be marked as read.'));
+    } finally {
+      setMarkingAllRead(false);
+    }
+  }, [markingAllRead, unreadCount]);
+
   useFocusEffect(useCallback(() => {
     void load('initial');
   }, [load]));
@@ -94,6 +119,8 @@ export function useInbox(userId: string, filters: InboxFilters) {
     loading,
     loadingMore,
     loadMore,
+    markAllRead,
+    markingAllRead,
     refresh: () => load('refresh'),
     refreshing,
     retry: () => load('initial'),

@@ -16,7 +16,7 @@ The app displays a safe API-key registry backed by `public.api_keys`:
 | `name` | User-editable PC/application label. |
 | `key_prefix` | Short non-secret identifier; never the full key or its hash. |
 | `is_active` | Reversible pause/resume switch. Paused keys receive `401`. |
-| `sound_name` | Per-source choice: default, silent, soft, bright, or urgent. |
+| `sound_name` | Per-source choice: default, silent, soft, bright, urgent, chime, crystal, warm, pulse, signal, or bloom. |
 | `last_used_at` | Last newly accepted notification. |
 | `expires_at` | Optional future expiry. |
 | `revoked_at` | Permanent revocation time. |

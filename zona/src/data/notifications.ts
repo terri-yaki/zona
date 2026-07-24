@@ -93,6 +93,14 @@ export async function markNotificationRead(id: string, readAt: string) {
   if (!data) throw dataError(null, 'The notification is no longer available.');
 }
 
+export async function markAllNotificationsRead(readAt = new Date().toISOString()) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: readAt })
+    .is('read_at', null);
+  if (error) throw dataError(error, 'Notifications could not be marked as read.');
+}
+
 export async function deleteNotification(id: string, attachmentPath: string | null = null) {
   // Remove the evidence image first: if row deletion then fails, the alert is
   // not stranded without its attachment; if image removal fails, nothing is lost.

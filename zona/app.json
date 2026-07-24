@@ -10,7 +10,10 @@
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": false,
-      "bundleIdentifier": "com.terriyaki.zona"
+      "bundleIdentifier": "com.terriyaki.zona",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "plugins": [
       "expo-router",
@@ -21,7 +24,13 @@
           "sounds": [
             "./assets/sounds/zona-soft.wav",
             "./assets/sounds/zona-bright.wav",
-            "./assets/sounds/zona-urgent.wav"
+            "./assets/sounds/zona-urgent.wav",
+            "./assets/sounds/zona-chime.wav",
+            "./assets/sounds/zona-crystal.wav",
+            "./assets/sounds/zona-warm.wav",
+            "./assets/sounds/zona-pulse.wav",
+            "./assets/sounds/zona-signal.wav",
+            "./assets/sounds/zona-bloom.wav"
           ]
         }
       ],

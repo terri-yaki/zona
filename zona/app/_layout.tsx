@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -61,10 +61,21 @@ function NotificationNavigation() {
 }
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+  if (__DEV__ && error) console.error('[Zona ErrorBoundary]', error);
+
   return (
     <View style={styles.errorPage}>
       <Text style={styles.errorTitle}>Zona hit an unexpected problem</Text>
-      <Text style={styles.errorMessage}>{__DEV__ ? error.message : 'Your data is safe. Try opening this screen again.'}</Text>
+      <Text style={styles.errorMessage}>
+        {__DEV__ ? message : 'Your data is safe. Try opening this screen again.'}
+      </Text>
+      {__DEV__ && stack ? (
+        <ScrollView style={styles.errorStackBox} contentContainerStyle={styles.errorStackContent}>
+          <Text selectable style={styles.errorStack}>{stack}</Text>
+        </ScrollView>
+      ) : null}
       <Pressable accessibilityRole="button" onPress={retry} style={styles.errorButton}>
         <Text style={styles.errorButtonText}>Try again</Text>
       </Pressable>
@@ -79,7 +90,7 @@ export default function RootLayout() {
         <AuthProvider>
           <PushRegistrationSync />
           <NotificationNavigation />
-          <StatusBar style="dark" />
+          <StatusBar style="dark" translucent={false} backgroundColor={colors.background} />
           <Stack screenOptions={{
             contentStyle: { backgroundColor: colors.background },
             headerBackButtonDisplayMode: 'minimal',
@@ -106,6 +117,9 @@ const styles = StyleSheet.create({
   errorPage: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 28 },
   errorTitle: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center' },
   errorMessage: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 420, textAlign: 'center' },
+  errorStackBox: { maxHeight: 220, marginTop: 14, maxWidth: 420, width: '100%' },
+  errorStackContent: { paddingHorizontal: 4 },
+  errorStack: { color: colors.mutedLight, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 11, lineHeight: 15 },
   errorButton: { backgroundColor: colors.primary, borderRadius: radius.medium, marginTop: 22, minHeight: 50, justifyContent: 'center', paddingHorizontal: 22 },
   errorButtonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
 });

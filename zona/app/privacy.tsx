@@ -12,7 +12,7 @@ export default function PrivacyScreen() {
         <Text style={styles.intro}>Zona stores only what it needs to deliver and synchronize your alerts.</Text>
         <PrivacySection title="Account" body="A private account tied to this iPhone identifies your data through Supabase Authentication. No email or password is collected." />
         <PrivacySection title="Sources and alerts" body="Source names, optional hostnames, alert content, timestamps, and validated metadata are retained for seven days. Source tokens are stored only as hashes." />
-        <PrivacySection title="Push delivery" body="Your Expo push token is sent to the Zona relay. Alert text passes through Supabase, Expo Push Service, and Apple Push Notification service, and may appear on your lock screen." />
+        <PrivacySection title="Push delivery" body="Your push token is sent to the Zona relay. Alert text passes through Supabase, Apple Push Notification service, and may appear on your lock screen." />
         <PrivacySection title="Your control" body="Revoke one source without affecting others, delete individual alerts, sign out, or permanently delete your account and associated data from Settings." />
         <View style={styles.note}><Text style={styles.noteText}>Before App Store release, the operator must publish the full privacy policy and support URL listed in the release checklist.</Text></View>
       </ScrollView>

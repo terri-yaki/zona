@@ -1,5 +1,19 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+/** Bundled / special notification sound identifiers stored on api_keys.sound_name. */
+export type NotificationSound =
+  | 'default'
+  | 'silent'
+  | 'zona-soft.wav'
+  | 'zona-bright.wav'
+  | 'zona-urgent.wav'
+  | 'zona-chime.wav'
+  | 'zona-crystal.wav'
+  | 'zona-warm.wav'
+  | 'zona-pulse.wav'
+  | 'zona-signal.wav'
+  | 'zona-bloom.wav';
+
 export type Database = {
   public: {
     Tables: {
@@ -38,7 +52,7 @@ export type Database = {
           last_used_at: string | null;
           name: string;
           revoked_at: string | null;
-          sound_name: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          sound_name: NotificationSound;
           source_id: string;
           updated_at: string;
           user_id: string;
@@ -52,7 +66,7 @@ export type Database = {
           last_used_at?: string | null;
           name: string;
           revoked_at?: string | null;
-          sound_name?: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          sound_name?: NotificationSound;
           source_id: string;
           updated_at?: string;
           user_id: string;
@@ -64,7 +78,7 @@ export type Database = {
           last_used_at?: string | null;
           name?: string;
           revoked_at?: string | null;
-          sound_name?: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          sound_name?: NotificationSound;
           updated_at?: string;
         };
         Relationships: [];
@@ -202,7 +216,7 @@ export type Database = {
           key_updated_at: string;
           last_seen_at: string | null;
           revoked_at: string | null;
-          sound_name: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav';
+          sound_name: NotificationSound;
           user_id: string;
         };
         Relationships: [];

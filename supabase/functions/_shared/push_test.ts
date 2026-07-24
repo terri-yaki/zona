@@ -55,6 +55,8 @@ Deno.test('push behavior can hide previews and disable sound', () => {
 
 Deno.test('per-source sounds are allowlisted and respect the global setting', () => {
   assertEquals(resolveSound(true, 'zona-soft.wav'), 'zona-soft.wav');
+  assertEquals(resolveSound(true, 'zona-chime.wav'), 'zona-chime.wav');
+  assertEquals(resolveSound(true, 'zona-bloom.wav'), 'zona-bloom.wav');
   assertEquals(resolveSound(true, 'not-bundled.wav'), 'default');
   assertEquals(resolveSound(true, 'silent'), null);
   assertEquals(resolveSound(false, 'zona-urgent.wav'), null);

@@ -1,9 +1,10 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { ErrorState } from '@/components/ErrorState';
+import { ImageLightbox } from '@/components/ImageLightbox';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { deleteNotification, getNotification, markNotificationRead } from '@/data/notifications';
 import { userMessage } from '@/lib/errors';
@@ -210,11 +211,10 @@ export default function NotificationDetailScreen() {
           <View style={styles.attachmentCard}>
             {attachmentLoading ? <ActivityIndicator color={colors.primary} /> : null}
             {!attachmentLoading && attachmentUrl ? (
-              <Image
+              <ImageLightbox
                 accessibilityLabel="Attached screenshot"
-                resizeMode="contain"
-                source={{ uri: attachmentUrl }}
-                style={styles.attachment}
+                previewStyle={styles.attachment}
+                uri={attachmentUrl}
               />
             ) : null}
             {!attachmentLoading && !attachmentUrl ? (

@@ -9,32 +9,40 @@ export async function listSources({ includeRevoked = true } = {}) {
   if (!includeRevoked) query = query.is('revoked_at', null);
   const { data, error } = await query;
   if (error) throw dataError(error, 'Your API keys could not be loaded.');
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    user_id: row.user_id,
-    display_name: row.display_name,
-    hostname: row.hostname,
-    created_at: row.created_at,
-    last_seen_at: row.last_seen_at,
-    revoked_at: row.revoked_at,
-    api_key: {
-      id: row.api_key_id,
+  return (data ?? [])
+    .map((row) => ({
+      id: row.id,
       user_id: row.user_id,
-      source_id: row.id,
-      name: row.api_key_name,
-      key_prefix: row.key_prefix,
-      is_active: row.is_active,
-      created_at: row.key_created_at,
-      updated_at: row.key_updated_at,
-      last_used_at: row.key_last_used_at,
-      expires_at: row.key_expires_at,
-      revoked_at: row.key_revoked_at,
-      sound_name: row.sound_name,
-    },
-  }));
+      display_name: row.display_name,
+      hostname: row.hostname,
+      created_at: row.created_at,
+      last_seen_at: row.last_seen_at,
+      revoked_at: row.revoked_at,
+      api_key: {
+        id: row.api_key_id,
+        user_id: row.user_id,
+        source_id: row.id,
+        name: row.api_key_name,
+        key_prefix: row.key_prefix,
+        is_active: row.is_active,
+        created_at: row.key_created_at,
+        updated_at: row.key_updated_at,
+        last_used_at: row.key_last_used_at,
+        expires_at: row.key_expires_at,
+        revoked_at: row.key_revoked_at,
+        sound_name: row.sound_name,
+      },
+    }))
+    // Active keys first; revoked keys sink to the bottom (newest first within each group).
+    .sort((left, right) => {
+      const leftRevoked = left.revoked_at ? 1 : 0;
+      const rightRevoked = right.revoked_at ? 1 : 0;
+      if (leftRevoked !== rightRevoked) return leftRevoked - rightRevoked;
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    });
 }
 
-export async function setApiKeySound(apiKeyId: string, soundName: 'default' | 'silent' | 'zona-soft.wav' | 'zona-bright.wav' | 'zona-urgent.wav') {
+export async function setApiKeySound(apiKeyId: string, soundName: import('@/types/database').NotificationSound) {
   const { error } = await supabase
     .from('api_keys')
     .update({ sound_name: soundName, updated_at: new Date().toISOString() })

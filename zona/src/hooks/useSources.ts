@@ -21,6 +21,11 @@ export function useSources(includeRevoked = true) {
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
 
+  const commit = useCallback((next: Source[]) => {
+    sourceCache.set(cacheKey, next);
+    setSourceState({ cacheKey, values: next });
+  }, [cacheKey]);
+
   const load = useCallback(async (refresh = false) => {
     const request = ++generation.current;
     if (refresh) setRefreshing(true);
@@ -28,10 +33,7 @@ export function useSources(includeRevoked = true) {
     setError(null);
     try {
       const next = await listSources({ includeRevoked });
-      if (request === generation.current) {
-        sourceCache.set(cacheKey, next);
-        setSourceState({ cacheKey, values: next });
-      }
+      if (request === generation.current) commit(next);
     } catch (caught) {
       if (request === generation.current) setError(caught instanceof Error ? caught : new Error('Your sources could not be loaded.'));
     } finally {
@@ -40,7 +42,18 @@ export function useSources(includeRevoked = true) {
         setRefreshing(false);
       }
     }
-  }, [cacheKey, includeRevoked]);
+  }, [cacheKey, commit, includeRevoked]);
+
+  const patchSource = useCallback((sourceId: string, patch: (source: Source) => Source) => {
+    setSourceState((previous) => {
+      const base = previous.cacheKey === cacheKey
+        ? previous.values
+        : sourceCache.get(cacheKey) ?? [];
+      const next = base.map((source) => (source.id === sourceId ? patch(source) : source));
+      sourceCache.set(cacheKey, next);
+      return { cacheKey, values: next };
+    });
+  }, [cacheKey]);
 
   useFocusEffect(useCallback(() => {
     void load();
@@ -50,6 +63,7 @@ export function useSources(includeRevoked = true) {
     error,
     load,
     loading,
+    patchSource,
     refresh: () => load(true),
     refreshing,
     sources,
