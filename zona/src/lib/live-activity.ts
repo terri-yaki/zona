@@ -1,0 +1,237 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+import { colors } from '@/theme';
+
+const ENABLED_KEY = 'zona.live_activity_enabled';
+const ACTIVITY_ID_KEY = 'zona.live_activity_id';
+const SESSION_END_KEY = 'zona.live_activity_session_end';
+
+/** Apple Live Activities typically expire around 8 hours. */
+const SESSION_MS = 8 * 60 * 60 * 1000;
+
+export type ZonaLiveActivitySnapshot = {
+  unreadCount: number;
+  latestTitle: string | null;
+  latestSource: string | null;
+  latestId: string | null;
+};
+
+type LiveActivityModule = typeof import('expo-live-activity');
+
+let modulePromise: Promise<LiveActivityModule | null> | null = null;
+
+function isIosDevice() {
+  return Platform.OS === 'ios';
+}
+
+async function loadModule(): Promise<LiveActivityModule | null> {
+  if (!isIosDevice()) return null;
+  if (!modulePromise) {
+    modulePromise = import('expo-live-activity')
+      .then((mod) => mod)
+      .catch((error) => {
+        console.warn('Live Activity native module is unavailable.', error);
+        return null;
+      });
+  }
+  return modulePromise;
+}
+
+export async function getLiveActivityEnabled(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(ENABLED_KEY);
+    return value === '1';
+  } catch {
+    return false;
+  }
+}
+
+export async function setLiveActivityEnabled(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(ENABLED_KEY, enabled ? '1' : '0');
+  if (!enabled) await stopLiveActivity('Live Status off');
+}
+
+async function getStoredActivityId(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(ACTIVITY_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
+async function setStoredActivityId(id: string | null): Promise<void> {
+  if (id) await AsyncStorage.setItem(ACTIVITY_ID_KEY, id);
+  else await AsyncStorage.removeItem(ACTIVITY_ID_KEY);
+}
+
+async function getOrCreateSessionEnd(reset = false): Promise<number> {
+  if (!reset) {
+    try {
+      const stored = await AsyncStorage.getItem(SESSION_END_KEY);
+      if (stored) {
+        const end = Number(stored);
+        if (Number.isFinite(end) && end > Date.now() + 60_000) return end;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  const end = Date.now() + SESSION_MS;
+  await AsyncStorage.setItem(SESSION_END_KEY, String(end));
+  return end;
+}
+
+function waitingLabel(count: number) {
+  if (count <= 0) return 'All clear';
+  if (count === 1) return '1 waiting';
+  return `${count} waiting`;
+}
+
+function buildState(snapshot: ZonaLiveActivitySnapshot, sessionEnd: number) {
+  const unread = Math.max(0, snapshot.unreadCount);
+  const title = (snapshot.latestTitle?.trim() || waitingLabel(unread)).slice(0, 80);
+  const source = snapshot.latestSource?.trim() || 'Zona';
+  const subtitle =
+    unread > 0
+      ? `${source} · ${waitingLabel(unread)}`
+      : 'Everything is quiet';
+
+  return {
+    title,
+    subtitle,
+    progressBar: { date: sessionEnd },
+    imageName: 'zona_mark',
+    dynamicIslandImageName: 'zona_island',
+  };
+}
+
+function buildConfig(snapshot: ZonaLiveActivitySnapshot) {
+  const deepLinkUrl = snapshot.latestId
+    ? `/notification/${snapshot.latestId}`
+    : '/';
+
+  return {
+    backgroundColor: colors.background,
+    titleColor: colors.text,
+    subtitleColor: colors.muted,
+    progressViewTint: colors.primary,
+    progressViewLabelColor: colors.mutedLight,
+    deepLinkUrl,
+    timerType: 'circular' as const,
+    padding: { horizontal: 16, top: 14, bottom: 14 },
+    imagePosition: 'left' as const,
+    imageAlign: 'center' as const,
+    imageSize: { width: 44, height: 44 },
+    contentFit: 'contain' as const,
+  };
+}
+
+/**
+ * Mirror inbox unread state into a single Live Activity.
+ * No-ops on non-iOS, when disabled, or when the native module is missing.
+ */
+export async function syncLiveActivity(snapshot: ZonaLiveActivitySnapshot): Promise<void> {
+  if (!isIosDevice()) return;
+
+  const enabled = await getLiveActivityEnabled();
+  if (!enabled) {
+    await stopLiveActivity();
+    return;
+  }
+
+  if (snapshot.unreadCount <= 0) {
+    await stopLiveActivity('All clear');
+    return;
+  }
+
+  const LiveActivity = await loadModule();
+  if (!LiveActivity) return;
+
+  try {
+    const sessionEnd = await getOrCreateSessionEnd(false);
+    const state = buildState(snapshot, sessionEnd);
+    const existingId = await getStoredActivityId();
+
+    if (existingId) {
+      try {
+        LiveActivity.updateActivity(existingId, state);
+        return;
+      } catch (error) {
+        console.warn('Could not update Live Activity; starting a new one.', error);
+        await setStoredActivityId(null);
+      }
+    }
+
+    const freshEnd = await getOrCreateSessionEnd(true);
+    const freshState = buildState(snapshot, freshEnd);
+    const id = LiveActivity.startActivity(freshState, buildConfig(snapshot));
+    if (id) await setStoredActivityId(id);
+  } catch (error) {
+    console.warn('Could not sync Live Activity.', error);
+  }
+}
+
+export async function stopLiveActivity(finalTitle = 'All clear'): Promise<void> {
+  if (!isIosDevice()) {
+    await setStoredActivityId(null);
+    return;
+  }
+
+  const existingId = await getStoredActivityId();
+  await setStoredActivityId(null);
+  try {
+    await AsyncStorage.removeItem(SESSION_END_KEY);
+  } catch {
+    // ignore
+  }
+
+  if (!existingId) return;
+
+  const LiveActivity = await loadModule();
+  if (!LiveActivity) return;
+
+  try {
+    LiveActivity.stopActivity(existingId, {
+      title: finalTitle,
+      subtitle: 'Zona',
+      imageName: 'zona_mark',
+      dynamicIslandImageName: 'zona_island',
+    });
+  } catch (error) {
+    console.warn('Could not stop Live Activity.', error);
+  }
+}
+
+/**
+ * Clear stored activity id when the user dismisses the system Live Activity UI
+ * so the next sync can start a fresh one if still needed.
+ */
+export async function attachLiveActivityStateListener(): Promise<() => void> {
+  if (!isIosDevice()) return () => {};
+  const LiveActivity = await loadModule();
+  if (!LiveActivity?.addActivityUpdatesListener) return () => {};
+
+  const sub = LiveActivity.addActivityUpdatesListener(async (event) => {
+    if (event.activityState === 'dismissed' || event.activityState === 'ended') {
+      const stored = await getStoredActivityId();
+      if (stored && stored === event.activityID) {
+        await setStoredActivityId(null);
+        try {
+          await AsyncStorage.removeItem(SESSION_END_KEY);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  });
+
+  return () => {
+    sub?.remove();
+  };
+}
+
+/** True when this platform can attempt Live Activities (iOS only; not Expo Go guarantee). */
+export function liveActivityPlatformSupported() {
+  return isIosDevice();
+}

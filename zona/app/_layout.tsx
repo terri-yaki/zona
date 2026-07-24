@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
+import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
@@ -96,6 +97,7 @@ export default function RootLayout() {
         <AuthProvider>
           <AppUpdateSync />
           <PushRegistrationSync />
+          <LiveActivitySync />
           <NotificationNavigation />
           <StatusBar style="dark" translucent={false} backgroundColor={colors.background} />
           <Stack screenOptions={{

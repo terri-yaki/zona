@@ -5,9 +5,16 @@ import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Te
 
 import { AppIcon } from '@/components/AppIcon';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
+import { listNotifications, unreadNotificationCount } from '@/data/notifications';
 import { getAppOptions, updateAppOptions } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
+import {
+  getLiveActivityEnabled,
+  liveActivityPlatformSupported,
+  setLiveActivityEnabled,
+  syncLiveActivity,
+} from '@/lib/live-activity';
 import {
   enablePushNotifications,
   getPushRegistrationHealth,
@@ -48,6 +55,9 @@ export default function SettingsScreen() {
   const [savingOption, setSavingOption] = useState<keyof Pick<AppOptions, 'push_enabled' | 'play_sound' | 'show_preview'> | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [liveActivityEnabled, setLiveActivityEnabledState] = useState(false);
+  const [savingLiveActivity, setSavingLiveActivity] = useState(false);
+  const liveActivitySupported = liveActivityPlatformSupported();
 
   const refreshStatus = useCallback(async () => {
     if (!userId) return;
@@ -57,6 +67,11 @@ export default function SettingsScreen() {
       setOptionsError(null);
     } catch (error) {
       setOptionsError(error instanceof Error ? error.message : 'Notification options could not be loaded.');
+    }
+    try {
+      setLiveActivityEnabledState(await getLiveActivityEnabled());
+    } catch {
+      setLiveActivityEnabledState(false);
     }
     if (Platform.OS === 'web') {
       setPermission('Web preview');
@@ -114,6 +129,40 @@ export default function SettingsScreen() {
       setOptionsError(error instanceof Error ? error.message : 'The option could not be saved.');
     } finally {
       setSavingOption(null);
+    }
+  }
+
+  async function setLiveStatus(value: boolean) {
+    if (savingLiveActivity) return;
+    setSavingLiveActivity(true);
+    setLiveActivityEnabledState(value);
+    try {
+      await setLiveActivityEnabled(value);
+      if (value && userId) {
+        const unreadCount = await unreadNotificationCount();
+        if (unreadCount > 0) {
+          const { items } = await listNotifications({
+            sourceId: null,
+            since: null,
+            unreadOnly: true,
+          });
+          const latest = items[0] ?? null;
+          await syncLiveActivity({
+            unreadCount,
+            latestTitle: latest?.title ?? null,
+            latestSource: latest?.source_name_snapshot ?? null,
+            latestId: latest?.id ?? null,
+          });
+        }
+      }
+    } catch (error) {
+      setLiveActivityEnabledState(!value);
+      Alert.alert(
+        'Live Status',
+        error instanceof Error ? error.message : 'Could not update Live Status.',
+      );
+    } finally {
+      setSavingLiveActivity(false);
     }
   }
 
@@ -233,6 +282,18 @@ export default function SettingsScreen() {
           onChange={(value) => void setOption('show_preview', value)}
           value={options?.show_preview ?? true}
         />
+        {liveActivitySupported ? (
+          <>
+            <View style={styles.divider} />
+            <OptionRow
+              description="See unread alerts on your Lock Screen and Dynamic Island. Updates while Zona is open. Needs a preview or production build."
+              disabled={savingLiveActivity}
+              label="Live Status"
+              onChange={(value) => void setLiveStatus(value)}
+              value={liveActivityEnabled}
+            />
+          </>
+        ) : null}
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
       </View>
 
