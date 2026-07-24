@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
+import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
 import { isUuid } from '@/lib/validation';
 import { colors, radius } from '@/theme';
@@ -85,6 +86,10 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    void ensureNotificationSoundChannels();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

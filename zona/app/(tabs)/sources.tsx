@@ -26,6 +26,7 @@ import { useSources } from '@/hooks/useSources';
 import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
+import { previewNotificationSound } from '@/lib/notification-sounds';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
 import type { ApiKey, Source } from '@/types';
@@ -173,6 +174,10 @@ export default function SourcesScreen() {
     const source = soundPickerSource;
     setSoundPickerSource(null);
     if (!source) return;
+    // Local preview verifies the .wav is in this IPA; remote push uses the same basename.
+    void previewNotificationSound(soundName).catch((error) => {
+      console.warn('Sound preview failed.', error);
+    });
     void updateSound(source, soundName);
   }
 

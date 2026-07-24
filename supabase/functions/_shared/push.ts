@@ -48,6 +48,14 @@ export function byteLength(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
+/** Android notification channel id for a bundled sound filename (or default/silent). */
+export function soundChannelId(soundName: string | null): string {
+  if (!soundName) return 'zona_silent';
+  if (soundName === 'default') return 'zona_default';
+  // zona-soft.wav → zona_soft (matches Android-safe resource naming).
+  return soundName.replace(/\.wav$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+}
+
 export function createPushMessage(
   to: string,
   title: string,
@@ -57,9 +65,14 @@ export function createPushMessage(
   sourceId: string,
   behavior: PushBehavior = { soundName: 'default', showPreview: true },
 ) {
+  // Expo → APNs: `sound` must be the bundled basename including extension
+  // (e.g. zona-soft.wav). Missing files make iOS fall back to the system default.
+  const sound = behavior.soundName;
   return {
     to,
-    ...(behavior.soundName ? { sound: behavior.soundName } : {}),
+    priority: 'high',
+    channelId: soundChannelId(sound),
+    ...(sound ? { sound } : { sound: null }),
     title: behavior.showPreview ? title : 'New Zona alert',
     subtitle: behavior.showPreview ? `From ${sourceName}` : 'Zona',
     body: behavior.showPreview ? body : 'Open Zona to view this notification.',

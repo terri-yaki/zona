@@ -47,5 +47,16 @@ export async function setApiKeySound(apiKeyId: string, soundName: import('@/type
     .from('api_keys')
     .update({ sound_name: soundName, updated_at: new Date().toISOString() })
     .eq('id', apiKeyId);
-  if (error) throw dataError(error, 'The notification sound could not be saved.');
+  if (error) {
+    // 23514 = check_violation — usually the DB migration for new sound names is not applied yet.
+    const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : '';
+    const detail = typeof error === 'object' && error && 'message' in error ? String((error as { message?: string }).message) : '';
+    if (code === '23514' || /sound_name|check constraint/i.test(detail)) {
+      throw dataError(
+        error,
+        'This sound is not allowed on the server yet. Apply migration 202607240004_more_notification_sounds (supabase db push) and try again.',
+      );
+    }
+    throw dataError(error, 'The notification sound could not be saved.');
+  }
 }

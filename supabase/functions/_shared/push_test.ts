@@ -50,7 +50,8 @@ Deno.test('push behavior can hide previews and disable sound', () => {
   );
   assertEquals(message.title, 'New Zona alert');
   assertEquals(message.body, 'Open Zona to view this notification.');
-  assertEquals('sound' in message, false);
+  assertEquals(message.sound, null);
+  assertEquals(message.channelId, 'zona_silent');
 });
 
 Deno.test('per-source sounds are allowlisted and respect the global setting', () => {
@@ -71,6 +72,7 @@ Deno.test('per-source sounds are allowlisted and respect the global setting', ()
     { soundName: 'zona-bright.wav', showPreview: true },
   );
   assertEquals(message.sound, 'zona-bright.wav');
+  assertEquals(message.channelId, 'zona_bright');
 });
 
 Deno.test('ticket errors are recorded even when Expo returns HTTP 200', () => {

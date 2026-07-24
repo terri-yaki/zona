@@ -263,6 +263,12 @@ Deno.serve(async (req) => {
       appOptions.play_sound,
       (sourceOptionsResult.data as SourceOptions | null)?.sound_name,
     );
+    // Help diagnose “always default” reports: confirm which tone the payload will request.
+    console.log('notify push sound', {
+      sourceId: accepted.source_id,
+      stored: (sourceOptionsResult.data as SourceOptions | null)?.sound_name ?? null,
+      resolved: soundName,
+    });
 
     const { data: pushDevices, error: devicesError } = appOptions.push_enabled
       ? await service
