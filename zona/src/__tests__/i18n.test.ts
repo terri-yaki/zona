@@ -41,6 +41,6 @@ describe('localization', () => {
     expect(translate('sources.lastActive', { time: '2 minutes ago' }, 'en')).toBe('Last active 2 minutes ago');
     expect(translate('sources.lastActive', { time: '2 分鐘前' }, 'zh-Hant')).toBe('最近活躍：2 分鐘前');
     expect(translateCount('inbox.alertsWaiting.one', 'inbox.alertsWaiting.other', 1, {}, 'en')).toBe('1 alert waiting');
-    expect(translateCount('inbox.alertsWaiting.one', 'inbox.alertsWaiting.other', 2, {}, 'zh-Hant')).toBe('有 2 則提醒待處理');
+    expect(translateCount('inbox.alertsWaiting.one', 'inbox.alertsWaiting.other', 2, {}, 'zh-Hant')).toBe('有 2 則通知待處理');
   });
 });

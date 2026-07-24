@@ -8,6 +8,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Friendly in-app “What’s New” history in Settings, with user-focused release
+  highlights in English and Traditional Chinese.
 - English and Traditional Chinese app languages, with automatic system-language
   detection, an immediate in-app language selector, localized relative times,
   validation/errors, update prompts, notification sound previews, and Live

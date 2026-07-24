@@ -327,6 +327,13 @@ export default function SettingsScreen() {
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
         <View style={styles.divider} />
+        <Pressable accessibilityRole="button" onPress={() => router.push('/whats-new')} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="+" name="sparkles" size={17} /></View>
+          <Text style={styles.link}>{t('settings.whatsNew')}</Text>
+          <Text numberOfLines={1} style={styles.languageValue}>{t('settings.whatsNewValue')}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable>
+        <View style={styles.divider} />
         <Pressable
           accessibilityRole="button"
           disabled={checkingUpdate}

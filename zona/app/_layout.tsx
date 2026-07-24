@@ -127,6 +127,7 @@ function RootNavigator() {
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen name="push-onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
+            <Stack.Screen name="whats-new" options={{ title: t('nav.whatsNew') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
             <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />
