@@ -22,7 +22,7 @@ export type WhatsNewRelease = {
 export const whatsNewReleases: WhatsNewRelease[] = [
   {
     id: '2026-07-personal',
-    version: '1.0.0',
+    version: '0.0.2',
     latest: true,
     dateKey: 'whatsNew.releasePersonal.date',
     titleKey: 'whatsNew.releasePersonal.title',
@@ -57,7 +57,7 @@ export const whatsNewReleases: WhatsNewRelease[] = [
   },
   {
     id: '2026-07-foundation',
-    version: '0.1.0',
+    version: '0.0.1',
     dateKey: 'whatsNew.releaseFoundation.date',
     titleKey: 'whatsNew.releaseFoundation.title',
     summaryKey: 'whatsNew.releaseFoundation.summary',
