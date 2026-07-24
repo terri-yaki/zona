@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { getAppOptions, updateAppOptions } from '@/data/options';
@@ -267,4 +268,36 @@ export async function attachLiveActivityStateListener(): Promise<() => void> {
 /** True when this platform can attempt Live Activities (iOS only; not Expo Go guarantee). */
 export function liveActivityPlatformSupported() {
   return isIosDevice();
+}
+
+export type LiveActivityCapability =
+  | 'ready'
+  | 'expo-go'
+  | 'native-missing'
+  | 'unsupported';
+
+/**
+ * Whether this *installed binary* can actually start a Live Activity.
+ * The in-app toggle can still save a preference before a native rebuild ships.
+ */
+export async function getLiveActivityCapability(): Promise<LiveActivityCapability> {
+  if (!isIosDevice()) return 'unsupported';
+  // Expo Go never includes the Live Activity widget extension.
+  if (Constants.appOwnership === 'expo') return 'expo-go';
+  const mod = await loadModule();
+  if (!mod?.startActivity) return 'native-missing';
+  return 'ready';
+}
+
+export function liveActivityCapabilityLabel(status: LiveActivityCapability): string {
+  switch (status) {
+    case 'ready':
+      return 'This build can show Live Status on the Lock Screen and Dynamic Island when unread alerts exist.';
+    case 'expo-go':
+      return 'Expo Go cannot show Live Activities. Install a Zona preview or production IPA built after Live Status was added.';
+    case 'native-missing':
+      return 'This installed app is missing the Live Activity native target. Install a new preview IPA (OTA is not enough). iPhone Settings → Zona will not list Live Activities until then.';
+    default:
+      return 'Live Status is only available on iPhone.';
+  }
 }

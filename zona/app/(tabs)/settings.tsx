@@ -10,10 +10,13 @@ import { getAppOptions, updateAppOptions, type AppOptionFlags } from '@/data/opt
 import { deleteAccount } from '@/lib/api';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
 import {
+  getLiveActivityCapability,
+  liveActivityCapabilityLabel,
   liveActivityPlatformSupported,
   migrateLegacyLiveActivityPreference,
   stopLiveActivity,
   syncLiveActivity,
+  type LiveActivityCapability,
 } from '@/lib/live-activity';
 import {
   enablePushNotifications,
@@ -55,6 +58,7 @@ export default function SettingsScreen() {
   const [savingOption, setSavingOption] = useState<keyof AppOptionFlags | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [liveActivityCapability, setLiveActivityCapability] = useState<LiveActivityCapability | null>(null);
   const liveActivitySupported = liveActivityPlatformSupported();
 
   const refreshStatus = useCallback(async () => {
@@ -67,6 +71,15 @@ export default function SettingsScreen() {
     } catch (error) {
       setOptionsError(error instanceof Error ? error.message : 'Notification options could not be loaded.');
     }
+    if (liveActivitySupported) {
+      try {
+        setLiveActivityCapability(await getLiveActivityCapability());
+      } catch {
+        setLiveActivityCapability('native-missing');
+      }
+    } else {
+      setLiveActivityCapability('unsupported');
+    }
     if (Platform.OS === 'web') {
       setPermission('Web preview');
       return;
@@ -77,7 +90,7 @@ export default function SettingsScreen() {
     } catch {
       setPermission('Unavailable');
     }
-  }, [userId]);
+  }, [liveActivitySupported, userId]);
 
   useFocusEffect(useCallback(() => { void refreshStatus(); }, [refreshStatus]));
 
@@ -268,12 +281,21 @@ export default function SettingsScreen() {
           <>
             <View style={styles.divider} />
             <OptionRow
-              description="See unread alerts on your Lock Screen and Dynamic Island. Updates while Zona is open. Needs a preview or production build. Saved to your account."
+              description={
+                liveActivityCapability && liveActivityCapability !== 'ready'
+                  ? liveActivityCapabilityLabel(liveActivityCapability)
+                  : 'Show unread alerts on the Lock Screen and Dynamic Island while Zona is open. Controlled here in Zona (not as a separate iPhone Settings button until a Live Activity–capable IPA is installed).'
+              }
               disabled={!options || Boolean(savingOption)}
               label="Live Status"
               onChange={(value) => void setOption('live_activity_enabled', value)}
               value={options?.live_activity_enabled ?? false}
             />
+            {liveActivityCapability && liveActivityCapability !== 'ready' ? (
+              <Text accessibilityLiveRegion="polite" style={styles.liveActivityHint}>
+                {liveActivityCapabilityLabel(liveActivityCapability)}
+              </Text>
+            ) : null}
           </>
         ) : null}
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
@@ -389,6 +411,7 @@ const styles = StyleSheet.create({
   optionCopy: { flex: 1, paddingRight: 12 },
   optionLabel: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
   optionDescription: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  liveActivityHint: { color: colors.accent, fontSize: 11, lineHeight: 16, paddingBottom: 12, paddingLeft: 0 },
   optionsError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12 },
   registerRow: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
   link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },

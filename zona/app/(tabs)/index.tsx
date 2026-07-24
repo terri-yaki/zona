@@ -59,15 +59,15 @@ export default function InboxScreen() {
     }
   }
 
-  // Only block the whole screen on the first ever load (no cache, no rows yet).
-  if (inbox.loading && inbox.items.length === 0 && !inbox.error) {
+  // Full-screen only on first open of the inbox — never when switching filter chips.
+  if (inbox.bootstrapping && inbox.items.length === 0 && !inbox.error) {
     return (
       <TabScreen>
         <LoadingScreen />
       </TabScreen>
     );
   }
-  if (inbox.error && inbox.items.length === 0) {
+  if (inbox.error && inbox.items.length === 0 && !inbox.filterLoading) {
     return (
       <TabScreen>
         <ErrorState error={inbox.error} onRetry={() => void inbox.retry()} />
@@ -165,7 +165,15 @@ export default function InboxScreen() {
         ]}
         data={inbox.items}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={<EmptyState title="No alerts here" message={emptyMessage} />}
+        ListEmptyComponent={
+          inbox.filterLoading ? (
+            <View accessibilityLabel="Loading filtered inbox" style={styles.filterListLoading}>
+              <ActivityIndicator color={colors.primary} size="small" />
+            </View>
+          ) : (
+            <EmptyState title="No alerts here" message={emptyMessage} />
+          )
+        }
         ListFooterComponent={inbox.hasMore ? (
           <View style={styles.pagination}>
             <Pressable
@@ -280,6 +288,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   filterLoading: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+  filterListLoading: { alignItems: 'center', flexGrow: 1, justifyContent: 'center', minHeight: 160, paddingVertical: 40 },
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,

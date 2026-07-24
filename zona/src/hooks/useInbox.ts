@@ -66,6 +66,14 @@ function markCacheItemsRead(userId: string, readAt: string) {
   }
 }
 
+function userHasAnyCache(userId: string) {
+  if (!userId) return false;
+  for (const key of pageCache.keys()) {
+    if (key.startsWith(`${userId}|`)) return true;
+  }
+  return false;
+}
+
 export function useInbox(userId: string, filters: InboxFilters) {
   const cacheKey = useMemo(
     () => filterCacheKey(userId, filters),
@@ -79,31 +87,42 @@ export function useInbox(userId: string, filters: InboxFilters) {
   const [unreadCount, setUnreadCount] = useState(() => cachedUnreadCount);
   const [cursor, setCursor] = useState<InboxCursor | null>(() => cachedPage?.cursor ?? null);
   const [hasMore, setHasMore] = useState(() => cachedPage?.hasMore ?? false);
-  const [loading, setLoading] = useState(() => !cachedPage);
+  // Full-screen bootstrap only — filter switches must not flip this to true.
+  const [bootstrapping, setBootstrapping] = useState(() => !cachedPage && !userHasAnyCache(userId));
+  const [filterLoading, setFilterLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
   const cacheKeyRef = useRef(cacheKey);
+  const hasEverLoadedRef = useRef(Boolean(cachedPage) || userHasAnyCache(userId));
   cacheKeyRef.current = cacheKey;
 
   // Swap to cached results instantly when the filter chip changes.
+  // Uncached filters clear the list and soft-load — never full-screen LoadingScreen.
   useEffect(() => {
     const entry = pageCache.get(cacheKey);
     if (entry) {
       setItems(entry.items);
       setCursor(entry.cursor);
       setHasMore(entry.hasMore);
-      setLoading(false);
+      setFilterLoading(false);
+      setBootstrapping(false);
       setError(null);
       return;
     }
     setItems([]);
     setCursor(null);
     setHasMore(false);
-    setLoading(true);
     setError(null);
+    if (hasEverLoadedRef.current) {
+      setBootstrapping(false);
+      setFilterLoading(true);
+    } else {
+      setBootstrapping(true);
+      setFilterLoading(false);
+    }
   }, [cacheKey]);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
@@ -112,8 +131,9 @@ export function useInbox(userId: string, filters: InboxFilters) {
     const hasCache = pageCache.has(key);
 
     if (mode === 'refresh') setRefreshing(true);
-    else if ((mode === 'initial' || mode === 'soft') && !hasCache) setLoading(true);
-    // With cache: keep the list on screen (no full-screen hard load).
+    else if (!hasCache && !hasEverLoadedRef.current) setBootstrapping(true);
+    else if (!hasCache && hasEverLoadedRef.current) setFilterLoading(true);
+    // With cache: keep the list on screen (no hard load).
 
     setError(null);
     try {
@@ -128,6 +148,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
       setHasMore(page.hasMore);
       setUnreadCount(count);
       cachedUnreadCount = count;
+      hasEverLoadedRef.current = true;
       writePageCache(key, {
         items: page.items,
         cursor: page.cursor,
@@ -139,7 +160,8 @@ export function useInbox(userId: string, filters: InboxFilters) {
       }
     } finally {
       if (request === generation.current && key === cacheKeyRef.current) {
-        setLoading(false);
+        setBootstrapping(false);
+        setFilterLoading(false);
         setRefreshing(false);
       }
     }
@@ -201,9 +223,9 @@ export function useInbox(userId: string, filters: InboxFilters) {
     }
   }, [filters.unreadOnly, markingAllRead, unreadCount, userId]);
 
-  // load identity changes with filters → revalidate current filter without blanking the UI when cached.
+  // load identity changes with filters → revalidate without blanking the chrome when already loaded.
   useFocusEffect(useCallback(() => {
-    void load(pageCache.has(cacheKeyRef.current) ? 'soft' : 'initial');
+    void load(pageCache.has(cacheKeyRef.current) || hasEverLoadedRef.current ? 'soft' : 'initial');
   }, [load]));
 
   useEffect(() => {
@@ -231,17 +253,18 @@ export function useInbox(userId: string, filters: InboxFilters) {
   }, [load, userId]);
 
   return {
+    bootstrapping,
     error,
+    filterLoading,
     hasMore,
     items,
-    loading,
     loadingMore,
     loadMore,
     markAllRead,
     markingAllRead,
     refresh: () => load('refresh'),
     refreshing,
-    retry: () => load(pageCache.has(cacheKey) ? 'soft' : 'initial'),
+    retry: () => load(pageCache.has(cacheKey) || hasEverLoadedRef.current ? 'soft' : 'initial'),
     unreadCount,
   };
 }
