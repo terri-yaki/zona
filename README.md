@@ -50,6 +50,8 @@ lock-screen message previews.
 - `docs/THREAT_MODEL.md` and `SECURITY.md` — risks and security policy.
 - `PRIVACY.md` — release-draft data and retention notice.
 - `docs/RUNBOOK.md` and `docs/RELEASE.md` — operations and TestFlight release.
+- `docs/PUBLIC_LAUNCH_PLAN.md` — public distribution, monetization, hosting,
+  DevOps, and measured scaling roadmap.
 
 Zona is pre-production while the explicit release blockers in the PRD and
 release procedure remain open.

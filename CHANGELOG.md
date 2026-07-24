@@ -8,6 +8,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Public App Store launch and monetization roadmap covering product validation,
+  recoverable paid accounts, StoreKit entitlements, economic quotas, hosting,
+  DevOps, observability, and measured scaling triggers.
 - Preview OTA via EAS Update (`channel: preview`), in-app update prompt, Settings
   “Check for app update”, and `docs/PREVIEW_UPDATES.md` developer/user guide.
 - Production-readiness product requirements, architecture, test plan, threat

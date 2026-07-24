@@ -59,7 +59,8 @@ export default function InboxScreen() {
     }
   }
 
-  if (inbox.loading && inbox.items.length === 0) {
+  // Only block the whole screen on the first ever load (no cache, no rows yet).
+  if (inbox.loading && inbox.items.length === 0 && !inbox.error) {
     return (
       <TabScreen>
         <LoadingScreen />
