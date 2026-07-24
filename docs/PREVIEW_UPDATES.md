@@ -30,7 +30,10 @@ npx eas-cli update --channel preview --message "Describe the change"
 npx eas-cli build --platform ios --profile preview --non-interactive
 ```
 
-CI (optional): `.github/workflows/preview-ota.yml` runs `eas update --channel preview` on pushes to `main` that touch `zona/` (requires repo secret `EXPO_TOKEN`).
+CI (optional): `.github/workflows/preview-ota.yml` runs `eas update --channel preview` on pushes to `main` that touch `zona/`.
+
+**Required GitHub secret:** `EXPO_TOKEN`  
+Create at [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens), then add under the repo **Settings → Secrets and variables → Actions**. Without it the OTA workflow exits with code 1 (the Node.js deprecation notice in the log is only a warning).
 
 ## Rules
 

@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: preview-ota-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -23,27 +27,45 @@ jobs:
       run:
         working-directory: zona
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: zona/package-lock.json
-      - run: npm ci
-      - name: Require EXPO_TOKEN
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "Add repository secret EXPO_TOKEN (Expo access token) to enable preview OTA CI."
-            exit 1
-          fi
+
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Publish OTA to preview channel
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing repository secret EXPO_TOKEN."
+            echo "Create an Expo access token at https://expo.dev/settings/access-tokens"
+            echo "then add it as GitHub → Settings → Secrets and variables → Actions → EXPO_TOKEN"
+            exit 1
+          fi
+
           MESSAGE="${{ github.event.inputs.message }}"
           if [ -z "$MESSAGE" ]; then
-            MESSAGE="main ${GITHUB_SHA}"
+            MESSAGE="main ${GITHUB_SHA:0:7}"
           fi
-          npx eas-cli update --channel preview --non-interactive --auto --message "$MESSAGE"
+
+          # Channel maps to preview builds (eas.json). Environment loads EXPO_PUBLIC_* from EAS.
+          eas update \
+            --channel preview \
+            --environment preview \
+            --platform ios \
+            --non-interactive \
+            --message "$MESSAGE"
