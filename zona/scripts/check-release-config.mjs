@@ -8,7 +8,7 @@ const [appConfig, packageJson] = await Promise.all([
 const expo = appConfig.expo ?? {};
 const failures = [];
 
-if (!/^~54\./.test(packageJson.dependencies?.expo ?? '')) failures.push('Expo must remain pinned to SDK 54.');
+if (!/^~56\./.test(packageJson.dependencies?.expo ?? '')) failures.push('Expo must remain pinned to SDK 56.');
 if (!expo.ios?.bundleIdentifier || expo.ios.bundleIdentifier === 'com.example.zona') failures.push('Set an owned iOS bundle identifier in app.json.');
 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(expo.extra?.eas?.projectId ?? '')) failures.push('Replace the EAS project ID placeholder with the UUID from `eas init`.');
 if (!process.env.EXPO_PUBLIC_SUPABASE_URL) failures.push('Configure EXPO_PUBLIC_SUPABASE_URL in the build environment.');

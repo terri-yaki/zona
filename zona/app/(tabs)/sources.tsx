@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   testAction: { color: colors.accent },
   danger: { color: colors.danger },
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(23,34,30,0.42)' },
+  sheetBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(23,34,30,0.42)' },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.large,

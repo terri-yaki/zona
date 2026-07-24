@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { DynamicColorIOS, Platform } from 'react-native';
 
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -21,7 +21,7 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs
-      backgroundColor={Platform.OS === 'ios' ? null : colors.surface}
+      backgroundColor={Platform.OS === 'ios' ? undefined : colors.surface}
       blurEffect="systemChromeMaterial"
       disableTransparentOnScrollEdge={false}
       iconColor={Platform.OS === 'ios'
@@ -42,16 +42,16 @@ export default function TabsLayout() {
       tintColor={colors.primary}
     >
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: 'tray', selected: 'tray.full.fill' }} />
-        <Label>{t('tabs.inbox')}</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'tray', selected: 'tray.full.fill' }} />
+        <NativeTabs.Trigger.Label>{t('tabs.inbox')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="sources">
-        <Icon sf={{ default: 'key', selected: 'key.fill' }} />
-        <Label>{t('tabs.sources')}</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'key', selected: 'key.fill' }} />
+        <NativeTabs.Trigger.Label>{t('tabs.sources')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
-        <Label>{t('tabs.settings')}</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
+        <NativeTabs.Trigger.Label>{t('tabs.settings')}</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -118,13 +118,14 @@ function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
 function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
-  const baseScale = useRef(new Animated.Value(1)).current;
-  const pinchScale = useRef(new Animated.Value(1)).current;
-  const scale = useRef(Animated.multiply(baseScale, pinchScale)).current;
+  const [baseScale] = useState(() => new Animated.Value(1));
+  const [pinchScale] = useState(() => new Animated.Value(1));
+  const [scale] = useState(() => Animated.multiply(baseScale, pinchScale));
   const lastScale = useRef(1);
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
+  const [translateX] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(0));
   const lastOffset = useRef({ x: 0, y: 0 });
+  const [panEnabled, setPanEnabled] = useState(false);
   const [zoomLabel, setZoomLabel] = useState('100%');
 
   const onPinchEvent = Animated.event(
@@ -150,6 +151,7 @@ function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void 
         translateY.setValue(0);
         setZoomLabel('100%');
       }
+      setPanEnabled(lastScale.current > 1);
     }
   };
 
@@ -174,7 +176,7 @@ function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void 
   return (
     <GestureHandlerRootView style={styles.modalRoot}>
       <PanGestureHandler
-        enabled={lastScale.current > 1}
+        enabled={panEnabled}
         maxPointers={1}
         minPointers={1}
         onGestureEvent={onPanEvent}

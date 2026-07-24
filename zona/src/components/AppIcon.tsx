@@ -1,5 +1,5 @@
 import type { SFSymbol } from 'expo-symbols';
-import type { ReactElement, ReactNode } from 'react';
+import { createElement, type ReactElement, type ReactNode } from 'react';
 import { type ColorValue, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
@@ -46,17 +46,14 @@ export function AppIcon({ name, color = '#17221E', size = 22, fallback = '•' }
   const view = loadSymbolView();
   if (!view) return <FallbackIcon color={color} fallback={fallback} size={size} />;
 
-  const Symbol = view;
-  return (
-    <Symbol
-      fallback={<FallbackIcon color={color} fallback={fallback} size={size} />}
-      name={name}
-      resizeMode="scaleAspectFit"
-      size={size}
-      tintColor={color}
-      weight="semibold"
-    />
-  );
+  return createElement(view, {
+    fallback: <FallbackIcon color={color} fallback={fallback} size={size} />,
+    name,
+    resizeMode: 'scaleAspectFit',
+    size,
+    tintColor: color,
+    weight: 'semibold',
+  });
 }
 
 const styles = StyleSheet.create({

@@ -7,23 +7,21 @@ import { useAuth } from '@/providers/AuthProvider';
 
 export default function Index() {
   const { session, loading } = useAuth();
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const [onboarded, setOnboarded] = useState<{ userId: string; value: boolean } | null>(null);
 
   useEffect(() => {
+    if (!session) return;
     let current = true;
-    if (!session) {
-      setOnboarded(null);
-      return () => { current = false; };
-    }
-    isPushOnboardingComplete(session.user.id).then((value) => {
-      if (current) setOnboarded(value);
+    const userId = session.user.id;
+    isPushOnboardingComplete(userId).then((value) => {
+      if (current) setOnboarded({ userId, value });
     });
     return () => { current = false; };
   }, [session]);
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
-  if (onboarded === null) return <LoadingScreen />;
-  if (!onboarded) return <Redirect href="/push-onboarding" />;
+  if (onboarded?.userId !== session.user.id) return <LoadingScreen />;
+  if (!onboarded.value) return <Redirect href="/push-onboarding" />;
   return <Redirect href="/(tabs)" />;
 }

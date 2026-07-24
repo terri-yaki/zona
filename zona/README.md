@@ -1,4 +1,4 @@
-# Zona iPhone app (Expo SDK 54)
+# Zona iPhone app (Expo SDK 56)
 
 ## Configure
 

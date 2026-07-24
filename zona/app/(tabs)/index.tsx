@@ -25,12 +25,9 @@ export default function InboxScreen() {
   const bottomPad = useTabBarContentPadding();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const [last24Hours, setLast24Hours] = useState(false);
-
-  const since = useMemo(
-    () => last24Hours ? new Date(Date.now() - oneDayInMilliseconds).toISOString() : null,
-    [last24Hours],
-  );
+  // Stores the cutoff timestamp when the chip is toggled on; null when off.
+  const [since, setSince] = useState<string | null>(null);
+  const last24Hours = since !== null;
   const filters = useMemo(() => ({
     since,
     sourceId: selectedSource,
@@ -51,7 +48,7 @@ export default function InboxScreen() {
   function clearFilters() {
     setSelectedSource(null);
     setUnreadOnly(false);
-    setLast24Hours(false);
+    setSince(null);
   }
 
   async function onMarkAllRead() {
@@ -140,7 +137,7 @@ export default function InboxScreen() {
       >
         <FilterChip active={!selectedSource} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" />
         <FilterChip active={unreadOnly} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" />
-        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setLast24Hours((value) => !value)} tone="default" />
+        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - oneDayInMilliseconds).toISOString())} tone="default" />
         {sourceState.loading && sourceOptions.length === 0 ? (
           <View accessibilityLabel={t('inbox.loadingFilters')} accessible style={styles.filterLoading}>
             <ActivityIndicator color={colors.primary} size="small" />

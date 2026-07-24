@@ -97,12 +97,16 @@ export function useInbox(userId: string, filters: InboxFilters) {
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
   const cacheKeyRef = useRef(cacheKey);
-  const hasEverLoadedRef = useRef(Boolean(cachedPage) || userHasAnyCache(userId));
-  cacheKeyRef.current = cacheKey;
+  const [hasEverLoaded, setHasEverLoaded] = useState(() => Boolean(cachedPage) || userHasAnyCache(userId));
+  useEffect(() => {
+    cacheKeyRef.current = cacheKey;
+  }, [cacheKey]);
 
   // Swap to cached results instantly when the filter chip changes.
   // Uncached filters clear the list and soft-load — never full-screen LoadingScreen.
-  useEffect(() => {
+  const [appliedCacheKey, setAppliedCacheKey] = useState(cacheKey);
+  if (appliedCacheKey !== cacheKey) {
+    setAppliedCacheKey(cacheKey);
     const entry = pageCache.get(cacheKey);
     if (entry) {
       setItems(entry.items);
@@ -111,20 +115,20 @@ export function useInbox(userId: string, filters: InboxFilters) {
       setFilterLoading(false);
       setBootstrapping(false);
       setError(null);
-      return;
-    }
-    setItems([]);
-    setCursor(null);
-    setHasMore(false);
-    setError(null);
-    if (hasEverLoadedRef.current) {
-      setBootstrapping(false);
-      setFilterLoading(true);
     } else {
-      setBootstrapping(true);
-      setFilterLoading(false);
+      setItems([]);
+      setCursor(null);
+      setHasMore(false);
+      setError(null);
+      if (hasEverLoaded) {
+        setBootstrapping(false);
+        setFilterLoading(true);
+      } else {
+        setBootstrapping(true);
+        setFilterLoading(false);
+      }
     }
-  }, [cacheKey]);
+  }
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
     const request = ++generation.current;
@@ -132,8 +136,8 @@ export function useInbox(userId: string, filters: InboxFilters) {
     const hasCache = pageCache.has(key);
 
     if (mode === 'refresh') setRefreshing(true);
-    else if (!hasCache && !hasEverLoadedRef.current) setBootstrapping(true);
-    else if (!hasCache && hasEverLoadedRef.current) setFilterLoading(true);
+    else if (!hasCache && !hasEverLoaded) setBootstrapping(true);
+    else if (!hasCache && hasEverLoaded) setFilterLoading(true);
     // With cache: keep the list on screen (no hard load).
 
     setError(null);
@@ -149,7 +153,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
       setHasMore(page.hasMore);
       setUnreadCount(count);
       cachedUnreadCount = count;
-      hasEverLoadedRef.current = true;
+      setHasEverLoaded(true);
       writePageCache(key, {
         items: page.items,
         cursor: page.cursor,
@@ -166,7 +170,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
         setRefreshing(false);
       }
     }
-  }, [filters]);
+  }, [filters, hasEverLoaded]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !cursor || loadingMore) return;
@@ -226,8 +230,8 @@ export function useInbox(userId: string, filters: InboxFilters) {
 
   // load identity changes with filters → revalidate without blanking the chrome when already loaded.
   useFocusEffect(useCallback(() => {
-    void load(pageCache.has(cacheKeyRef.current) || hasEverLoadedRef.current ? 'soft' : 'initial');
-  }, [load]));
+    void load(pageCache.has(cacheKeyRef.current) || hasEverLoaded ? 'soft' : 'initial');
+  }, [hasEverLoaded, load]));
 
   useEffect(() => {
     if (!userId) return;
@@ -265,7 +269,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
     markingAllRead,
     refresh: () => load('refresh'),
     refreshing,
-    retry: () => load(pageCache.has(cacheKey) || hasEverLoadedRef.current ? 'soft' : 'initial'),
+    retry: () => load(pageCache.has(cacheKey) || hasEverLoaded ? 'soft' : 'initial'),
     unreadCount,
   };
 }

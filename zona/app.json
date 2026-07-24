@@ -55,11 +55,18 @@
         "expo-localization",
         {
           "supportedLocales": {
-            "ios": ["en", "zh-Hant"],
-            "android": ["en", "zh-Hant"]
+            "ios": [
+              "en",
+              "zh-Hant"
+            ],
+            "android": [
+              "en",
+              "zh-Hant"
+            ]
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

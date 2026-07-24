@@ -114,7 +114,7 @@ function RootNavigator() {
           <PushRegistrationSync />
           <LiveActivitySync />
           <NotificationNavigation />
-          <StatusBar style="dark" translucent={false} backgroundColor={colors.background} />
+          <StatusBar style="dark" />
           <Stack screenOptions={{
             contentStyle: { backgroundColor: colors.background },
             headerBackButtonDisplayMode: 'minimal',

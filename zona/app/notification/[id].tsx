@@ -34,20 +34,21 @@ export default function NotificationDetailScreen() {
   const [markingRead, setMarkingRead] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
-  const [attachmentLoading, setAttachmentLoading] = useState(false);
+  const [attachment, setAttachment] = useState<{ path: string; url: string | null } | null>(null);
 
-  const load = useCallback(async () => {
-    const request = ++generation.current;
+  // Reset detail state when navigating to a different notification id.
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    setItem(null);
     setError(null);
     setReadError(null);
-    if (!userId || !id) {
-      setItem(null);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
+  }
+
+  const load = useCallback(async () => {
+    if (!userId || !id) return;
+    const request = ++generation.current;
     try {
       const notification = await getNotification(id);
       if (request !== generation.current) return;
@@ -80,37 +81,37 @@ export default function NotificationDetailScreen() {
   }, [id, t, userId]);
 
   useEffect(() => {
-    void load();
+    if (!userId || !id) return;
+    const timer = setTimeout(() => void load(), 0);
     return () => {
+      clearTimeout(timer);
       generation.current += 1;
     };
-  }, [load]);
+  }, [id, load, userId]);
 
   useEffect(() => {
     const path = item?.attachment_path;
-    if (!path) {
-      setAttachmentUrl(null);
-      return;
-    }
+    if (!path) return;
     let active = true;
-    setAttachmentLoading(true);
     supabase.storage
       .from('notification-attachments')
       .createSignedUrl(path, 3600)
       .then(({ data, error }) => {
         if (!active) return;
-        setAttachmentUrl(error ? null : data.signedUrl);
+        setAttachment({ path, url: error ? null : data.signedUrl });
       })
       .catch(() => {
-        if (active) setAttachmentUrl(null);
-      })
-      .finally(() => {
-        if (active) setAttachmentLoading(false);
+        if (active) setAttachment({ path, url: null });
       });
     return () => {
       active = false;
     };
   }, [item?.attachment_path]);
+
+  const attachmentPath = item?.attachment_path ?? null;
+  const attachmentReady = Boolean(attachmentPath) && attachment?.path === attachmentPath;
+  const attachmentLoading = Boolean(attachmentPath) && !attachmentReady;
+  const attachmentUrl = attachmentReady ? (attachment?.url ?? null) : null;
 
   async function retryMarkRead() {
     if (!item || item.read_at || markingRead) return;
@@ -175,7 +176,12 @@ export default function NotificationDetailScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <ErrorState error={error} onRetry={() => void load()} />
+        <ErrorState error={error} onRetry={() => {
+          setError(null);
+          setReadError(null);
+          setLoading(true);
+          void load();
+        }} />
       </View>
     );
   }
