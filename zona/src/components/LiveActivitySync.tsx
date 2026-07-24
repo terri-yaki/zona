@@ -20,6 +20,7 @@ function emptySnapshot(): ZonaLiveActivitySnapshot {
     latestTitle: null,
     latestSource: null,
     latestId: null,
+    latestCreatedAt: null,
   };
 }
 
@@ -38,6 +39,7 @@ async function fetchSnapshot(): Promise<ZonaLiveActivitySnapshot> {
     latestTitle: latest?.title ?? null,
     latestSource: latest?.source_name_snapshot ?? null,
     latestId: latest?.id ?? null,
+    latestCreatedAt: latest?.created_at ?? null,
   };
 }
 

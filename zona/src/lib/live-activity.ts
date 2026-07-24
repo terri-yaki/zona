@@ -3,22 +3,26 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { getAppOptions, updateAppOptions } from '@/data/options';
-import { colors } from '@/theme';
+import {
+  buildLiveActivityConfig,
+  buildLiveActivityState,
+  type ZonaLiveActivitySnapshot,
+} from '@/lib/live-activity-presentation';
+
+export type { ZonaLiveActivitySnapshot } from '@/lib/live-activity-presentation';
 
 /** Legacy local-only preference from early Live Status builds. */
 const LEGACY_ENABLED_KEY = 'zona.live_activity_enabled';
 const ACTIVITY_ID_KEY = 'zona.live_activity_id';
+/** Removed session-timer bookkeeping; kept only to scrub stale values. */
 const SESSION_END_KEY = 'zona.live_activity_session_end';
-
-/** Apple Live Activities typically expire around 8 hours. */
-const SESSION_MS = 8 * 60 * 60 * 1000;
-
-export type ZonaLiveActivitySnapshot = {
-  unreadCount: number;
-  latestTitle: string | null;
-  latestSource: string | null;
-  latestId: string | null;
-};
+/**
+ * Bump when the activity presentation changes in a way `updateActivity`
+ * cannot migrate (attributes are fixed at start). A mismatch forces
+ * stop + start so existing activities pick up the new design once.
+ */
+const DESIGN_VERSION_KEY = 'zona.live_activity_design_version';
+const CURRENT_DESIGN_VERSION = '2';
 
 type LiveActivityModule = typeof import('expo-live-activity');
 
@@ -95,69 +99,6 @@ async function setStoredActivityId(id: string | null): Promise<void> {
   else await AsyncStorage.removeItem(ACTIVITY_ID_KEY);
 }
 
-async function getOrCreateSessionEnd(reset = false): Promise<number> {
-  if (!reset) {
-    try {
-      const stored = await AsyncStorage.getItem(SESSION_END_KEY);
-      if (stored) {
-        const end = Number(stored);
-        if (Number.isFinite(end) && end > Date.now() + 60_000) return end;
-      }
-    } catch {
-      // fall through
-    }
-  }
-  const end = Date.now() + SESSION_MS;
-  await AsyncStorage.setItem(SESSION_END_KEY, String(end));
-  return end;
-}
-
-function waitingLabel(count: number) {
-  if (count <= 0) return 'All clear';
-  if (count === 1) return '1 waiting';
-  return `${count} waiting`;
-}
-
-function buildState(snapshot: ZonaLiveActivitySnapshot, sessionEnd: number) {
-  const unread = Math.max(0, snapshot.unreadCount);
-  const title = (snapshot.latestTitle?.trim() || waitingLabel(unread)).slice(0, 80);
-  const source = snapshot.latestSource?.trim() || 'Zona';
-  const subtitle =
-    unread > 0
-      ? `${source} · ${waitingLabel(unread)}`
-      : 'Everything is quiet';
-
-  return {
-    title,
-    subtitle,
-    progressBar: { date: sessionEnd },
-    // Bundled from assets/liveActivity/icon.png (resized from assets/icon.png; keep ≤4 KiB).
-    imageName: 'icon',
-    dynamicIslandImageName: 'icon',
-  };
-}
-
-function buildConfig(snapshot: ZonaLiveActivitySnapshot) {
-  const deepLinkUrl = snapshot.latestId
-    ? `/notification/${snapshot.latestId}`
-    : '/';
-
-  return {
-    backgroundColor: colors.background,
-    titleColor: colors.text,
-    subtitleColor: colors.muted,
-    progressViewTint: colors.primary,
-    progressViewLabelColor: colors.mutedLight,
-    deepLinkUrl,
-    timerType: 'circular' as const,
-    padding: { horizontal: 16, top: 14, bottom: 14 },
-    imagePosition: 'left' as const,
-    imageAlign: 'center' as const,
-    imageSize: { width: 44, height: 44 },
-    contentFit: 'contain' as const,
-  };
-}
-
 /**
  * Mirror inbox unread state into a single Live Activity.
  * No-ops on non-iOS, when disabled, or when the native module is missing.
@@ -183,11 +124,11 @@ export async function syncLiveActivity(
   if (!LiveActivity) return;
 
   try {
-    const sessionEnd = await getOrCreateSessionEnd(false);
-    const state = buildState(snapshot, sessionEnd);
+    const state = buildLiveActivityState(snapshot);
     const existingId = await getStoredActivityId();
+    const designVersion = await AsyncStorage.getItem(DESIGN_VERSION_KEY);
 
-    if (existingId) {
+    if (existingId && designVersion === CURRENT_DESIGN_VERSION) {
       try {
         LiveActivity.updateActivity(existingId, state);
         return;
@@ -197,10 +138,14 @@ export async function syncLiveActivity(
       }
     }
 
-    const freshEnd = await getOrCreateSessionEnd(true);
-    const freshState = buildState(snapshot, freshEnd);
-    const id = LiveActivity.startActivity(freshState, buildConfig(snapshot));
-    if (id) await setStoredActivityId(id);
+    // Design mismatch (or missing activity): restart so attributes/theme apply.
+    if (existingId) await stopLiveActivity('Live Status updated');
+
+    const id = LiveActivity.startActivity(state, buildLiveActivityConfig(snapshot));
+    if (id) {
+      await setStoredActivityId(id);
+      await AsyncStorage.setItem(DESIGN_VERSION_KEY, CURRENT_DESIGN_VERSION);
+    }
   } catch (error) {
     console.warn('Could not sync Live Activity.', error);
   }

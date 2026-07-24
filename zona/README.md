@@ -4,11 +4,9 @@
 
 1. Copy `.env.example` to `.env` and add the Supabase project URL and public
    publishable key. A local `.env` is already ignored by Git.
-2. Change `ios.bundleIdentifier` in `app.json` to an identifier owned by your
-   Apple Developer account.
-3. Run `eas init` and replace `REPLACE_WITH_EAS_PROJECT_ID` in `app.json` with
-   the resulting project ID.
-4. Enable anonymous sign-ins in Supabase Authentication → Sign In / Providers.
+2. The iOS bundle identifier (`com.terriyaki.zona`) and the linked EAS
+   project (`terriyaki/zona`) are already configured in `app.json`.
+3. Enable anonymous sign-ins in Supabase Authentication → Sign In / Providers.
 
 ## Develop and verify
 

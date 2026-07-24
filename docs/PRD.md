@@ -221,8 +221,6 @@ Pairing-code expiry/reuse tests are intentionally retired by ADR 0001.
 
 The following cannot be represented as complete by source code alone:
 
-- Replace `com.example.zona` with an owned Apple bundle identifier.
-- Replace `REPLACE_WITH_EAS_PROJECT_ID` with the linked EAS project UUID.
 - Configure EAS production variables for the public Supabase URL/key.
 - Configure authentication providers (anonymous sign-ins enabled), APNs
   credentials, and App Store Connect application ownership.

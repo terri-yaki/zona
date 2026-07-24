@@ -8,9 +8,17 @@ Zona can show a **Live Status** surface on the iPhone **Lock Screen** and
 1. Open **Settings → Notifications → Live Status** and turn it on (saved on your
    Zona account via `app_options.live_activity_enabled`).
 2. When the inbox has unread alerts and the app is running (or becomes active),
-   a Live Activity starts with Zona colors and monogram.
+   a Live Activity starts: a deep-green glance card showing `N unread · latest
+   alert title`, the source, and an "updated Xm" recency line, with the Zona
+   monogram on the left.
 3. Marking alerts read (or **Read all**) ends the activity.
 4. Turning Live Status off ends the activity immediately.
+
+There is intentionally **no countdown**: earlier builds showed an 8-hour
+session timer (an Apple lifetime artifact) across the Lock Screen strip and
+every Dynamic Island region, which read as "something expires" and pushed the
+unread count into a subtitle. Activities started by older builds restart once
+to pick up the current theme.
 
 Default is **off** so a new preview install does not surprise you with Lock
 Screen chrome.
@@ -27,12 +35,25 @@ Screen chrome.
 
 Remote ActivityKit push updates (refresh while killed) are **out of scope** for v1.
 
+## Planned design upgrade (needs one new IPA)
+
+The current presentation is the maximum the stock `expo-live-activity`
+template allows from JS. The full redesign — a right-side unread-count rail on
+the Lock Screen card, an unread-count pill in the Dynamic Island
+compact/minimal regions, an "updated … ago" line, and a chip-backed monogram
+asset — requires adding `count` / `sourceName` / `updatedAt` fields to the
+extension's `ContentState` and custom SwiftUI regions via a patch-package
+patch on the package's Swift templates (3 files). That is a native-target
+change, so it ships with the next IPA, not OTA. Design board:
+[live-activity-redesign.png](live-activity-redesign.png).
+
 ## Implementation
 
 | Piece | Role |
 | --- | --- |
 | `expo-live-activity` | Config plugin + ActivityKit bridge (SDK 54 path; package archived upstream in favor of newer `expo-widgets` on later SDKs). Listed as unmaintained in RN Directory; excluded in `package.json` `expo.doctor.reactNativeDirectoryCheck` until an SDK upgrade. |
 | `zona/src/lib/live-activity.ts` | Preference storage, start/update/stop, soft failures. |
+| `zona/src/lib/live-activity-presentation.ts` | Pure, unit-tested state/config builders (count-led title, recency subtitle, brand palette). No RN imports. |
 | `zona/src/components/LiveActivitySync.tsx` | Mirrors unread + latest notification into the activity. |
 | `zona/assets/liveActivity/icon.png` | App icon resized for ActivityKit (from `assets/icon.png`); keep **under 4 KB**. |
 | Settings | Server-backed `app_options.live_activity_enabled` (default off). Runtime activity id stays on-device. |

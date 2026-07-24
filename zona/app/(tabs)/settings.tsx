@@ -149,6 +149,7 @@ export default function SettingsScreen() {
               latestTitle: latest?.title ?? null,
               latestSource: latest?.source_name_snapshot ?? null,
               latestId: latest?.id ?? null,
+              latestCreatedAt: latest?.created_at ?? null,
             });
           }
         }

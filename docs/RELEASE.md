@@ -34,8 +34,6 @@ Assign before starting:
 
 Do not start a production build until all are resolved:
 
-- owned bundle identifier replaces `com.example.zona`;
-- linked EAS project UUID replaces `REPLACE_WITH_EAS_PROJECT_ID`;
 - Apple Developer/App Store Connect app, team, agreements, and signing access;
 - APNs key/provisioning and production EAS environment;
 - EAS production values for `EXPO_PUBLIC_SUPABASE_URL` and the public

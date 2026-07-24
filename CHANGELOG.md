@@ -44,6 +44,15 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Changed
 
+- Restyled the Live Status Live Activity as a count-forward glance card:
+  deep-green surface, an `N unread · latest title` headline, a source +
+  "updated Xm" subline, and no 8-hour session countdown (an Apple lifetime
+  artifact that dominated the Lock Screen strip and every Dynamic Island
+  region). Installed activities restart once to pick up the new theme.
+- Closed the bundle identifier / EAS project UUID release blocker: `app.json`
+  carries the owned `com.terriyaki.zona` identifier and the linked
+  `terriyaki/zona` EAS project UUID (verified against the Expo API), and the
+  PRD, release procedure, and app README no longer list them as outstanding.
 - Replaced email magic-link sign-in with Supabase Auth anonymous sign-in; no
   email, password, or SMTP provider is required, and signing out an anonymous
   account now carries an explicit permanence warning (see ADR 0002).
@@ -64,7 +73,6 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Known release blockers
 
-- Replace placeholder iOS bundle identifier and EAS project UUID.
 - Complete EAS production environment, Apple/APNs, privacy and
   support URLs, App Store metadata/assets, monitoring owners,
   CI/integration tests, and signed TestFlight verification.

@@ -38,6 +38,27 @@ export function relativeTime(value: string): string {
   return past ? `${amount} ${unit} ago` : `in ${amount} ${unit}`;
 }
 
+/**
+ * Compact relative phrase for glance surfaces (Live Activity, badges).
+ * Returns '' for unparseable input so callers can omit the segment.
+ */
+export function relativeTimeShort(value: string): string {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return '';
+
+  const deltaSeconds = Math.max(0, Math.round((Date.now() - timestamp) / 1_000));
+  if (deltaSeconds < 60) return 'now';
+  if (deltaSeconds < 3_600) return `${Math.max(1, Math.round(deltaSeconds / 60))}m`;
+  if (deltaSeconds < 86_400) return `${Math.max(1, Math.round(deltaSeconds / 3_600))}h`;
+  if (deltaSeconds < 604_800) return `${Math.max(1, Math.round(deltaSeconds / 86_400))}d`;
+
+  try {
+    return new Date(timestamp).toLocaleDateString();
+  } catch {
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+}
+
 export function sourceInitial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || '?';
 }
