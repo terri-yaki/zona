@@ -9,7 +9,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 ### Added
 
 - iOS **Live Status** Live Activity (Lock Screen + Dynamic Island): optional
-  Settings toggle, unread count + latest alert while the app can run JS, Zona
+  Settings toggle backed by `app_options.live_activity_enabled` (migration
+  `202607240005`), unread count + latest alert while the app can run JS, Zona
   monogram assets, and `docs/LIVE_ACTIVITY.md`. Requires a new preview/native
   build (`expo-live-activity` plugin); not available in Expo Go. App-driven
   updates only in v1 (stale if the app is killed until next open).

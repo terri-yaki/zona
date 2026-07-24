@@ -52,6 +52,12 @@ function invalidateInboxCache(userId?: string) {
 function markCacheItemsRead(userId: string, readAt: string) {
   for (const [key, entry] of pageCache.entries()) {
     if (!key.startsWith(`${userId}|`)) continue;
+    // cache key: userId|sourceId|unreadOnly|since
+    const unreadOnly = key.split('|')[2] === '1';
+    if (unreadOnly) {
+      pageCache.set(key, { items: [], cursor: null, hasMore: false, fetchedAt: Date.now() });
+      continue;
+    }
     pageCache.set(key, {
       ...entry,
       items: entry.items.map((item) => (item.read_at ? item : { ...item, read_at: readAt })),
@@ -174,18 +180,26 @@ export function useInbox(userId: string, filters: InboxFilters) {
     try {
       const readAt = new Date().toISOString();
       await markAllNotificationsRead(readAt);
-      setItems((current) => current.map((item) => (
-        item.read_at ? item : { ...item, read_at: readAt }
-      )));
       setUnreadCount(0);
       cachedUnreadCount = 0;
       markCacheItemsRead(userId, readAt);
+      // Unread-only filter should empty after read-all; other filters keep rows as read.
+      if (filters.unreadOnly) {
+        setItems([]);
+        writePageCache(cacheKeyRef.current, { items: [], cursor: null, hasMore: false });
+        setCursor(null);
+        setHasMore(false);
+      } else {
+        setItems((current) => current.map((item) => (
+          item.read_at ? item : { ...item, read_at: readAt }
+        )));
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught : new Error('Notifications could not be marked as read.'));
     } finally {
       setMarkingAllRead(false);
     }
-  }, [markingAllRead, unreadCount, userId]);
+  }, [filters.unreadOnly, markingAllRead, unreadCount, userId]);
 
   // load identity changes with filters → revalidate current filter without blanking the UI when cached.
   useFocusEffect(useCallback(() => {

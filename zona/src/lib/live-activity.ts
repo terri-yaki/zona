@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { getAppOptions, updateAppOptions } from '@/data/options';
 import { colors } from '@/theme';
 
-const ENABLED_KEY = 'zona.live_activity_enabled';
+/** Legacy local-only preference from early Live Status builds. */
+const LEGACY_ENABLED_KEY = 'zona.live_activity_enabled';
 const ACTIVITY_ID_KEY = 'zona.live_activity_id';
 const SESSION_END_KEY = 'zona.live_activity_session_end';
 
@@ -38,17 +40,44 @@ async function loadModule(): Promise<LiveActivityModule | null> {
   return modulePromise;
 }
 
-export async function getLiveActivityEnabled(): Promise<boolean> {
+/**
+ * One-time migrate AsyncStorage Live Status flag into app_options.
+ * Safe no-op when already migrated or when DB is already enabled.
+ */
+export async function migrateLegacyLiveActivityPreference(userId: string): Promise<boolean> {
   try {
-    const value = await AsyncStorage.getItem(ENABLED_KEY);
-    return value === '1';
+    const legacy = await AsyncStorage.getItem(LEGACY_ENABLED_KEY);
+    if (legacy !== '1') return false;
+
+    const options = await getAppOptions(userId);
+    if (!options.live_activity_enabled) {
+      await updateAppOptions(userId, { live_activity_enabled: true });
+    }
+    await AsyncStorage.removeItem(LEGACY_ENABLED_KEY);
+    return true;
+  } catch (error) {
+    console.warn('Could not migrate Live Status preference.', error);
+    return false;
+  }
+}
+
+export async function getLiveActivityEnabled(userId: string): Promise<boolean> {
+  try {
+    await migrateLegacyLiveActivityPreference(userId);
+    const options = await getAppOptions(userId);
+    return Boolean(options.live_activity_enabled);
   } catch {
     return false;
   }
 }
 
-export async function setLiveActivityEnabled(enabled: boolean): Promise<void> {
-  await AsyncStorage.setItem(ENABLED_KEY, enabled ? '1' : '0');
+export async function setLiveActivityEnabled(userId: string, enabled: boolean): Promise<void> {
+  await updateAppOptions(userId, { live_activity_enabled: enabled });
+  try {
+    await AsyncStorage.removeItem(LEGACY_ENABLED_KEY);
+  } catch {
+    // ignore
+  }
   if (!enabled) await stopLiveActivity('Live Status off');
 }
 
@@ -101,8 +130,9 @@ function buildState(snapshot: ZonaLiveActivitySnapshot, sessionEnd: number) {
     title,
     subtitle,
     progressBar: { date: sessionEnd },
-    imageName: 'zona_mark',
-    dynamicIslandImageName: 'zona_island',
+    // Bundled from assets/liveActivity/icon.png (resized from assets/icon.png; keep ≤4 KiB).
+    imageName: 'icon',
+    dynamicIslandImageName: 'icon',
   };
 }
 
@@ -131,10 +161,13 @@ function buildConfig(snapshot: ZonaLiveActivitySnapshot) {
  * Mirror inbox unread state into a single Live Activity.
  * No-ops on non-iOS, when disabled, or when the native module is missing.
  */
-export async function syncLiveActivity(snapshot: ZonaLiveActivitySnapshot): Promise<void> {
+export async function syncLiveActivity(
+  userId: string,
+  snapshot: ZonaLiveActivitySnapshot,
+): Promise<void> {
   if (!isIosDevice()) return;
 
-  const enabled = await getLiveActivityEnabled();
+  const enabled = await getLiveActivityEnabled(userId);
   if (!enabled) {
     await stopLiveActivity();
     return;
@@ -195,8 +228,8 @@ export async function stopLiveActivity(finalTitle = 'All clear'): Promise<void> 
     LiveActivity.stopActivity(existingId, {
       title: finalTitle,
       subtitle: 'Zona',
-      imageName: 'zona_mark',
-      dynamicIslandImageName: 'zona_island',
+      imageName: 'icon',
+      dynamicIslandImageName: 'icon',
     });
   } catch (error) {
     console.warn('Could not stop Live Activity.', error);

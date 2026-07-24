@@ -25,6 +25,8 @@ Notification behavior is stored per account in `public.app_options`.
 `push_enabled=false` keeps accepting inbox records but skips remote push;
 `play_sound` and `show_preview` control the Expo/APNs payload. The global
 `play_sound=false` setting overrides every per-source sound choice.
+`live_activity_enabled` is an iPhone client preference for Live Status (ActivityKit);
+it does not change the `notify` push payload in v1.
 
 ## Send a notification
 

@@ -5,6 +5,7 @@ import { listNotifications, unreadNotificationCount } from '@/data/notifications
 import {
   attachLiveActivityStateListener,
   liveActivityPlatformSupported,
+  migrateLegacyLiveActivityPreference,
   syncLiveActivity,
   type ZonaLiveActivitySnapshot,
 } from '@/lib/live-activity';
@@ -70,7 +71,7 @@ export function LiveActivitySync() {
 
     try {
       const snapshot = await fetchSnapshot();
-      await syncLiveActivity(snapshot);
+      await syncLiveActivity(userId, snapshot);
     } catch (error) {
       console.warn('Live Activity sync failed.', error);
     } finally {
@@ -85,7 +86,9 @@ export function LiveActivitySync() {
   useEffect(() => {
     if (!userId || Platform.OS !== 'ios') return;
 
-    void runSync(true);
+    void migrateLegacyLiveActivityPreference(userId).finally(() => {
+      void runSync(true);
+    });
 
     let detachState: (() => void) | undefined;
     void attachLiveActivityStateListener().then((detach) => {
@@ -100,9 +103,26 @@ export function LiveActivitySync() {
       .channel(`live-activity:${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications' },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
         () => {
           void runSync();
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'app_options',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          void runSync(true);
         },
       )
       .subscribe();

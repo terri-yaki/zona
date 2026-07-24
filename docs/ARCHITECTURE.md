@@ -115,7 +115,7 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | --- | --- | --- |
 | `public.sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
 | `public.api_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage | Owner RLS read; service-managed writes |
-| `public.app_options` | Push, sound, and lock-screen preview behavior | Owner RLS read/write |
+| `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference | Owner RLS read/write |
 | `private.source_credentials` | SHA-256 credential hashes | Service-only |
 | `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
 | `public.notifications` | Seven-day durable inbox | Owner RLS read/read-state/delete |

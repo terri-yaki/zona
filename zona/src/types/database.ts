@@ -20,6 +20,7 @@ export type Database = {
       app_options: {
         Row: {
           created_at: string;
+          live_activity_enabled: boolean;
           play_sound: boolean;
           push_enabled: boolean;
           show_preview: boolean;
@@ -28,6 +29,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          live_activity_enabled?: boolean;
           play_sound?: boolean;
           push_enabled?: boolean;
           show_preview?: boolean;
@@ -35,6 +37,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          live_activity_enabled?: boolean;
           play_sound?: boolean;
           push_enabled?: boolean;
           show_preview?: boolean;

@@ -5,7 +5,8 @@ Zona can show a **Live Status** surface on the iPhone **Lock Screen** and
 
 ## User experience
 
-1. Open **Settings → Notifications → Live Status** and turn it on.
+1. Open **Settings → Notifications → Live Status** and turn it on (saved on your
+   Zona account via `app_options.live_activity_enabled`).
 2. When the inbox has unread alerts and the app is running (or becomes active),
    a Live Activity starts with Zona colors and monogram.
 3. Marking alerts read (or **Read all**) ends the activity.
@@ -33,8 +34,8 @@ Remote ActivityKit push updates (refresh while killed) are **out of scope** for 
 | `expo-live-activity` | Config plugin + ActivityKit bridge (SDK 54 path; package archived upstream in favor of newer `expo-widgets` on later SDKs). |
 | `zona/src/lib/live-activity.ts` | Preference storage, start/update/stop, soft failures. |
 | `zona/src/components/LiveActivitySync.tsx` | Mirrors unread + latest notification into the activity. |
-| `zona/assets/liveActivity/` | Monogram assets (`zona_mark`, `zona_island`); keep each **under 4 KB**. |
-| Settings | Local AsyncStorage flag `zona.live_activity_enabled`. |
+| `zona/assets/liveActivity/icon.png` | App icon resized for ActivityKit (from `assets/icon.png`); keep **under 4 KB**. |
+| Settings | Server-backed `app_options.live_activity_enabled` (default off). Runtime activity id stays on-device. |
 
 Deep link: activity config uses scheme path `/` or `/notification/{id}` via
 the app `scheme` (`zona`).

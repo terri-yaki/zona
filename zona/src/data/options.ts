@@ -17,9 +17,14 @@ export async function getAppOptions(userId: string): Promise<AppOptions> {
   return data;
 }
 
+export type AppOptionFlags = Pick<
+  AppOptions,
+  'push_enabled' | 'play_sound' | 'show_preview' | 'live_activity_enabled'
+>;
+
 export async function updateAppOptions(
   userId: string,
-  changes: Pick<Partial<AppOptions>, 'push_enabled' | 'play_sound' | 'show_preview'>,
+  changes: Partial<AppOptionFlags>,
 ): Promise<AppOptions> {
   const { data, error } = await supabase
     .from('app_options')
