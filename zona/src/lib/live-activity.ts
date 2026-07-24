@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { requireOptionalNativeModule } from 'expo';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { translate } from '@/i18n';
@@ -34,8 +35,12 @@ function isIosDevice() {
   return Platform.OS === 'ios';
 }
 
+function hasNativeModule() {
+  return Boolean(requireOptionalNativeModule('ExpoLiveActivity'));
+}
+
 async function loadModule(): Promise<LiveActivityModule | null> {
-  if (!isIosDevice()) return null;
+  if (!isIosDevice() || !hasNativeModule()) return null;
   if (!modulePromise) {
     modulePromise = import('expo-live-activity')
       .then((mod) => mod)
@@ -193,23 +198,28 @@ export async function attachLiveActivityStateListener(): Promise<() => void> {
   const LiveActivity = await loadModule();
   if (!LiveActivity?.addActivityUpdatesListener) return () => {};
 
-  const sub = LiveActivity.addActivityUpdatesListener(async (event) => {
-    if (event.activityState === 'dismissed' || event.activityState === 'ended') {
-      const stored = await getStoredActivityId();
-      if (stored && stored === event.activityID) {
-        await setStoredActivityId(null);
-        try {
-          await AsyncStorage.removeItem(SESSION_END_KEY);
-        } catch {
-          // ignore
+  try {
+    const sub = LiveActivity.addActivityUpdatesListener(async (event) => {
+      if (event.activityState === 'dismissed' || event.activityState === 'ended') {
+        const stored = await getStoredActivityId();
+        if (stored && stored === event.activityID) {
+          await setStoredActivityId(null);
+          try {
+            await AsyncStorage.removeItem(SESSION_END_KEY);
+          } catch {
+            // ignore
+          }
         }
       }
-    }
-  });
+    });
 
-  return () => {
-    sub?.remove();
-  };
+    return () => {
+      sub?.remove();
+    };
+  } catch (error) {
+    console.warn('Live Activity state listener is unavailable in this build.', error);
+    return () => {};
+  }
 }
 
 /** True when this platform can attempt Live Activities (iOS only; not Expo Go guarantee). */
@@ -231,6 +241,7 @@ export async function getLiveActivityCapability(): Promise<LiveActivityCapabilit
   if (!isIosDevice()) return 'unsupported';
   // Expo Go never includes the Live Activity widget extension.
   if (Constants.appOwnership === 'expo') return 'expo-go';
+  if (!hasNativeModule()) return 'native-missing';
   const mod = await loadModule();
   if (!mod?.startActivity) return 'native-missing';
   return 'ready';

@@ -96,9 +96,13 @@ export function LiveActivitySync() {
     });
 
     let detachState: (() => void) | undefined;
-    void attachLiveActivityStateListener().then((detach) => {
-      detachState = detach;
-    });
+    void attachLiveActivityStateListener()
+      .then((detach) => {
+        detachState = detach;
+      })
+      .catch((error) => {
+        console.warn('Could not attach the Live Activity state listener.', error);
+      });
 
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void runSync(true);
