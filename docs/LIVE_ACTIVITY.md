@@ -40,12 +40,25 @@ Remote ActivityKit push updates (refresh while killed) are **out of scope** for 
 Deep link: activity config uses scheme path `/` or `/notification/{id}` via
 the app `scheme` (`zona`).
 
-## Rebuild after enabling
+## Rebuild after enabling (required)
+
+**OTA cannot add Live Activities.** The system toggle and Lock Screen surface
+only appear after installing an IPA whose **native binary** was built with the
+`expo-live-activity` plugin (commits after `aae1572`).
 
 ```sh
 cd zona
-npx eas-cli build --platform ios --profile preview --non-interactive
+npx eas-cli build --platform ios --profile preview --clear-cache --non-interactive
 ```
 
-Install the new IPA, enable **Live Status**, send a test alert, open the app,
-then check Lock Screen / Dynamic Island.
+1. Install the **new** IPA (delete the old Zona app first if install fails).
+2. Open Zona once (so iOS registers the app).
+3. Check **iPhone Settings → Apps → Zona** (iOS 18+) or **Settings → Zona**.
+   You should see **Live Activities** there — that row is from Apple, not from
+   our in-app switch.
+4. In **Zona → Settings → Live Status**, turn the feature on.
+5. Ensure there is at least one **unread** alert; open the app so JS can start
+   the activity. Then check Lock Screen / Dynamic Island.
+
+If **Live Activities** is missing under the app in iPhone Settings, the phone
+is still on an older binary (pre–Live Activity). Install the new IPA again.
