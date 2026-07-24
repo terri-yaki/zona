@@ -31,7 +31,7 @@ Remote ActivityKit push updates (refresh while killed) are **out of scope** for 
 
 | Piece | Role |
 | --- | --- |
-| `expo-live-activity` | Config plugin + ActivityKit bridge (SDK 54 path; package archived upstream in favor of newer `expo-widgets` on later SDKs). |
+| `expo-live-activity` | Config plugin + ActivityKit bridge (SDK 54 path; package archived upstream in favor of newer `expo-widgets` on later SDKs). Listed as unmaintained in RN Directory; excluded in `package.json` `expo.doctor.reactNativeDirectoryCheck` until an SDK upgrade. |
 | `zona/src/lib/live-activity.ts` | Preference storage, start/update/stop, soft failures. |
 | `zona/src/components/LiveActivitySync.tsx` | Mirrors unread + latest notification into the activity. |
 | `zona/assets/liveActivity/icon.png` | App icon resized for ActivityKit (from `assets/icon.png`); keep **under 4 KB**. |
