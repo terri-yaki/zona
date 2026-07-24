@@ -7,6 +7,7 @@ import { getAppOptions, updateAppOptions } from '@/data/options';
 import {
   buildLiveActivityConfig,
   buildLiveActivityState,
+  LIVE_ACTIVITY_SYMBOL,
   type ZonaLiveActivitySnapshot,
 } from '@/lib/live-activity-presentation';
 
@@ -23,7 +24,7 @@ const SESSION_END_KEY = 'zona.live_activity_session_end';
  * stop + start so existing activities pick up the new design once.
  */
 const DESIGN_VERSION_KEY = 'zona.live_activity_design_version';
-const CURRENT_DESIGN_VERSION = '2';
+const CURRENT_DESIGN_VERSION = '3';
 
 type LiveActivityModule = typeof import('expo-live-activity');
 
@@ -175,8 +176,8 @@ export async function stopLiveActivity(finalTitle = translate('live.allClear')):
     LiveActivity.stopActivity(existingId, {
       title: finalTitle,
       subtitle: 'Zona',
-      imageName: 'icon',
-      dynamicIslandImageName: 'icon',
+      imageName: LIVE_ACTIVITY_SYMBOL,
+      dynamicIslandImageName: LIVE_ACTIVITY_SYMBOL,
     });
   } catch (error) {
     console.warn('Could not stop Live Activity.', error);

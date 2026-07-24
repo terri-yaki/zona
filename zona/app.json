@@ -50,6 +50,7 @@
           "enablePushNotifications": false
         }
       ],
+      "./plugins/with-zona-live-activity-symbol.cjs",
       [
         "expo-localization",
         {

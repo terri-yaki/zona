@@ -26,6 +26,9 @@ export const LIVE_ACTIVITY_COLORS = {
   subtitle: '#DDECE6',
 } as const;
 
+/** Native SF Symbol rendered by the iOS widget extension, not a bundled image. */
+export const LIVE_ACTIVITY_SYMBOL = 'sf:bell.badge.fill' as const;
+
 function waitingLabel(count: number) {
   if (count <= 0) return translate('live.allClear');
   return translateCount('live.waiting.one', 'live.waiting.other', count);
@@ -48,9 +51,8 @@ export function buildLiveActivityState(snapshot: ZonaLiveActivitySnapshot) {
   return {
     title,
     subtitle,
-    // Bundled from assets/liveActivity/icon.png (resized from assets/icon.png; keep ≤4 KiB).
-    imageName: 'icon',
-    dynamicIslandImageName: 'icon',
+    imageName: LIVE_ACTIVITY_SYMBOL,
+    dynamicIslandImageName: LIVE_ACTIVITY_SYMBOL,
   };
 }
 

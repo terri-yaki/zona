@@ -5,6 +5,7 @@ import {
   buildLiveActivityConfig,
   buildLiveActivityState,
   LIVE_ACTIVITY_COLORS,
+  LIVE_ACTIVITY_SYMBOL,
   type ZonaLiveActivitySnapshot,
 } from '../lib/live-activity-presentation';
 import { setActiveLanguage } from '../i18n';
@@ -60,6 +61,13 @@ describe('buildLiveActivityState', () => {
   it('never renders a session-timer progress bar', () => {
     const state = buildLiveActivityState(snapshot());
     expect(state).not.toHaveProperty('progressBar');
+  });
+
+  it('uses the native white bell symbol instead of a bundled app image', () => {
+    const state = buildLiveActivityState(snapshot());
+    expect(state.imageName).toBe(LIVE_ACTIVITY_SYMBOL);
+    expect(state.dynamicIslandImageName).toBe(LIVE_ACTIVITY_SYMBOL);
+    expect(LIVE_ACTIVITY_SYMBOL).toBe('sf:bell.badge.fill');
   });
 });
 
