@@ -18,6 +18,15 @@ describe('localization', () => {
     expect(Object.keys(zhHant).sort()).toEqual(Object.keys(en).sort());
   });
 
+  it('keeps Traditional Chinese sentence punctuation consistent', () => {
+    const entries = Object.entries(zhHant);
+    const midSentenceStops = entries.filter(([, value]) => /。.+/u.test(value));
+    const asciiPunctuation = entries.filter(([, value]) => /[\u3400-\u9fff][,.!?;:][\u3400-\u9fff]/u.test(value));
+
+    expect(midSentenceStops).toEqual([]);
+    expect(asciiPunctuation).toEqual([]);
+  });
+
   it('resolves supported system languages and falls back to English', () => {
     expect(resolveSystemLanguage([{ languageTag: 'zh-Hant-HK', regionCode: 'HK' }])).toBe('zh-Hant');
     expect(resolveSystemLanguage([{ languageTag: 'zh-TW', regionCode: 'TW' }])).toBe('zh-Hant');
