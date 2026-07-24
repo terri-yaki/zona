@@ -3,17 +3,19 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/components/AppIcon';
 import { userMessage } from '@/lib/errors';
 import { colors, radius } from '@/theme';
+import { useI18n } from '@/providers/LocalizationProvider';
 
 export function ErrorState({ error, onRetry, compact = false }: { error: unknown; onRetry: () => void; compact?: boolean }) {
+  const { t } = useI18n();
   return (
     <View accessibilityLiveRegion="polite" style={[styles.container, compact && styles.compact]}>
       <View style={styles.icon}><AppIcon color={colors.danger} fallback="!" name="exclamationmark.triangle.fill" size={20} /></View>
       <View style={styles.copy}>
-        <Text style={styles.title}>Couldn’t load this</Text>
+        <Text style={styles.title}>{t('error.loadTitle')}</Text>
         <Text style={styles.message}>{userMessage(error)}</Text>
       </View>
       <Pressable accessibilityRole="button" hitSlop={8} onPress={onRetry} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
-        <Text style={styles.retryText}>Retry</Text>
+        <Text style={styles.retryText}>{t('common.retry')}</Text>
       </Pressable>
     </View>
   );

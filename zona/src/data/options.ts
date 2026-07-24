@@ -1,4 +1,5 @@
 import { dataError } from '@/lib/errors';
+import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import type { AppOptions } from '@/types';
 
@@ -6,14 +7,14 @@ export async function getAppOptions(userId: string): Promise<AppOptions> {
   const { error: createError } = await supabase
     .from('app_options')
     .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
-  if (createError) throw dataError(createError, 'Your notification options could not be created.');
+  if (createError) throw dataError(createError, translate('settings.optionsLoadError'));
 
   const { data, error } = await supabase
     .from('app_options')
     .select('*')
     .eq('user_id', userId)
     .single();
-  if (error) throw dataError(error, 'Your notification options could not be loaded.');
+  if (error) throw dataError(error, translate('settings.optionsLoadError'));
   return data;
 }
 
@@ -32,6 +33,6 @@ export async function updateAppOptions(
     .eq('user_id', userId)
     .select('*')
     .single();
-  if (error) throw dataError(error, 'Your notification options could not be saved.');
+  if (error) throw dataError(error, translate('settings.optionSaveError'));
   return data;
 }

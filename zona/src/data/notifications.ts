@@ -1,4 +1,5 @@
 import { dataError } from '@/lib/errors';
+import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
 import type { Json } from '@/types/database';
@@ -51,7 +52,7 @@ export async function listNotifications(filters: InboxFilters, cursor: InboxCurs
   }
 
   const { data, error } = await query;
-  if (error) throw dataError(error, 'Your inbox could not be loaded.');
+  if (error) throw dataError(error, translate('error.loadTitle'));
   const rows = data ?? [];
   const hasMore = rows.length > inboxPageSize;
   const items = rows.slice(0, inboxPageSize).map(rowToNotification);
@@ -68,7 +69,7 @@ export async function unreadNotificationCount() {
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .is('read_at', null);
-  if (error) throw dataError(error, 'The unread count could not be loaded.');
+  if (error) throw dataError(error, translate('error.loadTitle'));
   return count ?? 0;
 }
 
@@ -78,7 +79,7 @@ export async function getNotification(id: string) {
     .select(notificationColumns)
     .eq('id', id)
     .maybeSingle();
-  if (error) throw dataError(error, 'This notification could not be loaded.');
+  if (error) throw dataError(error, translate('error.loadTitle'));
   return data ? rowToNotification(data) : null;
 }
 
@@ -89,8 +90,8 @@ export async function markNotificationRead(id: string, readAt: string) {
     .eq('id', id)
     .select('id')
     .maybeSingle();
-  if (error) throw dataError(error, 'The notification could not be marked as read.');
-  if (!data) throw dataError(null, 'The notification is no longer available.');
+  if (error) throw dataError(error, translate('notification.readError'));
+  if (!data) throw dataError(null, translate('notification.missing'));
 }
 
 export async function markAllNotificationsRead(readAt = new Date().toISOString()) {
@@ -98,7 +99,7 @@ export async function markAllNotificationsRead(readAt = new Date().toISOString()
     .from('notifications')
     .update({ read_at: readAt })
     .is('read_at', null);
-  if (error) throw dataError(error, 'Notifications could not be marked as read.');
+  if (error) throw dataError(error, translate('inbox.markReadError'));
 }
 
 export async function deleteNotification(id: string, attachmentPath: string | null = null) {
@@ -108,7 +109,7 @@ export async function deleteNotification(id: string, attachmentPath: string | nu
     const { error: storageError } = await supabase.storage
       .from('notification-attachments')
       .remove([attachmentPath]);
-    if (storageError) throw dataError(storageError, 'The attachment could not be deleted.');
+    if (storageError) throw dataError(storageError, translate('notification.deleteError'));
   }
   const { data, error } = await supabase
     .from('notifications')
@@ -116,6 +117,6 @@ export async function deleteNotification(id: string, attachmentPath: string | nu
     .eq('id', id)
     .select('id')
     .maybeSingle();
-  if (error) throw dataError(error, 'The notification could not be deleted.');
-  if (!data) throw dataError(null, 'The notification is no longer available.');
+  if (error) throw dataError(error, translate('notification.deleteError'));
+  if (!data) throw dataError(null, translate('notification.missing'));
 }

@@ -4,6 +4,7 @@ import { dataError, functionError } from './errors';
 import { env } from './env';
 import { createSourceCredential } from './source-token';
 import { supabase } from './supabase';
+import { translate } from '@/i18n';
 
 function object(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -11,8 +12,8 @@ function object(value: unknown): value is Record<string, unknown> {
 
 async function invoke<T>(name: string, body: Record<string, unknown>, validate: (value: unknown) => value is T): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>(name, { body });
-  if (error) throw await functionError(error, `The ${name} request failed.`);
-  if (!validate(data)) throw new Error(`The ${name} response was invalid.`);
+  if (error) throw await functionError(error, translate('error.default'));
+  if (!validate(data)) throw new Error(translate('error.default'));
   return data;
 }
 
@@ -25,7 +26,7 @@ export async function createSource(displayName: string, hostname: string | null)
     p_token_hash: credential.tokenHash,
   });
   if (error || typeof sourceId !== 'string') {
-    throw dataError(error, 'The API key could not be created. Try again.');
+    throw dataError(error, translate('sourceNew.createError'));
   }
   return {
     sourceId,
@@ -43,7 +44,7 @@ export async function renameSource(sourceId: string, displayName: string) {
     p_is_active: null,
     p_source_id: sourceId,
   });
-  if (error || !object(data)) throw dataError(error, 'The API key could not be renamed.');
+  if (error || !object(data)) throw dataError(error, translate('sources.renameError'));
   return data;
 }
 
@@ -54,7 +55,7 @@ export async function revokeSource(sourceId: string) {
     p_is_active: null,
     p_source_id: sourceId,
   });
-  if (error || !object(data)) throw dataError(error, 'The API key could not be revoked.');
+  if (error || !object(data)) throw dataError(error, translate('sources.revokeError'));
   return data;
 }
 
@@ -65,7 +66,7 @@ export async function setSourceActive(sourceId: string, isActive: boolean) {
     p_is_active: isActive,
     p_source_id: sourceId,
   });
-  if (error || !object(data)) throw dataError(error, 'The API key state could not be changed.');
+  if (error || !object(data)) throw dataError(error, translate('sources.updateKeyError'));
   return data;
 }
 

@@ -49,6 +49,15 @@
         {
           "enablePushNotifications": false
         }
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "zh-Hant"],
+            "android": ["en", "zh-Hant"]
+          }
+        }
       ]
     ],
     "experiments": {

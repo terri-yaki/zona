@@ -1,3 +1,5 @@
+import { translate } from '../i18n';
+
 export const limits = {
   sourceName: 80,
   hostname: 255,
@@ -13,9 +15,9 @@ export function normalizeOptional(value: string): string | null {
 
 export function validateSourceInput(displayName: string, hostname: string): string | null {
   const name = displayName.trim();
-  if (name.length === 0) return 'Enter a source name.';
-  if (name.length > limits.sourceName) return `Source names must be ${limits.sourceName} characters or fewer.`;
-  if (hostname.trim().length > limits.hostname) return `Hostnames must be ${limits.hostname} characters or fewer.`;
+  if (name.length === 0) return translate('validation.sourceNameRequired');
+  if (name.length > limits.sourceName) return translate('validation.sourceNameMax', { count: limits.sourceName });
+  if (hostname.trim().length > limits.hostname) return translate('validation.hostnameMax', { count: limits.hostname });
   return null;
 }
 

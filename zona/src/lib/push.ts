@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { registerPushToken, unregisterPushDevice } from './api';
+import { translate } from '@/i18n';
 
 const installationKey = 'zona.installation-id';
 const onboardingPrefix = 'zona.push-onboarding-complete';
@@ -61,7 +62,7 @@ async function saveHealth(userId: string, status: PushAvailability, error?: unkn
     status,
     updatedAt: new Date().toISOString(),
     ...(status === 'registered' ? { lastRegisteredAt: new Date().toISOString() } : previous?.lastRegisteredAt ? { lastRegisteredAt: previous.lastRegisteredAt } : {}),
-    ...(error ? { error: error instanceof Error ? error.message : 'Push registration failed.' } : {}),
+    ...(error ? { error: error instanceof Error ? error.message : translate('settings.registrationFailed') } : {}),
   };
   await AsyncStorage.setItem(healthKey(userId), JSON.stringify(next));
   return next;

@@ -11,6 +11,8 @@ import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
+import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
 
@@ -18,6 +20,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}
 
 export default function NotificationDetailScreen() {
   const { session, loading: authLoading } = useAuth();
+  const { language, t } = useI18n();
   const { id: idParameter } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
   const candidateId = Array.isArray(idParameter) ? idParameter[0] : idParameter;
@@ -33,7 +36,6 @@ export default function NotificationDetailScreen() {
   const [deleting, setDeleting] = useState(false);
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentLoading, setAttachmentLoading] = useState(false);
-  const [attachmentFailed, setAttachmentFailed] = useState(false);
 
   const load = useCallback(async () => {
     const request = ++generation.current;
@@ -61,7 +63,7 @@ export default function NotificationDetailScreen() {
           setItem((current) => current?.id === notification.id ? { ...current, read_at: readAt } : current);
         } catch (caught) {
           if (request === generation.current) {
-            setReadError(caught instanceof Error ? caught : new Error('The notification could not be marked as read.'));
+            setReadError(caught instanceof Error ? caught : new Error(t('notification.readError')));
           }
         } finally {
           if (request === generation.current) setMarkingRead(false);
@@ -70,12 +72,12 @@ export default function NotificationDetailScreen() {
     } catch (caught) {
       if (request === generation.current) {
         setItem(null);
-        setError(caught instanceof Error ? caught : new Error('This notification could not be loaded.'));
+        setError(caught instanceof Error ? caught : new Error(t('error.default')));
       }
     } finally {
       if (request === generation.current) setLoading(false);
     }
-  }, [id, userId]);
+  }, [id, t, userId]);
 
   useEffect(() => {
     void load();
@@ -88,22 +90,19 @@ export default function NotificationDetailScreen() {
     const path = item?.attachment_path;
     if (!path) {
       setAttachmentUrl(null);
-      setAttachmentFailed(false);
       return;
     }
     let active = true;
     setAttachmentLoading(true);
-    setAttachmentFailed(false);
     supabase.storage
       .from('notification-attachments')
       .createSignedUrl(path, 3600)
       .then(({ data, error }) => {
         if (!active) return;
         setAttachmentUrl(error ? null : data.signedUrl);
-        setAttachmentFailed(Boolean(error));
       })
       .catch(() => {
-        if (active) setAttachmentFailed(true);
+        if (active) setAttachmentUrl(null);
       })
       .finally(() => {
         if (active) setAttachmentLoading(false);
@@ -123,7 +122,7 @@ export default function NotificationDetailScreen() {
       await markNotificationRead(notificationId, readAt);
       setItem((current) => current?.id === notificationId ? { ...current, read_at: readAt } : current);
     } catch (caught) {
-      setReadError(caught instanceof Error ? caught : new Error('The notification could not be marked as read.'));
+      setReadError(caught instanceof Error ? caught : new Error(t('notification.readError')));
     } finally {
       setMarkingRead(false);
     }
@@ -141,7 +140,7 @@ export default function NotificationDetailScreen() {
       if (router.canGoBack()) router.back();
       else goToInbox();
     } catch (caught) {
-      Alert.alert('Could not delete notification', userMessage(caught));
+      Alert.alert(t('notification.deleteError'), userMessage(caught));
     } finally {
       setDeleting(false);
     }
@@ -152,11 +151,11 @@ export default function NotificationDetailScreen() {
     const notificationId = item.id;
     setConfirmingDelete(true);
     Alert.alert(
-      'Delete notification?',
-      'This cannot be undone.',
+      t('notification.deleteTitle'),
+      t('notification.deleteBody'),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => setConfirmingDelete(false) },
-        { text: 'Delete', style: 'destructive', onPress: () => void performDelete(notificationId) },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => setConfirmingDelete(false) },
+        { text: t('notification.delete'), style: 'destructive', onPress: () => void performDelete(notificationId) },
       ],
       { cancelable: true, onDismiss: () => setConfirmingDelete(false) },
     );
@@ -167,7 +166,7 @@ export default function NotificationDetailScreen() {
   if (!id) {
     return (
       <UnavailableState
-        message="This notification link is invalid."
+        message={t('notification.invalidLink')}
         onPress={goToInbox}
       />
     );
@@ -183,7 +182,7 @@ export default function NotificationDetailScreen() {
   if (!item) {
     return (
       <UnavailableState
-        message="This notification has expired or was deleted."
+        message={t('notification.missing')}
         onPress={goToInbox}
       />
     );
@@ -196,7 +195,7 @@ export default function NotificationDetailScreen() {
         <View style={styles.avatar}><Text style={styles.avatarText}>{sourceInitial(item.source_name_snapshot)}</Text></View>
         <View style={styles.sourceCopy}>
           <Text numberOfLines={1} style={styles.source}>{item.source_name_snapshot}</Text>
-          <Text style={styles.time}>{new Date(item.created_at).toLocaleString()} · {relativeTime(item.created_at)}</Text>
+          <Text style={styles.time}>{new Date(item.created_at).toLocaleString(getLocaleTag(language))} · {relativeTime(item.created_at)}</Text>
         </View>
       </View>
       {item.category ? <Text style={styles.category}>{item.category.toUpperCase()}</Text> : null}
@@ -207,19 +206,19 @@ export default function NotificationDetailScreen() {
 
       {item.attachment_path ? (
         <>
-          <Text style={styles.attachmentLabel}>ATTACHMENT</Text>
+          <Text style={styles.attachmentLabel}>{t('notification.attachment')}</Text>
           <View style={styles.attachmentCard}>
             {attachmentLoading ? <ActivityIndicator color={colors.primary} /> : null}
             {!attachmentLoading && attachmentUrl ? (
               <ImageLightbox
-                accessibilityLabel="Attached screenshot"
+                accessibilityLabel={t('notification.attachmentA11y')}
                 previewStyle={styles.attachment}
                 uri={attachmentUrl}
               />
             ) : null}
             {!attachmentLoading && !attachmentUrl ? (
               <Text style={styles.attachmentError}>
-                {attachmentFailed ? 'The image could not be loaded.' : 'The image is unavailable.'}
+                {t('notification.attachmentLoadError')}
               </Text>
             ) : null}
           </View>
@@ -229,7 +228,7 @@ export default function NotificationDetailScreen() {
       {readError ? (
         <View accessibilityLiveRegion="polite" style={styles.readError}>
           <View style={styles.readErrorCopy}>
-            <Text style={styles.readErrorTitle}>Couldn’t mark this as read</Text>
+            <Text style={styles.readErrorTitle}>{t('notification.readError')}</Text>
             <Text style={styles.readErrorMessage}>{userMessage(readError)}</Text>
           </View>
           <Pressable
@@ -241,14 +240,14 @@ export default function NotificationDetailScreen() {
           >
             {markingRead
               ? <ActivityIndicator color={colors.danger} size="small" />
-              : <Text style={styles.retryReadText}>Retry</Text>}
+              : <Text style={styles.retryReadText}>{t('common.retry')}</Text>}
           </Pressable>
         </View>
       ) : null}
 
       {Object.keys(item.data ?? {}).length ? (
         <>
-          <Text style={styles.metadataLabel}>METADATA</Text>
+          <Text style={styles.metadataLabel}>{t('notification.metadata')}</Text>
           <View style={styles.codeBox}><Text selectable style={styles.code}>{JSON.stringify(item.data, null, 2)}</Text></View>
         </>
       ) : null}
@@ -262,13 +261,14 @@ export default function NotificationDetailScreen() {
         {deleting
           ? <ActivityIndicator color={colors.danger} size="small" />
           : <AppIcon color={colors.danger} fallback="×" name="trash" size={15} />}
-        <Text style={styles.deleteText}>{deleting ? 'Deleting…' : 'Delete notification'}</Text>
+        <Text style={styles.deleteText}>{deleting ? t('notification.deleting') : t('notification.delete')}</Text>
       </Pressable>
     </ScrollView>
   );
 }
 
 function UnavailableState({ message, onPress }: { message: string; onPress: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={styles.center}>
       <Text accessibilityRole="alert" style={styles.missing}>{message}</Text>
@@ -277,7 +277,7 @@ function UnavailableState({ message, onPress }: { message: string; onPress: () =
         onPress={onPress}
         style={({ pressed }) => [styles.inboxButton, pressed && styles.pressed]}
       >
-        <Text style={styles.inboxButtonText}>Return to inbox</Text>
+        <Text style={styles.inboxButtonText}>{t('notification.returnInbox')}</Text>
       </Pressable>
     </View>
   );

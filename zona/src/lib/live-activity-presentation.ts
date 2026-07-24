@@ -1,4 +1,5 @@
 import { relativeTimeShort } from './format';
+import { translate, translateCount } from '../i18n';
 
 /**
  * Presentation for the Live Status Live Activity — pure functions only.
@@ -26,9 +27,8 @@ export const LIVE_ACTIVITY_COLORS = {
 } as const;
 
 function waitingLabel(count: number) {
-  if (count <= 0) return 'All clear';
-  if (count === 1) return '1 waiting';
-  return `${count} waiting`;
+  if (count <= 0) return translate('live.allClear');
+  return translateCount('live.waiting.one', 'live.waiting.other', count);
 }
 
 /**
@@ -39,11 +39,11 @@ function waitingLabel(count: number) {
 export function buildLiveActivityState(snapshot: ZonaLiveActivitySnapshot) {
   const unread = Math.max(0, snapshot.unreadCount);
   const alertTitle = snapshot.latestTitle?.trim() ?? '';
-  const title = (alertTitle ? `${unread} unread · ${alertTitle}` : waitingLabel(unread)).slice(0, 80);
+  const title = (alertTitle ? translate('live.unreadTitle', { count: unread, title: alertTitle }) : waitingLabel(unread)).slice(0, 80);
 
   const source = snapshot.latestSource?.trim() || 'Zona';
   const updated = snapshot.latestCreatedAt ? relativeTimeShort(snapshot.latestCreatedAt) : '';
-  const subtitle = [source, updated ? `updated ${updated}` : ''].filter(Boolean).join(' · ');
+  const subtitle = [source, updated ? translate('live.updated', { time: updated }) : ''].filter(Boolean).join(' · ');
 
   return {
     title,

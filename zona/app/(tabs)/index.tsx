@@ -12,6 +12,8 @@ import { useInbox } from '@/hooks/useInbox';
 import { useSources } from '@/hooks/useSources';
 import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
+import { getLocaleTag } from '@/i18n';
 import { colors, radius } from '@/theme';
 
 const oneDayInMilliseconds = 24 * 60 * 60 * 1_000;
@@ -19,6 +21,7 @@ const oneDayInMilliseconds = 24 * 60 * 60 * 1_000;
 export default function InboxScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { language, t, tc } = useI18n();
   const bottomPad = useTabBarContentPadding();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -37,13 +40,13 @@ export default function InboxScreen() {
   const inbox = useInbox(session?.user.id ?? '', filters);
   const sourceState = useSources(true);
   const sourceOptions = useMemo(
-    () => [...sourceState.sources].sort((left, right) => left.display_name.localeCompare(right.display_name)),
-    [sourceState.sources],
+    () => [...sourceState.sources].sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language))),
+    [language, sourceState.sources],
   );
   const filtersActive = Boolean(selectedSource || unreadOnly || last24Hours);
   const emptyMessage = filtersActive
-    ? 'No notifications match these filters. Clear a filter or check again later.'
-    : 'Create a source, then send your first notification from a local app.';
+    ? t('inbox.filteredEmpty')
+    : t('inbox.firstEmpty');
 
   function clearFilters() {
     setSelectedSource(null);
@@ -55,7 +58,7 @@ export default function InboxScreen() {
     try {
       await inbox.markAllRead();
     } catch (caught) {
-      Alert.alert('Could not mark as read', userMessage(caught));
+      Alert.alert(t('inbox.markReadError'), userMessage(caught));
     }
   }
 
@@ -89,16 +92,16 @@ export default function InboxScreen() {
         <View style={styles.summaryCopy}>
           <Text accessibilityLiveRegion="polite" style={styles.summaryTitle}>
             {inbox.unreadCount
-              ? `${inbox.unreadCount} ${inbox.unreadCount === 1 ? 'alert' : 'alerts'} waiting`
-              : 'Everything is quiet'}
+              ? tc('inbox.alertsWaiting.one', 'inbox.alertsWaiting.other', inbox.unreadCount)
+              : t('inbox.quiet')}
           </Text>
           <Text style={styles.summaryCaption}>
-            {inbox.unreadCount ? 'Unread activity across all sources' : 'No unread notifications right now'}
+            {inbox.unreadCount ? t('inbox.unreadActivity') : t('inbox.noUnread')}
           </Text>
         </View>
         {inbox.unreadCount > 0 ? (
           <Pressable
-            accessibilityLabel="Mark all notifications as read"
+            accessibilityLabel={t('inbox.markAllA11y')}
             accessibilityRole="button"
             accessibilityState={{ disabled: inbox.markingAllRead }}
             disabled={inbox.markingAllRead}
@@ -107,39 +110,39 @@ export default function InboxScreen() {
           >
             {inbox.markingAllRead
               ? <ActivityIndicator color={colors.primary} size="small" />
-              : <Text style={styles.readAllText}>Read all</Text>}
+              : <Text style={styles.readAllText}>{t('inbox.readAll')}</Text>}
           </Pressable>
         ) : (
-          <Text style={styles.retention}>7 days</Text>
+          <Text style={styles.retention}>{t('common.sevenDays')}</Text>
         )}
       </View>
 
       <View style={styles.filterLabelRow}>
-        <Text style={styles.filterLabel}>FILTERS</Text>
+        <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
         {filtersActive ? (
           <Pressable
-            accessibilityLabel="Clear all inbox filters"
+            accessibilityLabel={t('inbox.clearFiltersA11y')}
             accessibilityRole="button"
             hitSlop={4}
             onPress={clearFilters}
             style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
           >
-            <Text style={styles.clear}>Clear</Text>
+            <Text style={styles.clear}>{t('inbox.clear')}</Text>
           </Pressable>
         ) : null}
       </View>
       <ScrollView
-        accessibilityLabel="Inbox filters"
+        accessibilityLabel={t('inbox.filtersA11y')}
         contentContainerStyle={styles.filters}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filtersScroll}
       >
-        <FilterChip active={!selectedSource} label="All sources" onPress={() => setSelectedSource(null)} tone="default" />
-        <FilterChip active={unreadOnly} label="Unread only" onPress={() => setUnreadOnly((value) => !value)} tone="default" />
-        <FilterChip active={last24Hours} label="Last 24 hours" onPress={() => setLast24Hours((value) => !value)} tone="default" />
+        <FilterChip active={!selectedSource} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" />
+        <FilterChip active={unreadOnly} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" />
+        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setLast24Hours((value) => !value)} tone="default" />
         {sourceState.loading && sourceOptions.length === 0 ? (
-          <View accessibilityLabel="Loading source filters" accessible style={styles.filterLoading}>
+          <View accessibilityLabel={t('inbox.loadingFilters')} accessible style={styles.filterLoading}>
             <ActivityIndicator color={colors.primary} size="small" />
           </View>
         ) : null}
@@ -147,7 +150,7 @@ export default function InboxScreen() {
           <FilterChip
             active={selectedSource === source.id}
             key={source.id}
-            label={source.revoked_at ? `${source.display_name} · Revoked` : source.display_name}
+            label={source.revoked_at ? `${source.display_name} · ${t('inbox.revokedSuffix')}` : source.display_name}
             onPress={() => setSelectedSource(source.id)}
             tone="source"
           />
@@ -158,7 +161,7 @@ export default function InboxScreen() {
       {inbox.error ? <ErrorState compact error={inbox.error} onRetry={() => void inbox.retry()} /> : null}
 
       <FlatList
-        accessibilityLabel="Notifications"
+        accessibilityLabel={t('inbox.notificationsA11y')}
         contentContainerStyle={[
           inbox.items.length ? styles.list : styles.emptyList,
           { paddingBottom: bottomPad },
@@ -167,11 +170,11 @@ export default function InboxScreen() {
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
           inbox.filterLoading ? (
-            <View accessibilityLabel="Loading filtered inbox" style={styles.filterListLoading}>
+            <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
               <ActivityIndicator color={colors.primary} size="small" />
             </View>
           ) : (
-            <EmptyState title="No alerts here" message={emptyMessage} />
+            <EmptyState title={t('inbox.emptyTitle')} message={emptyMessage} />
           )
         }
         ListFooterComponent={inbox.hasMore ? (
@@ -185,7 +188,7 @@ export default function InboxScreen() {
             >
               {inbox.loadingMore
                 ? <ActivityIndicator color={colors.primary} size="small" />
-                : <Text style={styles.loadMoreText}>Load more</Text>}
+                : <Text style={styles.loadMoreText}>{t('inbox.loadMore')}</Text>}
             </Pressable>
           </View>
         ) : null}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { relativeTimeShort } from '../lib/format';
 import {
@@ -7,6 +7,9 @@ import {
   LIVE_ACTIVITY_COLORS,
   type ZonaLiveActivitySnapshot,
 } from '../lib/live-activity-presentation';
+import { setActiveLanguage } from '../i18n';
+
+beforeEach(() => setActiveLanguage('en'));
 
 function snapshot(overrides: Partial<ZonaLiveActivitySnapshot> = {}): ZonaLiveActivitySnapshot {
   return {
@@ -45,6 +48,13 @@ describe('buildLiveActivityState', () => {
   it('truncates titles to 80 characters', () => {
     const state = buildLiveActivityState(snapshot({ latestTitle: 'x'.repeat(200) }));
     expect(state.title).toHaveLength(80);
+  });
+
+  it('uses the active app language without translating sender content', () => {
+    setActiveLanguage('zh-Hant');
+    const state = buildLiveActivityState(snapshot());
+    expect(state.title).toBe('3 則未讀 · Deploy failed on OFFICE-01');
+    expect(state.subtitle).toBe('Office PC · 10分鐘更新');
   });
 
   it('never renders a session-timer progress bar', () => {

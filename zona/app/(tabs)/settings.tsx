@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
@@ -26,30 +26,18 @@ import {
 } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
+import { languageAutonym, type LanguagePreference } from '@/i18n';
 import { colors, radius } from '@/theme';
 import type { AppOptions } from '@/types';
-
-function relayLabel(health: PushRegistrationHealth | null) {
-  if (!health) return 'Not checked yet';
-  const labels: Record<PushRegistrationHealth['status'], string> = {
-    registered: 'Registered',
-    'not-granted': 'Permission needed',
-    denied: 'Permission denied',
-    simulator: 'Simulator preview',
-    'expo-go': 'Expo Go preview',
-    web: 'Web preview',
-    unregistered: 'Not registered',
-    error: 'Needs attention',
-  };
-  return labels[health.status];
-}
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { languageName, preference, setPreference, t } = useI18n();
   const bottomPad = useTabBarContentPadding(16);
   const userId = session?.user.id;
-  const [permission, setPermission] = useState('Checking…');
+  const [permission, setPermission] = useState(t('settings.checking'));
   const [health, setHealth] = useState<PushRegistrationHealth | null>(null);
   const [registering, setRegistering] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -59,6 +47,7 @@ export default function SettingsScreen() {
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [liveActivityCapability, setLiveActivityCapability] = useState<LiveActivityCapability | null>(null);
+  const [languageModal, setLanguageModal] = useState(false);
   const liveActivitySupported = liveActivityPlatformSupported();
 
   const refreshStatus = useCallback(async () => {
@@ -69,7 +58,7 @@ export default function SettingsScreen() {
       setOptions(await getAppOptions(userId));
       setOptionsError(null);
     } catch (error) {
-      setOptionsError(error instanceof Error ? error.message : 'Notification options could not be loaded.');
+      setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
     }
     if (liveActivitySupported) {
       try {
@@ -81,16 +70,16 @@ export default function SettingsScreen() {
       setLiveActivityCapability('unsupported');
     }
     if (Platform.OS === 'web') {
-      setPermission('Web preview');
+      setPermission(t('settings.webPreview'));
       return;
     }
     try {
       const result = await Notifications.getPermissionsAsync();
       setPermission(result.status);
     } catch {
-      setPermission('Unavailable');
+      setPermission(t('common.unavailable'));
     }
-  }, [liveActivitySupported, userId]);
+  }, [liveActivitySupported, t, userId]);
 
   useFocusEffect(useCallback(() => { void refreshStatus(); }, [refreshStatus]));
 
@@ -101,23 +90,23 @@ export default function SettingsScreen() {
       const status = await enablePushNotifications(userId);
       await refreshStatus();
       if (status === 'denied') {
-        Alert.alert('Notifications are off', 'Allow notifications in iOS Settings to receive alerts when Zona is closed.', [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+        Alert.alert(t('settings.notificationsOff'), t('settings.notificationsOffBody'), [
+          { text: t('common.notNow'), style: 'cancel' },
+          { text: t('settings.openSettings'), onPress: () => void Linking.openSettings() },
         ]);
       } else {
         Alert.alert(
-          'Push status',
+          t('settings.pushStatus'),
           status === 'registered'
-            ? 'This iPhone is registered with the Zona relay.'
+            ? t('settings.registeredBody')
             : status === 'expo-go'
-              ? 'The app works in Expo Go, but Apple remote push requires an EAS development or TestFlight build.'
-              : `Current environment: ${status}.`,
+              ? t('settings.expoBody')
+              : t('settings.environmentBody', { status }),
         );
       }
     } catch (error) {
       await refreshStatus();
-      Alert.alert('Registration failed', error instanceof Error ? error.message : 'Check your connection and try again.');
+      Alert.alert(t('settings.registrationFailed'), error instanceof Error ? error.message : t('error.connection'));
     } finally {
       setRegistering(false);
     }
@@ -134,7 +123,7 @@ export default function SettingsScreen() {
       setOptions(next);
       if (key === 'live_activity_enabled') {
         if (!value) {
-          await stopLiveActivity('Live Status off');
+          await stopLiveActivity(t('settings.liveStatus'));
         } else if (liveActivitySupported) {
           const unreadCount = await unreadNotificationCount();
           if (unreadCount > 0) {
@@ -156,7 +145,7 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       setOptions(previous);
-      setOptionsError(error instanceof Error ? error.message : 'The option could not be saved.');
+      setOptionsError(error instanceof Error ? error.message : t('settings.optionSaveError'));
     } finally {
       setSavingOption(null);
     }
@@ -165,11 +154,11 @@ export default function SettingsScreen() {
   async function localSignOut(showWarning: boolean) {
     const { error } = await supabase.auth.signOut({ scope: 'local' });
     if (error) {
-      Alert.alert('Could not sign out', error.message);
+      Alert.alert(t('settings.signOutError'), error.message);
       return;
     }
     if (showWarning) {
-      Alert.alert('Signed out locally', 'The relay could not be reached, so this iPhone may continue receiving alerts until its registration expires or you sign in and retry removal.');
+      Alert.alert(t('settings.signedOutLocally'), t('settings.signedOutWarning'));
     }
   }
 
@@ -177,11 +166,11 @@ export default function SettingsScreen() {
     if (!userId || signingOut) return;
     if (session?.user.is_anonymous) {
       Alert.alert(
-        'Sign out permanently?',
-        'This private account has no email or password. Signing out cannot be undone: existing sources, tokens, and history are left behind and a fresh account is created next time.',
+        t('settings.signOutPermanent'),
+        t('settings.signOutPermanentBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign out', style: 'destructive', onPress: () => void performSignOut() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('settings.signOut'), style: 'destructive', onPress: () => void performSignOut() },
         ],
       );
       return;
@@ -197,11 +186,11 @@ export default function SettingsScreen() {
       await localSignOut(false);
     } catch (error) {
       Alert.alert(
-        'Could not remove this iPhone',
-        `${error instanceof Error ? error.message : 'The relay is unavailable.'}\n\nStay signed in and retry to stop push delivery, or sign out only on this device.`,
+        t('settings.removePhoneError'),
+        t('settings.removePhoneBody', { error: error instanceof Error ? error.message : t('settings.relayUnavailable') }),
         [
-          { text: 'Stay signed in', style: 'cancel' },
-          { text: 'Sign out locally', style: 'destructive', onPress: () => void localSignOut(true) },
+          { text: t('settings.staySignedIn'), style: 'cancel' },
+          { text: t('settings.signOutLocally'), style: 'destructive', onPress: () => void localSignOut(true) },
         ],
       );
     } finally {
@@ -211,10 +200,10 @@ export default function SettingsScreen() {
 
   function confirmDeletion() {
     if (deleting) return;
-    Alert.alert('Delete your Zona account?', 'This permanently deletes all sources, tokens, notifications, and iPhone registrations. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete account',
+        text: t('settings.deleteAccount'),
         style: 'destructive',
         onPress: () => {
           setDeleting(true);
@@ -223,7 +212,7 @@ export default function SettingsScreen() {
               await supabase.auth.signOut({ scope: 'local' });
               router.replace('/sign-in');
             })
-            .catch((error) => Alert.alert('Could not delete account', error instanceof Error ? error.message : 'Try again.'))
+            .catch((error) => Alert.alert(t('settings.deleteError'), error instanceof Error ? error.message : t('common.tryAgain')))
             .finally(() => setDeleting(false));
         },
       },
@@ -231,6 +220,19 @@ export default function SettingsScreen() {
   }
 
   const busy = signingOut || deleting;
+  const relayStatus = health
+    ? t(`settings.relay.${health.status === 'not-granted' ? 'notGranted' : health.status === 'expo-go' ? 'expoGo' : health.status}`)
+    : t('settings.relay.notChecked');
+  const permissionStatus = permission === 'granted'
+    ? t('settings.permission.granted')
+    : permission === 'denied'
+      ? t('settings.permission.denied')
+      : permission === 'undetermined'
+        ? t('settings.permission.undetermined')
+        : permission;
+  const languageValue = preference === 'system'
+    ? t('settings.languageSystemWithValue', { language: languageName })
+    : languageAutonym(preference);
 
   return (
     <TabScreen>
@@ -241,40 +243,40 @@ export default function SettingsScreen() {
       <View style={styles.profile}>
         <View style={styles.profileIcon}><AppIcon color={colors.primary} fallback="•" name="person.crop.circle.fill" size={31} /></View>
         <View style={styles.profileCopy}>
-          <Text style={styles.profileTitle}>Your Zona account</Text>
-          <Text numberOfLines={1} style={styles.profileEmail}>Private account on this iPhone</Text>
+          <Text style={styles.profileTitle}>{t('settings.accountTitle')}</Text>
+          <Text numberOfLines={1} style={styles.profileEmail}>{t('settings.privateAccount')}</Text>
         </View>
       </View>
 
-      <Text style={styles.section}>ACCOUNT</Text>
+      <Text style={styles.section}>{t('settings.sectionAccount')}</Text>
       <View style={styles.card}>
-        <SettingRow icon="person" label="Account" value={userId ? `${userId.slice(0, 8)}…` : '—'} />
+        <SettingRow icon="person" label={t('settings.account')} value={userId ? `${userId.slice(0, 8)}…` : '—'} />
         <View style={styles.divider} />
-        <SettingRow icon="clock" label="History retention" value="7 days" />
+        <SettingRow icon="clock" label={t('settings.historyRetention')} value={t('common.sevenDays')} />
       </View>
 
-      <Text style={styles.section}>NOTIFICATIONS</Text>
+      <Text style={styles.section}>{t('settings.sectionNotifications')}</Text>
       <View style={styles.card}>
         <OptionRow
-          description="Save alerts to the inbox but stop remote push when disabled."
+          description={t('settings.pushAlertsDesc')}
           disabled={!options || Boolean(savingOption)}
-          label="Push alerts"
+          label={t('settings.pushAlerts')}
           onChange={(value) => void setOption('push_enabled', value)}
           value={options?.push_enabled ?? true}
         />
         <View style={styles.divider} />
         <OptionRow
-          description="Play the normal iOS notification sound."
+          description={t('settings.soundDesc')}
           disabled={!options || Boolean(savingOption) || !options.push_enabled}
-          label="Notification sound"
+          label={t('settings.sound')}
           onChange={(value) => void setOption('play_sound', value)}
           value={options?.play_sound ?? true}
         />
         <View style={styles.divider} />
         <OptionRow
-          description="Show alert and source text on the lock screen."
+          description={t('settings.previewsDesc')}
           disabled={!options || Boolean(savingOption) || !options.push_enabled}
-          label="Message previews"
+          label={t('settings.previews')}
           onChange={(value) => void setOption('show_preview', value)}
           value={options?.show_preview ?? true}
         />
@@ -285,10 +287,10 @@ export default function SettingsScreen() {
               description={
                 liveActivityCapability && liveActivityCapability !== 'ready'
                   ? liveActivityCapabilityLabel(liveActivityCapability)
-                  : 'Show unread alerts on the Lock Screen and Dynamic Island while Zona is open. Controlled here in Zona (not as a separate iPhone Settings button until a Live Activity–capable IPA is installed).'
+                  : t('settings.liveStatusDesc')
               }
               disabled={!options || Boolean(savingOption)}
-              label="Live Status"
+              label={t('settings.liveStatus')}
               onChange={(value) => void setOption('live_activity_enabled', value)}
               value={options?.live_activity_enabled ?? false}
             />
@@ -302,22 +304,29 @@ export default function SettingsScreen() {
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
       </View>
 
-      <Text style={styles.section}>IPHONE DELIVERY</Text>
+      <Text style={styles.section}>{t('settings.sectionDelivery')}</Text>
       <View style={styles.card}>
-        <SettingRow icon="bell" label="iOS permission" value={permission} />
+        <SettingRow icon="bell" label={t('settings.iosPermission')} value={permissionStatus} />
         <View style={styles.divider} />
-        <SettingRow icon="antenna.radiowaves.left.and.right" label="Zona relay" value={relayLabel(health)} />
+        <SettingRow icon="antenna.radiowaves.left.and.right" label={t('settings.relay')} value={relayStatus} />
         {health?.error ? <Text accessibilityLiveRegion="polite" style={styles.healthError}>{health.error}</Text> : null}
         <View style={styles.divider} />
         <Pressable accessibilityRole="button" disabled={registering} onPress={registerAgain} style={({ pressed }) => [styles.registerRow, registering && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↻" name="arrow.clockwise" size={17} /></View>
-          <Text style={styles.link}>{registering ? 'Checking registration…' : 'Check and register this iPhone'}</Text>
+          <Text style={styles.link}>{registering ? t('settings.checkingRegistration') : t('settings.checkRegistration')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
       </View>
 
-      <Text style={styles.section}>APP</Text>
+      <Text style={styles.section}>{t('settings.sectionApp')}</Text>
       <View style={styles.card}>
+        <Pressable accessibilityRole="button" onPress={() => setLanguageModal(true)} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="A" name="globe" size={17} /></View>
+          <Text style={styles.link}>{t('settings.language')}</Text>
+          <Text numberOfLines={1} style={styles.languageValue}>{languageValue}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable>
+        <View style={styles.divider} />
         <Pressable
           accessibilityRole="button"
           disabled={checkingUpdate}
@@ -328,30 +337,73 @@ export default function SettingsScreen() {
           style={({ pressed }) => [styles.registerRow, checkingUpdate && styles.disabled, pressed && styles.pressed]}
         >
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
-          <Text style={styles.link}>{checkingUpdate ? 'Checking for updates…' : 'Check for app update'}</Text>
+          <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
       </View>
 
-      <Text style={styles.section}>PRIVACY & ACCESS</Text>
+      <Text style={styles.section}>{t('settings.sectionPrivacy')}</Text>
       <View style={styles.card}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/privacy')} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="i" name="hand.raised.fill" size={17} /></View>
-          <Text style={styles.link}>Privacy and data use</Text>
+          <Text style={styles.link}>{t('settings.privacy')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
       </View>
 
       <Pressable accessibilityRole="button" disabled={busy} onPress={signOut} style={({ pressed }) => [styles.signOut, busy && styles.disabled, pressed && styles.pressed]}>
         <AppIcon color={colors.danger} fallback="←" name="rectangle.portrait.and.arrow.right" size={17} />
-        <Text style={styles.signOutText}>{signingOut ? 'Removing this iPhone…' : 'Sign out'}</Text>
+        <Text style={styles.signOutText}>{signingOut ? t('settings.removing') : t('settings.signOut')}</Text>
       </Pressable>
       <Pressable accessibilityRole="button" disabled={busy} onPress={confirmDeletion} style={({ pressed }) => [styles.delete, busy && styles.disabled, pressed && styles.pressed]}>
-        <Text style={styles.deleteText}>{deleting ? 'Deleting account…' : 'Delete account and data'}</Text>
+        <Text style={styles.deleteText}>{deleting ? t('settings.deletingAccount') : t('settings.deleteAccountData')}</Text>
       </Pressable>
-      <Text style={styles.footnote}>Source credentials are stored as hashes and can be revoked independently.</Text>
+      <Text style={styles.footnote}>{t('settings.footnote')}</Text>
       </ScrollView>
+      <LanguageModal
+        onClose={() => setLanguageModal(false)}
+        onSelect={(next) => { void setPreference(next); setLanguageModal(false); }}
+        preference={preference}
+        visible={languageModal}
+      />
     </TabScreen>
+  );
+}
+
+function LanguageModal({ onClose, onSelect, preference, visible }: {
+  onClose: () => void;
+  onSelect: (preference: LanguagePreference) => void;
+  preference: LanguagePreference;
+  visible: boolean;
+}) {
+  const { languageName, t } = useI18n();
+  const choices: { label: string; value: LanguagePreference }[] = [
+    { label: t('settings.languageSystemWithValue', { language: languageName }), value: 'system' },
+    { label: 'English', value: 'en' },
+    { label: '繁體中文', value: 'zh-Hant' },
+  ];
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable onPress={() => undefined} style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>{t('settings.languageTitle')}</Text>
+              <Text style={styles.modalBody}>{t('settings.languageBody')}</Text>
+            </View>
+            <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.modalClose}>
+              <AppIcon color={colors.textSoft} fallback="×" name="xmark" size={16} />
+            </Pressable>
+          </View>
+          {choices.map((choice) => (
+            <Pressable key={choice.value} accessibilityRole="radio" accessibilityState={{ checked: preference === choice.value }} onPress={() => onSelect(choice.value)} style={({ pressed }) => [styles.languageChoice, pressed && styles.pressed]}>
+              <Text style={styles.languageChoiceText}>{choice.label}</Text>
+              {preference === choice.value ? <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} /> : null}
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -416,6 +468,15 @@ const styles = StyleSheet.create({
   optionsError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12 },
   registerRow: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
   link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },
+  languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },
+  modalBackdrop: { backgroundColor: 'rgba(18, 35, 29, 0.3)', flex: 1, justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingBottom: 34, paddingHorizontal: 18, paddingTop: 18 },
+  modalHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  modalTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
+  modalBody: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  modalClose: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 },
+  languageChoice: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', minHeight: 56, paddingHorizontal: 4 },
+  languageChoiceText: { color: colors.textSoft, flex: 1, fontSize: 15, fontWeight: '600' },
   signOut: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 24, minHeight: 52, padding: 15 },
   signOutText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
   delete: { alignItems: 'center', minHeight: 48, justifyContent: 'center', marginTop: 6 },

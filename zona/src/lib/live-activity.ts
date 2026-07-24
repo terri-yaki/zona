@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { translate } from '@/i18n';
 
 import { getAppOptions, updateAppOptions } from '@/data/options';
 import {
@@ -83,7 +84,7 @@ export async function setLiveActivityEnabled(userId: string, enabled: boolean): 
   } catch {
     // ignore
   }
-  if (!enabled) await stopLiveActivity('Live Status off');
+  if (!enabled) await stopLiveActivity(translate('live.allClear'));
 }
 
 async function getStoredActivityId(): Promise<string | null> {
@@ -116,7 +117,7 @@ export async function syncLiveActivity(
   }
 
   if (snapshot.unreadCount <= 0) {
-    await stopLiveActivity('All clear');
+    await stopLiveActivity(translate('live.allClear'));
     return;
   }
 
@@ -139,7 +140,7 @@ export async function syncLiveActivity(
     }
 
     // Design mismatch (or missing activity): restart so attributes/theme apply.
-    if (existingId) await stopLiveActivity('Live Status updated');
+    if (existingId) await stopLiveActivity(translate('settings.liveStatus'));
 
     const id = LiveActivity.startActivity(state, buildLiveActivityConfig(snapshot));
     if (id) {
@@ -151,7 +152,7 @@ export async function syncLiveActivity(
   }
 }
 
-export async function stopLiveActivity(finalTitle = 'All clear'): Promise<void> {
+export async function stopLiveActivity(finalTitle = translate('live.allClear')): Promise<void> {
   if (!isIosDevice()) {
     await setStoredActivityId(null);
     return;
@@ -237,12 +238,12 @@ export async function getLiveActivityCapability(): Promise<LiveActivityCapabilit
 export function liveActivityCapabilityLabel(status: LiveActivityCapability): string {
   switch (status) {
     case 'ready':
-      return 'This build can show Live Status on the Lock Screen and Dynamic Island when unread alerts exist.';
+      return translate('live.capability.ready');
     case 'expo-go':
-      return 'Expo Go cannot show Live Activities. Install a Zona preview or production IPA built after Live Status was added.';
+      return translate('live.capability.expoGo');
     case 'native-missing':
-      return 'This installed app is missing the Live Activity native target. Install a new preview IPA (OTA is not enough). iPhone Settings → Zona will not list Live Activities until then.';
+      return translate('live.capability.nativeMissing');
     default:
-      return 'Live Status is only available on iPhone.';
+      return translate('live.capability.unsupported');
   }
 }

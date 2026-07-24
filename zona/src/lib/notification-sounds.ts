@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { NotificationSound } from '@/types/database';
+import { translate } from '@/i18n';
 
 /** Bundled custom sounds (must match app.json expo-notifications plugin list). */
 export const BUNDLED_SOUND_FILES = [
@@ -42,20 +43,20 @@ export function ensureNotificationSoundChannels(): Promise<void> {
 
   channelsReady = (async () => {
     await Notifications.setNotificationChannelAsync('zona_default', {
-      name: 'Zona alerts',
+      name: translate('sound.channelAlerts'),
       importance: Notifications.AndroidImportance.MAX,
       sound: 'default',
       vibrationPattern: [0, 180],
     });
     await Notifications.setNotificationChannelAsync('zona_silent', {
-      name: 'Zona silent',
+      name: translate('sound.channelSilent'),
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: undefined,
       vibrationPattern: [0, 120],
     });
     for (const file of BUNDLED_SOUND_FILES) {
       await Notifications.setNotificationChannelAsync(soundChannelId(file), {
-        name: `Zona ${file.replace(/\.wav$/i, '').replace(/^zona[_-]?/i, '')}`,
+        name: translate('sound.channelNamed', { name: file.replace(/\.wav$/i, '').replace(/^zona[_-]?/i, '') }),
         importance: Notifications.AndroidImportance.MAX,
         // Basename including extension — must match the file in the app bundle.
         sound: file,
@@ -82,8 +83,8 @@ export async function previewNotificationSound(soundName: NotificationSound): Pr
   if (soundName === 'silent') {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Zona sound preview',
-        body: 'Silent — no tone for this source.',
+        title: translate('sound.previewTitle'),
+        body: translate('sound.previewSilent'),
         sound: false,
         ...(Platform.OS === 'android' ? { channelId: 'zona_silent' } : {}),
       },
@@ -95,8 +96,8 @@ export async function previewNotificationSound(soundName: NotificationSound): Pr
   const sound = soundName === 'default' ? true : soundName;
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Zona sound preview',
-      body: soundName === 'default' ? 'System default tone.' : `Playing ${soundName}`,
+      title: translate('sound.previewTitle'),
+      body: soundName === 'default' ? translate('sound.previewDefault') : translate('sound.previewNamed', { name: soundName }),
       sound,
       ...(Platform.OS === 'android' ? { channelId: soundChannelId(soundName) } : {}),
     },

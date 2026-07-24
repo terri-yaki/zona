@@ -4,6 +4,7 @@ import { DynamicColorIOS, Platform } from 'react-native';
 
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
 import { colors } from '@/theme';
 
 /**
@@ -14,6 +15,7 @@ import { colors } from '@/theme';
  */
 export default function TabsLayout() {
   const { session, loading } = useAuth();
+  const { t } = useI18n();
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
 
@@ -41,15 +43,15 @@ export default function TabsLayout() {
     >
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: 'tray', selected: 'tray.full.fill' }} />
-        <Label>Inbox</Label>
+        <Label>{t('tabs.inbox')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="sources">
         <Icon sf={{ default: 'key', selected: 'key.fill' }} />
-        <Label>Auth</Label>
+        <Label>{t('tabs.sources')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} />
-        <Label>Settings</Label>
+        <Label>{t('tabs.settings')}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

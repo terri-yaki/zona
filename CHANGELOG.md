@@ -8,6 +8,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- English and Traditional Chinese app languages, with automatic system-language
+  detection, an immediate in-app language selector, localized relative times,
+  validation/errors, update prompts, notification sound previews, and Live
+  Status text. The preference is stored per installation.
 - iOS **Live Status** Live Activity (Lock Screen + Dynamic Island): optional
   Settings toggle backed by `app_options.live_activity_enabled` (migration
   `202607240005`), unread count + latest alert while the app can run JS, Zona

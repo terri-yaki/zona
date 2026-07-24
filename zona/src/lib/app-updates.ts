@@ -1,5 +1,6 @@
 import { Alert, Platform } from 'react-native';
 import * as Updates from 'expo-updates';
+import { translate } from '@/i18n';
 
 export type UpdateCheckResult =
   | { status: 'disabled' }
@@ -32,7 +33,7 @@ export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
   } catch (error) {
     return {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Update check failed.',
+      message: error instanceof Error ? error.message : translate('updates.checkError'),
     };
   }
 }
@@ -41,16 +42,16 @@ export async function checkForAppUpdate(): Promise<UpdateCheckResult> {
  * Download the pending update and reload into it.
  */
 export async function installAppUpdate(): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!updatesEnabled()) return { ok: false, message: 'Updates are not enabled in this build.' };
+  if (!updatesEnabled()) return { ok: false, message: translate('updates.disabled') };
   try {
     const result = await Updates.fetchUpdateAsync();
-    if (!result.isNew) return { ok: false, message: 'No new update was downloaded.' };
+    if (!result.isNew) return { ok: false, message: translate('updates.noneDownloaded') };
     await Updates.reloadAsync();
     return { ok: true };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : 'The update could not be installed.',
+      message: error instanceof Error ? error.message : translate('updates.installFallback'),
     };
   }
 }
@@ -74,20 +75,20 @@ export async function promptForAppUpdateIfAvailable(options?: { silentWhenCurren
 
   return new Promise<UpdateCheckResult>((resolve) => {
     Alert.alert(
-      'Update available',
-      'A new version of Zona is ready. Install it now?',
+      translate('updates.available'),
+      translate('updates.availableBody'),
       [
         {
-          text: 'Later',
+          text: translate('common.later'),
           style: 'cancel',
           onPress: () => resolve(check),
         },
         {
-          text: 'Install',
+          text: translate('common.install'),
           onPress: () => {
             void installAppUpdate().then((result) => {
               if (!result.ok) {
-                Alert.alert('Could not install update', result.message);
+                Alert.alert(translate('updates.installError'), result.message);
               }
               resolve(check);
             });
@@ -103,30 +104,30 @@ export async function checkForAppUpdateInteractive() {
   const check = await checkForAppUpdate();
   if (check.status === 'disabled') {
     Alert.alert(
-      'Updates unavailable',
-      'Over-the-air updates only work in preview or production installs, not in Expo Go or a development Metro session.',
+      translate('updates.unavailable'),
+      translate('updates.unavailableBody'),
     );
     return;
   }
   if (check.status === 'error') {
-    Alert.alert('Could not check for updates', check.message);
+    Alert.alert(translate('updates.checkError'), check.message);
     return;
   }
   if (check.status === 'up-to-date') {
-    Alert.alert('You are up to date', 'This install already has the latest published update for its channel.');
+    Alert.alert(translate('updates.current'), translate('updates.currentBody'));
     return;
   }
 
   Alert.alert(
-    'Update available',
-    'Install the latest Zona update now?',
+    translate('updates.available'),
+    translate('updates.availableShortBody'),
     [
-      { text: 'Cancel', style: 'cancel' },
+      { text: translate('common.cancel'), style: 'cancel' },
       {
-        text: 'Install',
+        text: translate('common.install'),
         onPress: () => {
           void installAppUpdate().then((result) => {
-            if (!result.ok) Alert.alert('Could not install update', result.message);
+            if (!result.ok) Alert.alert(translate('updates.installError'), result.message);
           });
         },
       },

@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/theme';
+import { useI18n } from '@/providers/LocalizationProvider';
 
 type Props = {
   uri: string;
@@ -39,14 +40,15 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
  * iOS uses native ScrollView zoom. Android uses gesture-handler pinch/pan
  * with RN Animated (no reanimated native module required).
  */
-export function ImageLightbox({ uri, accessibilityLabel = 'Attachment', previewStyle }: Props) {
+export function ImageLightbox({ uri, accessibilityLabel, previewStyle }: Props) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <>
       <Pressable
-        accessibilityHint="Opens full screen viewer with pinch to zoom"
-        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={t('image.openHint')}
+        accessibilityLabel={accessibilityLabel ?? t('image.attachment')}
         accessibilityRole="imagebutton"
         onPress={() => setOpen(true)}
         style={({ pressed }) => [styles.previewHit, pressed && styles.pressed]}
@@ -58,7 +60,7 @@ export function ImageLightbox({ uri, accessibilityLabel = 'Attachment', previewS
           style={[styles.preview, previewStyle]}
         />
         <View style={styles.previewHint}>
-          <Text style={styles.previewHintText}>Tap to enlarge · pinch to zoom</Text>
+          <Text style={styles.previewHintText}>{t('image.previewHint')}</Text>
         </View>
       </Pressable>
 
@@ -79,6 +81,7 @@ export function ImageLightbox({ uri, accessibilityLabel = 'Attachment', previewS
 
 function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [zoom, setZoom] = useState(1);
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -101,7 +104,7 @@ function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
         style={styles.flex}
       >
         <Image
-          accessibilityLabel="Full size attachment"
+          accessibilityLabel={t('image.fullSize')}
           resizeMode="contain"
           source={{ uri }}
           style={styles.fullImage}
@@ -114,6 +117,7 @@ function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
 
 function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const baseScale = useRef(new Animated.Value(1)).current;
   const pinchScale = useRef(new Animated.Value(1)).current;
   const scale = useRef(Animated.multiply(baseScale, pinchScale)).current;
@@ -180,7 +184,7 @@ function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void 
           <PinchGestureHandler onGestureEvent={onPinchEvent} onHandlerStateChange={onPinchStateChange}>
             <Animated.View style={[styles.androidCenter, { transform: [{ translateX }, { translateY }, { scale }] }]}>
               <Image
-                accessibilityLabel="Full size attachment"
+                accessibilityLabel={t('image.fullSize')}
                 resizeMode="contain"
                 source={{ uri }}
                 style={styles.fullImage}
@@ -205,11 +209,12 @@ function ViewerChrome({
   paddingBottom: number;
   zoomLabel: string;
 }) {
+  const { t } = useI18n();
   return (
     <View pointerEvents="box-none" style={[styles.chrome, { paddingBottom, paddingTop }]}>
       <Text style={styles.zoomLabel}>{zoomLabel}</Text>
       <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-        <Text style={styles.closeText}>Close</Text>
+        <Text style={styles.closeText}>{t('common.close')}</Text>
       </Pressable>
     </View>
   );

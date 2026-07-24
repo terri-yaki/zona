@@ -6,10 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/AppIcon';
 import { enablePushNotifications, markPushOnboardingComplete } from '@/lib/push';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
 
 export default function PushOnboardingScreen() {
   const { session } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const [working, setWorking] = useState(false);
   const userId = session?.user.id;
@@ -22,14 +24,14 @@ export default function PushOnboardingScreen() {
     try {
       if (ask) {
         const result = await enablePushNotifications(authenticatedUserId);
-        if (result === 'denied') Alert.alert('Notifications are off', 'You can enable them later in iOS Settings.');
-        if (result === 'simulator') Alert.alert('Physical iPhone required', 'Push registration is skipped in the simulator.');
-        if (result === 'expo-go') Alert.alert('Expo Go detected', 'You can test the app now, but remote push notifications require an EAS development build.');
+        if (result === 'denied') Alert.alert(t('onboarding.offTitle'), t('onboarding.offBody'));
+        if (result === 'simulator') Alert.alert(t('onboarding.deviceTitle'), t('onboarding.deviceBody'));
+        if (result === 'expo-go') Alert.alert(t('onboarding.expoTitle'), t('onboarding.expoBody'));
       }
       await markPushOnboardingComplete(authenticatedUserId);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Could not enable push', error instanceof Error ? error.message : 'Try again later.');
+      Alert.alert(t('onboarding.errorTitle'), error instanceof Error ? error.message : t('onboarding.errorBody'));
     } finally {
       setWorking(false);
     }
@@ -44,19 +46,19 @@ export default function PushOnboardingScreen() {
         </View>
         <View style={styles.accentDot} />
       </View>
-      <Text style={styles.eyebrow}>STAY IN THE LOOP</Text>
-      <Text style={styles.title}>A gentle tap when something matters.</Text>
-      <Text style={styles.body}>Zona keeps alerts useful and recognizable, even when the app is closed.</Text>
+      <Text style={styles.eyebrow}>{t('onboarding.eyebrow')}</Text>
+      <Text style={styles.title}>{t('onboarding.title')}</Text>
+      <Text style={styles.body}>{t('onboarding.body')}</Text>
       <View style={styles.featureCard}>
-        <Feature icon="desktopcomputer" text="See which computer sent every alert" />
+        <Feature icon="desktopcomputer" text={t('onboarding.sourceFeature')} />
         <View style={styles.divider} />
-        <Feature icon="clock" text="Keep a focused seven-day history" />
+        <Feature icon="clock" text={t('onboarding.historyFeature')} />
       </View>
       <Pressable accessibilityRole="button" disabled={working} onPress={() => finish(true)} style={[styles.primary, working && styles.disabled]}>
-        {working ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryText}>Enable notifications</Text>}
+        {working ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryText}>{t('onboarding.enable')}</Text>}
       </Pressable>
       <Pressable accessibilityRole="button" disabled={working} onPress={() => finish(false)} style={styles.secondary}>
-        <Text style={styles.secondaryText}>Not now</Text>
+        <Text style={styles.secondaryText}>{t('common.notNow')}</Text>
       </Pressable>
       </ScrollView>
     </SafeAreaView>

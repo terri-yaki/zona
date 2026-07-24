@@ -2,19 +2,21 @@ import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius } from '@/theme';
+import { useI18n } from '@/providers/LocalizationProvider';
 
 export default function PrivacyScreen() {
+  const { t } = useI18n();
   return (
     <>
-      <Stack.Screen options={{ title: 'Privacy' }} />
+      <Stack.Screen options={{ title: t('nav.privacy') }} />
       <ScrollView contentContainerStyle={styles.page}>
-        <Text style={styles.title}>Privacy at a glance</Text>
-        <Text style={styles.intro}>Zona stores only what it needs to deliver and synchronize your alerts.</Text>
-        <PrivacySection title="Account" body="A private account tied to this iPhone identifies your data through Supabase Authentication. No email or password is collected." />
-        <PrivacySection title="Sources and alerts" body="Source names, optional hostnames, alert content, timestamps, and validated metadata are retained for seven days. Source tokens are stored only as hashes." />
-        <PrivacySection title="Push delivery" body="Your push token is sent to the Zona relay. Alert text passes through Supabase, Apple Push Notification service, and may appear on your lock screen." />
-        <PrivacySection title="Your control" body="Revoke one source without affecting others, delete individual alerts, sign out, or permanently delete your account and associated data from Settings." />
-        <View style={styles.note}><Text style={styles.noteText}>Before App Store release, the operator must publish the full privacy policy and support URL listed in the release checklist.</Text></View>
+        <Text style={styles.title}>{t('privacy.title')}</Text>
+        <Text style={styles.intro}>{t('privacy.intro')}</Text>
+        <PrivacySection title={t('privacy.accountTitle')} body={t('privacy.accountBody')} />
+        <PrivacySection title={t('privacy.sourcesTitle')} body={t('privacy.sourcesBody')} />
+        <PrivacySection title={t('privacy.pushTitle')} body={t('privacy.pushBody')} />
+        <PrivacySection title={t('privacy.controlTitle')} body={t('privacy.controlBody')} />
+        <View style={styles.note}><Text style={styles.noteText}>{t('privacy.note')}</Text></View>
       </ScrollView>
     </>
   );

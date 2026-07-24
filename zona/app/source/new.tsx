@@ -8,12 +8,14 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { createSource } from '@/lib/api';
 import { normalizeOptional, validateSourceInput } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
 import type { CreatedSource } from '@/types';
 
 export default function NewSourceScreen() {
   const router = useRouter();
   const { session, loading } = useAuth();
+  const { t } = useI18n();
   const [displayName, setDisplayName] = useState('');
   const [hostname, setHostname] = useState('');
   const [working, setWorking] = useState(false);
@@ -34,20 +36,20 @@ export default function NewSourceScreen() {
     try {
       await Clipboard.setStringAsync(value);
       if (kind === 'token') setTokenCopied(true);
-      setCopyMessage(kind === 'token' ? 'Token copied. Keep it in a secure secret store.' : 'cURL example copied.');
+      setCopyMessage(kind === 'token' ? t('sourceNew.tokenCopiedMessage') : t('sourceNew.curlCopiedMessage'));
     } catch {
-      Alert.alert('Could not copy', 'Select the text and copy it manually before leaving this screen.');
+      Alert.alert(t('sourceNew.copyErrorTitle'), t('sourceNew.copyErrorBody'));
     }
   }
 
   async function submit() {
     const error = validateSourceInput(displayName, hostname);
-    if (error) { Alert.alert('Check the source', error); return; }
+    if (error) { Alert.alert(t('sourceNew.checkSource'), error); return; }
     setWorking(true);
     try {
       setCreated(await createSource(displayName.trim(), normalizeOptional(hostname)));
     } catch (caught) {
-      Alert.alert('Could not create source', caught instanceof Error ? caught.message : 'Try again.');
+      Alert.alert(t('sourceNew.createError'), caught instanceof Error ? caught.message : t('common.tryAgain'));
     } finally {
       setWorking(false);
     }
@@ -65,20 +67,20 @@ export default function NewSourceScreen() {
           'Idempotency-Key': `iphone-test-${Date.now()}`,
         },
         body: JSON.stringify({
-          title: 'Zona is connected',
-          body: `This test alert came from ${source.displayName}.`,
+          title: t('sourceNew.testConnectedTitle'),
+          body: t('sourceNew.testConnectedBody', { name: source.displayName }),
           category: 'test',
         }),
       });
       const result = await response.json() as { error?: string; pushAccepted?: number; pushAttempted?: number };
-      if (!response.ok) throw new Error(result.error ?? `Request failed (${response.status}).`);
+      if (!response.ok) throw new Error(result.error ?? t('sourceNew.requestFailed', { status: response.status }));
       setTestMessage(result.pushAccepted
-        ? 'Alert accepted and handed to Expo Push Service.'
+        ? t('sourceNew.testAccepted')
         : result.pushAttempted
-        ? 'Alert saved, but Expo did not accept the push. Check Settings.'
-        : 'Alert saved to the inbox. This iPhone has not registered for push yet.');
+        ? t('sourceNew.testRejected')
+        : t('sourceNew.testInboxOnly'));
     } catch (error) {
-      Alert.alert('Test alert failed', error instanceof Error ? error.message : 'Check your connection and try again.');
+      Alert.alert(t('sourceNew.testError'), error instanceof Error ? error.message : t('error.connection'));
     } finally {
       setTesting(false);
     }
@@ -87,22 +89,22 @@ export default function NewSourceScreen() {
   if (created) {
     return (
       <>
-        <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false, title: 'Save source token' }} />
+        <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false, title: t('sourceNew.saveHeader') }} />
         <ScrollView contentContainerStyle={styles.page}>
         <View style={styles.successMark}><AppIcon color={colors.success} fallback="✓" name="checkmark" size={25} /></View>
-        <Text style={styles.title}>Save this token now</Text>
-        <Text style={styles.help}>Zona stores only a hash, so this token cannot be displayed again. It identifies {created.displayName}.</Text>
+        <Text style={styles.title}>{t('sourceNew.saveTitle')}</Text>
+        <Text style={styles.help}>{t('sourceNew.saveHelp', { name: created.displayName })}</Text>
         <View style={styles.tokenBox}><Text selectable style={styles.token}>{created.token}</Text></View>
-        <Pressable accessibilityRole="button" onPress={() => void copy(created.token, 'token')} style={styles.primary}><AppIcon color={colors.white} fallback="□" name="doc.on.doc" size={16} /><Text style={styles.primaryText}>{tokenCopied ? 'Token copied' : 'Copy token'}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => void copy(created.token, 'token')} style={styles.primary}><AppIcon color={colors.white} fallback="□" name="doc.on.doc" size={16} /><Text style={styles.primaryText}>{tokenCopied ? t('sourceNew.tokenCopied') : t('sourceNew.copyToken')}</Text></Pressable>
         {copyMessage ? <Text accessibilityLiveRegion="polite" style={styles.copyMessage}>{copyMessage}</Text> : null}
         <Pressable accessibilityRole="button" disabled={testing} onPress={() => void sendTestNotification(created)} style={[styles.testButton, testing && styles.disabled]}>
-          {testing ? <ActivityIndicator color={colors.accent} /> : <><AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={16} /><Text style={styles.testButtonText}>Send test alert</Text></>}
+          {testing ? <ActivityIndicator color={colors.accent} /> : <><AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={16} /><Text style={styles.testButtonText}>{t('sourceNew.sendTest')}</Text></>}
         </Pressable>
         {testMessage ? <Text accessibilityLiveRegion="polite" style={styles.testMessage}>{testMessage}</Text> : null}
-        <Text style={styles.label}>EXAMPLE REQUEST</Text>
+        <Text style={styles.label}>{t('sourceNew.exampleRequest')}</Text>
         <View style={styles.codeBox}><Text selectable style={styles.code}>{curl}</Text></View>
-        <Pressable accessibilityRole="button" onPress={() => void copy(curl, 'example')} style={styles.secondary}><AppIcon color={colors.primary} fallback="□" name="doc.on.doc" size={15} /><Text style={styles.secondaryText}>Copy cURL example</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={!tokenCopied} onPress={() => router.back()} style={[styles.done, !tokenCopied && styles.disabled]}><Text style={styles.doneText}>{tokenCopied ? 'I saved it — Done' : 'Copy the token to continue'}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => void copy(curl, 'example')} style={styles.secondary}><AppIcon color={colors.primary} fallback="□" name="doc.on.doc" size={15} /><Text style={styles.secondaryText}>{t('sourceNew.copyCurl')}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={!tokenCopied} onPress={() => router.back()} style={[styles.done, !tokenCopied && styles.disabled]}><Text style={styles.doneText}>{tokenCopied ? t('sourceNew.done') : t('sourceNew.copyToContinue')}</Text></Pressable>
         </ScrollView>
       </>
     );
@@ -112,14 +114,14 @@ export default function NewSourceScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <View style={styles.sourceIcon}><AppIcon color={colors.primary} fallback="□" name="desktopcomputer" size={29} /></View>
-        <Text style={styles.title}>Name this source</Text>
-        <Text style={styles.help}>Create one source for every PC or local application. The source name is attached by the server to prevent spoofing.</Text>
-        <Text style={styles.label}>DISPLAY NAME</Text>
-        <TextInput autoFocus maxLength={80} onChangeText={setDisplayName} placeholder="e.g. Office PC" placeholderTextColor={colors.muted} style={styles.input} value={displayName} />
-        <Text style={styles.label}>HOSTNAME (OPTIONAL)</Text>
-        <TextInput autoCapitalize="none" maxLength={255} onChangeText={setHostname} placeholder="e.g. OFFICE-01" placeholderTextColor={colors.muted} style={styles.input} value={hostname} />
+        <Text style={styles.title}>{t('sourceNew.nameTitle')}</Text>
+        <Text style={styles.help}>{t('sourceNew.nameHelp')}</Text>
+        <Text style={styles.label}>{t('sourceNew.displayName')}</Text>
+        <TextInput autoFocus maxLength={80} onChangeText={setDisplayName} placeholder={t('sourceNew.displayPlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={displayName} />
+        <Text style={styles.label}>{t('sourceNew.hostname')}</Text>
+        <TextInput autoCapitalize="none" maxLength={255} onChangeText={setHostname} placeholder={t('sourceNew.hostnamePlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={hostname} />
         <Pressable accessibilityRole="button" disabled={working} onPress={submit} style={[styles.primary, working && styles.disabled]}>
-          {working ? <><ActivityIndicator color={colors.white} /><Text style={styles.primaryText}>Creating secure key…</Text></> : <><AppIcon color={colors.white} fallback="+" name="key.fill" size={16} /><Text style={styles.primaryText}>Create private token</Text></>}
+          {working ? <><ActivityIndicator color={colors.white} /><Text style={styles.primaryText}>{t('sourceNew.creating')}</Text></> : <><AppIcon color={colors.white} fallback="+" name="key.fill" size={16} /><Text style={styles.primaryText}>{t('sourceNew.create')}</Text></>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>

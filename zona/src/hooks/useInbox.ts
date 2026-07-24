@@ -9,6 +9,7 @@ import {
   unreadNotificationCount,
 } from '@/data/notifications';
 import { supabase } from '@/lib/supabase';
+import { translate } from '@/i18n';
 import type { InboxNotification } from '@/types';
 
 type InboxPageCache = {
@@ -156,7 +157,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
       });
     } catch (caught) {
       if (request === generation.current && key === cacheKeyRef.current) {
-        setError(caught instanceof Error ? caught : new Error('Your inbox could not be loaded.'));
+        setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
       }
     } finally {
       if (request === generation.current && key === cacheKeyRef.current) {
@@ -188,7 +189,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
       setHasMore(page.hasMore);
     } catch (caught) {
       if (request === generation.current && key === cacheKeyRef.current) {
-        setError(caught instanceof Error ? caught : new Error('More notifications could not be loaded.'));
+        setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
       }
     } finally {
       if (request === generation.current && key === cacheKeyRef.current) setLoadingMore(false);
@@ -217,7 +218,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
         )));
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught : new Error('Notifications could not be marked as read.'));
+      setError(caught instanceof Error ? caught : new Error(translate('inbox.markReadError')));
     } finally {
       setMarkingAllRead(false);
     }

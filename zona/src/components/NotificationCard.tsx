@@ -4,8 +4,10 @@ import { AppIcon } from '@/components/AppIcon';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
+import { useI18n } from '@/providers/LocalizationProvider';
 
 export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
+  const { t } = useI18n();
   const unread = !item.read_at;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, unread && styles.unread, pressed && styles.pressed]}>
@@ -26,7 +28,7 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
         <Text numberOfLines={1} style={[styles.title, unread && styles.unreadTitle]}>{item.title}</Text>
         <Text numberOfLines={2} style={styles.body}>{item.body}</Text>
       </View>
-      {unread ? <View accessibilityLabel="Unread" style={styles.dot} /> : null}
+      {unread ? <View accessibilityLabel={t('inbox.unreadA11y')} style={styles.dot} /> : null}
     </Pressable>
   );
 }

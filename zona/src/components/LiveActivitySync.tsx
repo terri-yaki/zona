@@ -11,6 +11,7 @@ import {
 } from '@/lib/live-activity';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
 
 const MIN_SYNC_INTERVAL_MS = 2_000;
 
@@ -49,12 +50,14 @@ async function fetchSnapshot(): Promise<ZonaLiveActivitySnapshot> {
  */
 export function LiveActivitySync() {
   const { session } = useAuth();
+  const { language } = useI18n();
   const userId = session?.user.id;
   const inFlight = useRef(false);
   const lastSyncAt = useRef(0);
   const pending = useRef(false);
 
   const runSync = useCallback(async (force = false) => {
+    void language;
     if (!userId || !liveActivityPlatformSupported()) return;
 
     const now = Date.now();
@@ -83,7 +86,7 @@ export function LiveActivitySync() {
         void runSync(true);
       }
     }
-  }, [userId]);
+  }, [language, userId]);
 
   useEffect(() => {
     if (!userId || Platform.OS !== 'ios') return;

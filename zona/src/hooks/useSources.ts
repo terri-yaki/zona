@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { listSources } from '@/data/sources';
 import { useAuth } from '@/providers/AuthProvider';
+import { translate } from '@/i18n';
 import type { Source } from '@/types';
 
 const sourceCache = new Map<string, Source[]>();
@@ -35,7 +36,7 @@ export function useSources(includeRevoked = true) {
       const next = await listSources({ includeRevoked });
       if (request === generation.current) commit(next);
     } catch (caught) {
-      if (request === generation.current) setError(caught instanceof Error ? caught : new Error('Your sources could not be loaded.'));
+      if (request === generation.current) setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
     } finally {
       if (request === generation.current) {
         setLoading(false);

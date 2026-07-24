@@ -1,23 +1,26 @@
+import { translate } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
+
 type ResponseLike = {
   json: () => Promise<unknown>;
   status?: number;
 };
 
-const messages: Record<string, string> = {
-  CREATE_RATE_LIMITED: 'Too many sources were created recently. Try again later.',
-  IDEMPOTENCY_CONFLICT: 'This request key was already used for different content.',
-  INTERNAL_ERROR: 'The service could not complete the request. Try again.',
-  INVALID_ACTION: 'The requested action is not supported.',
-  INVALID_DEVICE: 'This device registration is invalid. Try registering again.',
-  INVALID_PAYLOAD: 'Some submitted information is invalid.',
-  INVALID_SOURCE: 'Check the source name and hostname, then try again.',
-  INVALID_TOKEN: 'The source credential is invalid or has been revoked.',
-  METHOD_NOT_ALLOWED: 'The requested operation is not supported.',
-  PAYLOAD_TOO_LARGE: 'The submitted information is too large.',
-  RATE_LIMITED: 'Too many requests were sent. Wait a moment and try again.',
-  SOURCE_NOT_FOUND: 'This source no longer exists or has already been revoked.',
-  TOKEN_CONFLICT: 'This notification token is already registered to another account.',
-  UNAUTHORIZED: 'Your session has expired. Sign in again.',
+const messageKeys: Record<string, TranslationKey> = {
+  CREATE_RATE_LIMITED: 'error.CREATE_RATE_LIMITED',
+  IDEMPOTENCY_CONFLICT: 'error.IDEMPOTENCY_CONFLICT',
+  INTERNAL_ERROR: 'error.INTERNAL_ERROR',
+  INVALID_ACTION: 'error.INVALID_ACTION',
+  INVALID_DEVICE: 'error.INVALID_DEVICE',
+  INVALID_PAYLOAD: 'error.INVALID_PAYLOAD',
+  INVALID_SOURCE: 'error.INVALID_SOURCE',
+  INVALID_TOKEN: 'error.INVALID_TOKEN',
+  METHOD_NOT_ALLOWED: 'error.METHOD_NOT_ALLOWED',
+  PAYLOAD_TOO_LARGE: 'error.PAYLOAD_TOO_LARGE',
+  RATE_LIMITED: 'error.RATE_LIMITED',
+  SOURCE_NOT_FOUND: 'error.SOURCE_NOT_FOUND',
+  TOKEN_CONFLICT: 'error.TOKEN_CONFLICT',
+  UNAUTHORIZED: 'error.UNAUTHORIZED',
 };
 
 export class AppError extends Error {
@@ -58,7 +61,11 @@ export async function functionError(error: unknown, fallback: string): Promise<A
     }
   }
 
-  const message = messages[code] ?? (code === 'NETWORK_ERROR' ? 'Check your connection and try again.' : fallback);
+  const message = messageKeys[code]
+    ? translate(messageKeys[code])
+    : code === 'NETWORK_ERROR'
+      ? translate('error.connection')
+      : fallback;
   return new AppError(code, message, {
     cause: error,
     retryable: code === 'NETWORK_ERROR' || code === 'INTERNAL_ERROR' || code.endsWith('RATE_LIMITED') || (status !== undefined && status >= 500),
@@ -74,6 +81,7 @@ export function dataError(error: unknown, fallback: string): AppError {
   return new AppError(code, fallback, { cause: error, retryable: true });
 }
 
-export function userMessage(error: unknown, fallback = 'Something went wrong. Try again.') {
+export function userMessage(error: unknown, fallback = translate('error.default')) {
+  if (error instanceof AppError && messageKeys[error.code]) return translate(messageKeys[error.code]);
   return error instanceof Error && error.message ? error.message : fallback;
 }

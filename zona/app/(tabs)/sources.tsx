@@ -30,36 +30,40 @@ import { previewNotificationSound } from '@/lib/notification-sounds';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
 import type { ApiKey, Source } from '@/types';
+import { useI18n } from '@/providers/LocalizationProvider';
+import type { TranslationKey } from '@/i18n/en';
 
 type SoundName = ApiKey['sound_name'];
 
-const soundLabels: Record<SoundName, string> = {
-  default: 'Default',
-  silent: 'Silent',
-  'zona-soft.wav': 'Soft',
-  'zona-bright.wav': 'Bright',
-  'zona-urgent.wav': 'Urgent',
-  'zona-chime.wav': 'Chime',
-  'zona-crystal.wav': 'Crystal',
-  'zona-warm.wav': 'Warm',
-  'zona-pulse.wav': 'Pulse',
-  'zona-signal.wav': 'Signal',
-  'zona-bloom.wav': 'Bloom',
+const soundLabelKeys: Record<SoundName, TranslationKey> = {
+  default: 'sources.soundDefault',
+  silent: 'sources.soundSilent',
+  'zona-soft.wav': 'sources.soundSoft',
+  'zona-bright.wav': 'sources.soundBright',
+  'zona-urgent.wav': 'sources.soundUrgent',
+  'zona-chime.wav': 'sources.soundChime',
+  'zona-crystal.wav': 'sources.soundCrystal',
+  'zona-warm.wav': 'sources.soundWarm',
+  'zona-pulse.wav': 'sources.soundPulse',
+  'zona-signal.wav': 'sources.soundSignal',
+  'zona-bloom.wav': 'sources.soundBloom',
 };
 
-const soundChoices: { label: string; value: SoundName; description: string }[] = [
-  { label: 'Default', value: 'default', description: 'System notification sound' },
-  { label: 'Soft', value: 'zona-soft.wav', description: 'Gentle two-note chime' },
-  { label: 'Bright', value: 'zona-bright.wav', description: 'Quick rising sparkle' },
-  { label: 'Urgent', value: 'zona-urgent.wav', description: 'Repeated attention pulse' },
-  { label: 'Chime', value: 'zona-chime.wav', description: 'Classic doorbell pair' },
-  { label: 'Crystal', value: 'zona-crystal.wav', description: 'High sparkling cascade' },
-  { label: 'Warm', value: 'zona-warm.wav', description: 'Low major arpeggio' },
-  { label: 'Pulse', value: 'zona-pulse.wav', description: 'Soft double pulse' },
-  { label: 'Signal', value: 'zona-signal.wav', description: 'Short clean beeps' },
-  { label: 'Bloom', value: 'zona-bloom.wav', description: 'Rising open chord' },
-  { label: 'Silent', value: 'silent', description: 'No sound for this source' },
-];
+const soundDescriptionKeys: Record<SoundName, TranslationKey> = {
+  default: 'sources.soundDefaultDesc',
+  silent: 'sources.soundSilentDesc',
+  'zona-soft.wav': 'sources.soundSoftDesc',
+  'zona-bright.wav': 'sources.soundBrightDesc',
+  'zona-urgent.wav': 'sources.soundUrgentDesc',
+  'zona-chime.wav': 'sources.soundChimeDesc',
+  'zona-crystal.wav': 'sources.soundCrystalDesc',
+  'zona-warm.wav': 'sources.soundWarmDesc',
+  'zona-pulse.wav': 'sources.soundPulseDesc',
+  'zona-signal.wav': 'sources.soundSignalDesc',
+  'zona-bloom.wav': 'sources.soundBloomDesc',
+};
+
+const soundChoices: SoundName[] = ['default', 'zona-soft.wav', 'zona-bright.wav', 'zona-urgent.wav', 'zona-chime.wav', 'zona-crystal.wav', 'zona-warm.wav', 'zona-pulse.wav', 'zona-signal.wav', 'zona-bloom.wav', 'silent'];
 
 function recentlyActive(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -68,6 +72,7 @@ function recentlyActive(lastSeenAt: string | null) {
 
 export default function SourcesScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const { error, load, loading, patchSource, refresh, refreshing, sources } = useSources(true);
   const bottomPad = useTabBarContentPadding();
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
@@ -76,14 +81,14 @@ export default function SourcesScreen() {
   function askRename(source: Source) {
     if (busySourceId) return;
     Alert.prompt(
-      'Rename source',
-      'Historical notifications keep the name they had when sent.',
+      t('sources.renameTitle'),
+      t('sources.renameBody'),
       async (name) => {
         const normalized = name.trim();
         if (!normalized || normalized === source.display_name) return;
         const validationError = validateSourceInput(normalized, source.hostname ?? '');
         if (validationError) {
-          Alert.alert('Check the source name', validationError);
+          Alert.alert(t('sources.nameError'), validationError);
           return;
         }
 
@@ -92,7 +97,7 @@ export default function SourcesScreen() {
           await renameSource(source.id, normalized);
           await load();
         } catch (caught) {
-          Alert.alert('Could not rename', userMessage(caught));
+          Alert.alert(t('sources.renameError'), userMessage(caught));
         } finally {
           setBusySourceId(null);
         }
@@ -105,12 +110,12 @@ export default function SourcesScreen() {
   function askRevoke(source: Source) {
     if (busySourceId) return;
     Alert.alert(
-      'Revoke this source?',
-      `${source.display_name} will immediately lose access. Existing notifications remain until they expire.`,
+      t('sources.revokeTitle'),
+      t('sources.revokeBody', { name: source.display_name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Revoke',
+          text: t('sources.revoke'),
           style: 'destructive',
           onPress: async () => {
             setBusySourceId(source.id);
@@ -118,7 +123,7 @@ export default function SourcesScreen() {
               await revokeSource(source.id);
               await load();
             } catch (caught) {
-              Alert.alert('Could not revoke', userMessage(caught));
+              Alert.alert(t('sources.revokeError'), userMessage(caught));
             } finally {
               setBusySourceId(null);
             }
@@ -135,7 +140,7 @@ export default function SourcesScreen() {
       await setSourceActive(source.id, isActive);
       await load();
     } catch (caught) {
-      Alert.alert('Could not update API key', userMessage(caught));
+      Alert.alert(t('sources.updateKeyError'), userMessage(caught));
     } finally {
       setBusySourceId(null);
     }
@@ -159,7 +164,7 @@ export default function SourcesScreen() {
           ? { ...current, api_key: { ...current.api_key, sound_name: previousSound } }
           : current
       ));
-      Alert.alert('Could not update sound', userMessage(caught));
+      Alert.alert(t('sources.soundError'), userMessage(caught));
     } finally {
       setBusySourceId(null);
     }
@@ -187,14 +192,14 @@ export default function SourcesScreen() {
     try {
       const result = await testSource(source.id);
       const message = result.pushAccepted > 0
-        ? 'The alert was saved and accepted by Expo Push Service.'
+        ? t('sources.testAccepted')
         : result.pushAttempted > 0
-        ? 'The alert was saved, but Zona did not accept the push. Check notification permissions in Settings.'
-        : 'The alert was saved to your inbox. Open Settings and enable push notifications on this iPhone.';
-      Alert.alert('Test alert sent', message);
+        ? t('sources.testRejected')
+        : t('sources.testInboxOnly');
+      Alert.alert(t('sources.testSent'), message);
       await load();
     } catch (caught) {
-      Alert.alert('Test alert failed', userMessage(caught));
+      Alert.alert(t('sources.testError'), userMessage(caught));
     } finally {
       setBusySourceId(null);
     }
@@ -212,11 +217,11 @@ export default function SourcesScreen() {
     <TabScreen>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <Text style={styles.title}>Auth keys & sources</Text>
-          <Text style={styles.subtitle}>One independently controlled key for every computer or app.</Text>
+          <Text style={styles.title}>{t('sources.title')}</Text>
+          <Text style={styles.subtitle}>{t('sources.subtitle')}</Text>
         </View>
         <Pressable
-          accessibilityLabel="Add a new source and API key"
+          accessibilityLabel={t('sources.addA11y')}
           accessibilityRole="button"
           hitSlop={4}
           onPress={() => router.push('/source/new')}
@@ -232,7 +237,7 @@ export default function SourcesScreen() {
       {error && sources.length > 0 ? <ErrorState compact error={error} onRetry={() => void load()} /> : null}
 
       <FlatList
-        accessibilityLabel="Sources"
+        accessibilityLabel={t('sources.title')}
         contentContainerStyle={[
           sources.length ? styles.list : styles.emptyList,
           { paddingBottom: bottomPad },
@@ -242,7 +247,7 @@ export default function SourcesScreen() {
         style={styles.listSurface}
         ListEmptyComponent={error
           ? <ErrorState error={error} onRetry={() => void load()} />
-          : <EmptyState title="No sources yet" message="Add a source to get a private API token for one PC or application." />}
+          : <EmptyState title={t('sources.emptyTitle')} message={t('sources.emptyBody')} />}
         refreshControl={(
           <RefreshControl
             onRefresh={() => void refresh()}
@@ -258,17 +263,17 @@ export default function SourcesScreen() {
             <View style={[styles.card, item.revoked_at && styles.revoked]}>
               <View style={styles.avatar}>
                 <Text style={styles.avatarText}>{sourceInitial(item.display_name)}</Text>
-                {online ? <View accessibilityLabel="Recently active" accessible style={styles.onlineDot} /> : null}
+                {online ? <View accessibilityLabel={t('sources.lastActive', { time: relativeTime(item.last_seen_at!) })} accessible style={styles.onlineDot} /> : null}
               </View>
               <View style={styles.content}>
                 <View style={styles.nameRow}>
                   <Text numberOfLines={1} style={styles.name}>{item.display_name}</Text>
-                  {item.revoked_at ? <Text style={styles.revokedLabel}>REVOKED</Text> : null}
-                  {!item.revoked_at && !keyActive ? <Text style={styles.pausedLabel}>PAUSED</Text> : null}
-                  {busy ? <ActivityIndicator accessibilityLabel="Updating source" color={colors.primary} size="small" /> : null}
+                  {item.revoked_at ? <Text style={styles.revokedLabel}>{t('sources.revoked')}</Text> : null}
+                  {!item.revoked_at && !keyActive ? <Text style={styles.pausedLabel}>{t('sources.paused')}</Text> : null}
+                  {busy ? <ActivityIndicator accessibilityLabel={t('settings.checking')} color={colors.primary} size="small" /> : null}
                   {!item.revoked_at ? (
                     <Pressable
-                      accessibilityLabel={`Rename ${item.display_name}`}
+                      accessibilityLabel={`${t('sources.rename')} ${item.display_name}`}
                       accessibilityRole="button"
                       accessibilityState={{ disabled: Boolean(busySourceId) }}
                       disabled={Boolean(busySourceId)}
@@ -282,18 +287,18 @@ export default function SourcesScreen() {
                 </View>
                 <View style={styles.metaRow}>
                   <AppIcon color={colors.mutedLight} fallback="•" name="desktopcomputer" size={12} />
-                  <Text numberOfLines={1} style={styles.meta}>{item.hostname || 'Hostname not provided'}</Text>
+                  <Text numberOfLines={1} style={styles.meta}>{item.hostname || t('sources.hostnameMissing')}</Text>
                 </View>
                 <Text style={styles.lastSeen}>
-                  {item.last_seen_at ? `Last active ${relativeTime(item.last_seen_at)}` : 'Waiting for its first alert'}
+                  {item.last_seen_at ? t('sources.lastActive', { time: relativeTime(item.last_seen_at) }) : t('sources.waitingFirst')}
                 </Text>
                 <View style={styles.keyRow}>
                   <View style={styles.keyCopy}>
-                    <Text style={styles.keyLabel}>API KEY</Text>
-                    <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : 'Existing protected key'}</Text>
+                    <Text style={styles.keyLabel}>{t('sources.apiKey')}</Text>
+                    <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : t('sources.protectedKey')}</Text>
                   </View>
                   <Switch
-                    accessibilityLabel={`${keyActive ? 'Pause' : 'Activate'} ${item.display_name} API key`}
+                    accessibilityLabel={`${t('sources.apiKey')} ${item.display_name}`}
                     disabled={Boolean(busySourceId) || Boolean(item.revoked_at)}
                     onValueChange={(value) => void toggleActive(item, value)}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}
@@ -304,7 +309,7 @@ export default function SourcesScreen() {
                 {!item.revoked_at ? (
                   <View style={styles.actions}>
                     <Pressable
-                      accessibilityLabel={`Send a test alert from ${item.display_name}`}
+                      accessibilityLabel={`${t('sources.test')} ${item.display_name}`}
                       accessibilityRole="button"
                       accessibilityState={{ disabled: Boolean(busySourceId) || !keyActive }}
                       disabled={Boolean(busySourceId) || !keyActive}
@@ -312,10 +317,10 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionPrimary, pressed && styles.actionPressed, !keyActive && styles.actionDisabled]}
                     >
                       <AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={12} />
-                      <Text style={[styles.action, styles.testAction]}>Test</Text>
+                      <Text style={[styles.action, styles.testAction]}>{t('sources.test')}</Text>
                     </Pressable>
                     <Pressable
-                      accessibilityLabel={`Change notification sound for ${item.display_name}`}
+                      accessibilityLabel={`${t('sources.soundTitle')} ${item.display_name}`}
                       accessibilityRole="button"
                       accessibilityState={{ disabled: Boolean(busySourceId) }}
                       disabled={Boolean(busySourceId)}
@@ -323,10 +328,10 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed]}
                     >
                       <AppIcon color={colors.primary} fallback="♪" name="speaker.wave.2.fill" size={12} />
-                      <Text numberOfLines={1} style={styles.action}>{soundLabels[item.api_key?.sound_name ?? 'default']}</Text>
+                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeys[item.api_key?.sound_name ?? 'default'])}</Text>
                     </Pressable>
                     <Pressable
-                      accessibilityLabel={`Revoke ${item.display_name}`}
+                      accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
                       accessibilityRole="button"
                       accessibilityState={{ disabled: Boolean(busySourceId) }}
                       disabled={Boolean(busySourceId)}
@@ -334,7 +339,7 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionDanger, pressed && styles.actionPressed]}
                     >
                       <AppIcon color={colors.danger} fallback="×" name="xmark.circle" size={12} />
-                      <Text style={[styles.action, styles.danger]}>Revoke</Text>
+                      <Text style={[styles.action, styles.danger]}>{t('sources.revoke')}</Text>
                     </Pressable>
                   </View>
                 ) : null}
@@ -369,16 +374,17 @@ function SoundPickerModal({
   onSelect: (sound: SoundName) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
       <View style={styles.sheetRoot}>
-        <Pressable accessibilityLabel="Dismiss sound picker" accessibilityRole="button" onPress={onClose} style={styles.sheetBackdrop} />
+        <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.sheetBackdrop} />
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>Notification sound</Text>
+          <Text style={styles.sheetTitle}>{t('sources.soundTitle')}</Text>
           <Text style={styles.sheetSubtitle} numberOfLines={2}>
-            {sourceName ? `Choose the ringtone for ${sourceName}.` : 'Choose a ringtone.'}
+            {t('sources.soundSubtitle', { name: sourceName })}
           </Text>
           <ScrollView
             bounces={false}
@@ -387,13 +393,13 @@ function SoundPickerModal({
             style={styles.sheetScroll}
           >
             {soundChoices.map((choice) => {
-              const selected = choice.value === current;
+              const selected = choice === current;
               return (
                 <Pressable
-                  key={choice.value}
+                  key={choice}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  onPress={() => onSelect(choice.value)}
+                  onPress={() => onSelect(choice)}
                   style={({ pressed }) => [
                     styles.soundRow,
                     selected && styles.soundRowSelected,
@@ -403,14 +409,14 @@ function SoundPickerModal({
                   <View style={[styles.soundGlyph, selected && styles.soundGlyphSelected]}>
                     <AppIcon
                       color={selected ? colors.white : colors.primary}
-                      fallback={choice.value === 'silent' ? '∅' : '♪'}
-                      name={choice.value === 'silent' ? 'speaker.slash.fill' : 'speaker.wave.2.fill'}
+                      fallback={choice === 'silent' ? '∅' : '♪'}
+                      name={choice === 'silent' ? 'speaker.slash.fill' : 'speaker.wave.2.fill'}
                       size={16}
                     />
                   </View>
                   <View style={styles.soundCopy}>
-                    <Text style={[styles.soundLabel, selected && styles.soundLabelSelected]}>{choice.label}</Text>
-                    <Text style={styles.soundDescription}>{choice.description}</Text>
+                    <Text style={[styles.soundLabel, selected && styles.soundLabelSelected]}>{t(soundLabelKeys[choice])}</Text>
+                    <Text style={styles.soundDescription}>{t(soundDescriptionKeys[choice])}</Text>
                   </View>
                   {selected ? (
                     <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} />
@@ -426,7 +432,7 @@ function SoundPickerModal({
             onPress={onClose}
             style={({ pressed }) => [styles.sheetCancel, pressed && styles.actionPressed]}
           >
-            <Text style={styles.sheetCancelText}>Cancel</Text>
+            <Text style={styles.sheetCancelText}>{t('common.cancel')}</Text>
           </Pressable>
         </View>
       </View>

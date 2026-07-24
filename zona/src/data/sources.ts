@@ -1,4 +1,5 @@
 import { dataError } from '@/lib/errors';
+import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 export async function listSources({ includeRevoked = true } = {}) {
@@ -8,7 +9,7 @@ export async function listSources({ includeRevoked = true } = {}) {
     .order('created_at', { ascending: false });
   if (!includeRevoked) query = query.is('revoked_at', null);
   const { data, error } = await query;
-  if (error) throw dataError(error, 'Your API keys could not be loaded.');
+  if (error) throw dataError(error, translate('error.loadTitle'));
   return (data ?? [])
     .map((row) => ({
       id: row.id,
@@ -57,6 +58,6 @@ export async function setApiKeySound(apiKeyId: string, soundName: import('@/type
         'This sound is not allowed on the server yet. Apply migration 202607240004_more_notification_sounds (supabase db push) and try again.',
       );
     }
-    throw dataError(error, 'The notification sound could not be saved.');
+    throw dataError(error, translate('sources.soundError'));
   }
 }

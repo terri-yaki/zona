@@ -7,12 +7,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
+import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
 import { isUuid } from '@/lib/validation';
+import { translate } from '@/i18n';
 import { colors, radius } from '@/theme';
 
 function NotificationNavigation() {
@@ -70,9 +72,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
   return (
     <View style={styles.errorPage}>
-      <Text style={styles.errorTitle}>Zona hit an unexpected problem</Text>
+      <Text style={styles.errorTitle}>{translate('root.errorTitle')}</Text>
       <Text style={styles.errorMessage}>
-        {__DEV__ ? message : 'Your data is safe. Try opening this screen again.'}
+        {__DEV__ ? message : translate('root.errorSafe')}
       </Text>
       {__DEV__ && stack ? (
         <ScrollView style={styles.errorStackBox} contentContainerStyle={styles.errorStackContent}>
@@ -80,7 +82,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         </ScrollView>
       ) : null}
       <Pressable accessibilityRole="button" onPress={retry} style={styles.errorButton}>
-        <Text style={styles.errorButtonText}>Try again</Text>
+        <Text style={styles.errorButtonText}>{translate('root.tryAgain')}</Text>
       </Pressable>
     </View>
   );
@@ -94,7 +96,20 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
+        <LocalizationProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </LocalizationProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function RootNavigator() {
+  const { t } = useI18n();
+  return (
+    <>
           <AppUpdateSync />
           <PushRegistrationSync />
           <LiveActivitySync />
@@ -111,14 +126,12 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen name="push-onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="privacy" options={{ title: 'Privacy' }} />
+            <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="notification/[id]" options={{ title: 'Notification' }} />
-            <Stack.Screen name="source/new" options={{ title: 'New source', presentation: 'modal' }} />
+            <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
+            <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />
           </Stack>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    </>
   );
 }
 

@@ -6,10 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppIcon } from '@/components/AppIcon';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
+import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
 
 export default function SignInScreen() {
   const { session, authError, clearAuthError } = useAuth();
+  const { t } = useI18n();
   const [signingIn, setSigningIn] = useState(false);
 
   if (session) return <Redirect href="/" />;
@@ -21,7 +23,7 @@ export default function SignInScreen() {
       const { error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
     } catch (error) {
-      Alert.alert('Could not sign in', error instanceof Error ? error.message : 'Check your connection and try again.');
+      Alert.alert(t('auth.signInError'), error instanceof Error ? error.message : t('auth.connectionError'));
     } finally {
       setSigningIn(false);
     }
@@ -37,13 +39,13 @@ export default function SignInScreen() {
             <View style={styles.mark}><AppIcon color={colors.white} fallback="Z" name="bell.badge.fill" size={25} /></View>
             <Text style={styles.brand}>Zona</Text>
           </View>
-          <Text style={styles.title}>Your PCs, quietly connected.</Text>
-          <Text style={styles.subtitle}>Important alerts from every computer, gathered in one calm place.</Text>
+          <Text style={styles.title}>{t('auth.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
           <View style={styles.formCard}>
             <Pressable accessibilityRole="button" disabled={signingIn} onPress={continueAnonymously} style={({ pressed }) => [styles.button, signingIn && styles.disabled, pressed && styles.pressed]}>
-              {signingIn ? <ActivityIndicator color={colors.white} /> : <><Text style={styles.buttonText}>Continue</Text><AppIcon color={colors.white} fallback="›" name="arrow.right" size={17} /></>}
+              {signingIn ? <ActivityIndicator color={colors.white} /> : <><Text style={styles.buttonText}>{t('common.continue')}</Text><AppIcon color={colors.white} fallback="›" name="arrow.right" size={17} /></>}
             </Pressable>
-            <Text style={styles.privacy}>No email or password needed. Zona creates a private account tied to this iPhone.</Text>
+            <Text style={styles.privacy}>{t('auth.privateAccount')}</Text>
           </View>
           {authError ? <View accessibilityLiveRegion="polite" style={styles.errorBox}><AppIcon color={colors.danger} fallback="!" name="exclamationmark.triangle.fill" size={17} /><Text style={styles.errorText}>{authError}</Text></View> : null}
         </View>

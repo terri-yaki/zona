@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { isUuid, normalizeOptional, validateSourceInput } from '../lib/validation';
+import { setActiveLanguage } from '../i18n';
+
+beforeEach(() => setActiveLanguage('en'));
 
 describe('source validation', () => {
   it('requires a source name', () => {

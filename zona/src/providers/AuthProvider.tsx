@@ -3,6 +3,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState, Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { translate } from '@/i18n';
 
 type AuthState = {
   session: Session | null;
@@ -35,11 +36,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
-        if (error) setAuthError('Your saved session could not be restored. Sign in again.');
+        if (error) setAuthError(translate('error.UNAUTHORIZED'));
         setSession(data.session);
         if (Platform.OS !== 'web' && AppState.currentState === 'active') supabase.auth.startAutoRefresh();
       } catch {
-        if (active) setAuthError('Zona could not restore your session. Check your connection and try again.');
+        if (active) setAuthError(translate('error.connection'));
       } finally {
         if (active) setLoading(false);
       }
