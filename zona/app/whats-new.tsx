@@ -98,4 +98,3 @@ const styles = StyleSheet.create({
   footerTitle: { color: colors.text, fontSize: 16, fontWeight: '800', marginTop: 9 },
   footerBody: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4, textAlign: 'center' },
 });
-
