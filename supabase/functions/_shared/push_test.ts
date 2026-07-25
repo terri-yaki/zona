@@ -6,7 +6,6 @@ import {
   chunk,
   createPushMessage,
   MAX_EXPO_MESSAGE_BYTES,
-  pushPayloadSound,
   resolveSound,
   soundChannelId,
   ticketError,
@@ -85,27 +84,20 @@ Deno.test('per-source sounds are allowlisted and respect the global setting', ()
   assertEquals(message.channelId, 'zona_bright');
 });
 
-Deno.test('native phone sounds pass the allow-list and map to the system sound', () => {
-  // The stored choices survive the allow-list unchanged...
-  assertEquals(resolveSound(true, 'native-notification'), 'native-notification');
-  assertEquals(resolveSound(true, 'native-alarm'), 'native-alarm');
-  assertEquals(resolveSound(true, 'native-ringtone'), 'native-ringtone');
-  assertEquals(resolveSound(false, 'native-alarm'), null);
+Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', () => {
+  // APNs plays bundled files by basename, so the stored choice survives
+  // end to end unchanged.
+  assertEquals(resolveSound(true, 'ios-aurora.wav'), 'ios-aurora.wav');
+  assertEquals(resolveSound(true, 'ios-boing.wav'), 'ios-boing.wav');
+  assertEquals(resolveSound(true, 'ios-harp.wav'), 'ios-harp.wav');
+  assertEquals(resolveSound(false, 'ios-glass.wav'), null);
+  assertEquals(resolveSound(true, 'ios-not-bundled.wav'), 'default');
 
-  // ...while the payload sound honors the APNs / pinned-Android limit: only
-  // `default` or bundled files can play, so native choices carry `default`
-  // (exact for native-notification, documented degradation for alarm/ringtone).
-  assertEquals(pushPayloadSound('native-notification'), 'default');
-  assertEquals(pushPayloadSound('native-alarm'), 'default');
-  assertEquals(pushPayloadSound('native-ringtone'), 'default');
-  assertEquals(pushPayloadSound('default'), 'default');
-  assertEquals(pushPayloadSound('zona-soft.wav'), 'zona-soft.wav');
-
-  // Each native choice keeps its own Android channel id, matching the app-side
-  // mapping in zona/src/lib/notification-sound-map.ts.
-  assertEquals(soundChannelId('native-notification'), 'zona_native_notification');
-  assertEquals(soundChannelId('native-alarm'), 'zona_native_alarm');
-  assertEquals(soundChannelId('native-ringtone'), 'zona_native_ringtone');
+  // Each tone keeps its own Android channel id, matching the app-side mapping
+  // in zona/src/lib/notification-sound-map.ts.
+  assertEquals(soundChannelId('ios-aurora.wav'), 'zona_ios_aurora');
+  assertEquals(soundChannelId('ios-bell-tower.wav'), 'zona_ios_bell_tower');
+  assertEquals(soundChannelId('zona-soft.wav'), 'zona_soft');
 
   const message = createPushMessage(
     'ExpoPushToken[token]',
@@ -114,10 +106,10 @@ Deno.test('native phone sounds pass the allow-list and map to the system sound',
     'Office',
     '00000000-0000-4000-8000-000000000000',
     '00000000-0000-4000-8000-000000000001',
-    { soundName: 'native-ringtone', showPreview: true },
+    { soundName: 'ios-aurora.wav', showPreview: true },
   );
-  assertEquals(message.sound, 'default');
-  assertEquals(message.channelId, 'zona_native_ringtone');
+  assertEquals(message.sound, 'ios-aurora.wav');
+  assertEquals(message.channelId, 'zona_ios_aurora');
 });
 
 Deno.test('ticket errors are recorded even when Expo returns HTTP 200', () => {

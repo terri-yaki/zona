@@ -47,18 +47,19 @@ to use semantic application versions. Build numbers are managed by EAS.
   options, and a reusable per-source test-alert action.
 - Per-source notification sound presets (default, silent, soft, bright, urgent,
   chime, crystal, warm, pulse, signal, and bloom) with bundled iOS sound assets.
-- Phone-native sound choices in the per-source picker (migration
-  `202607250002`): the phone's notification sound, alarm sound, and ringtone
-  now appear beside the bundled presets. A pure app-side mapping
-  (`notification-sound-map.ts`) resolves each choice for preview, push
-  payload, and Android channel; the `notify` allow-list accepts the new
-  identifiers. Platform limits are honored honestly: APNs only plays
-  `default` or bundled files, and the pinned expo-notifications resolves
-  Android channel sounds to bundled resources or the system default
-  notification sound — so `native-notification` plays the phone's exact
-  notification sound on both platforms, while `native-alarm` and
-  `native-ringtone` degrade to the system default notification sound
-  (documented in code and in `docs/API.md`).
+- iPhone alert-tone choices in the per-source picker (migration
+  `202607250002_ios_alert_tone_sounds`): the classic iOS tones (Note, Aurora, Bamboo, Chord,
+  Circles, Complete, Hello, Input, Keys, Popcorn, Pulse, Synth, Bell Tower,
+  Boing, Glass, and Harp) now appear beside the bundled Zona presets, in the
+  style of iOS-native sound pickers. iOS gives apps no API to reference the
+  phone's system tones, so the tones ship as bundled audio files
+  (`assets/sounds/ios-*.wav`) that APNs plays by basename. A pure app-side
+  mapping (`notification-sound-map.ts`) resolves each choice for preview,
+  push payload, and Android channel, and the `notify` allow-list accepts the
+  new identifiers. **Licensing note:** the tone audio originates from Apple
+  system-sound collections mirrored for development use; it is acceptable
+  for private/preview builds but must be reviewed before any App Store
+  release.
 
 ### Changed
 

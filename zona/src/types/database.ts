@@ -1,12 +1,25 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-/** Bundled / native / special notification sound identifiers stored on api_keys.sound_name. */
+/** Bundled / special notification sound identifiers stored on api_keys.sound_name. */
 export type NotificationSound =
   | 'default'
   | 'silent'
-  | 'native-notification'
-  | 'native-alarm'
-  | 'native-ringtone'
+  | 'ios-note.wav'
+  | 'ios-aurora.wav'
+  | 'ios-bamboo.wav'
+  | 'ios-chord.wav'
+  | 'ios-circles.wav'
+  | 'ios-complete.wav'
+  | 'ios-hello.wav'
+  | 'ios-input.wav'
+  | 'ios-keys.wav'
+  | 'ios-popcorn.wav'
+  | 'ios-pulse.wav'
+  | 'ios-synth.wav'
+  | 'ios-bell-tower.wav'
+  | 'ios-boing.wav'
+  | 'ios-glass.wav'
+  | 'ios-harp.wav'
   | 'zona-soft.wav'
   | 'zona-bright.wav'
   | 'zona-urgent.wav'

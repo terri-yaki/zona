@@ -6,27 +6,46 @@ import { zhHant } from '../i18n/zh-Hant';
 import {
   androidChannelSound,
   BUNDLED_SOUND_FILES,
+  IOS_TONE_FILES,
   isBundledSoundFile,
-  isNativeSoundId,
-  NATIVE_SOUND_IDS,
+  isIosToneFile,
   previewContentSound,
   pushPayloadSound,
   SOUND_CHOICES,
   soundChannelId,
   soundDescriptionKeys,
   soundLabelKeys,
+  ZONA_SOUND_FILES,
 } from '../lib/notification-sound-map';
 import type { NotificationSound } from '../types/database';
 
 describe('notification sound picker list', () => {
-  it('offers the phone-native notification, alarm, and ringtone options', () => {
-    expect(SOUND_CHOICES).toContain('native-notification');
-    expect(SOUND_CHOICES).toContain('native-alarm');
-    expect(SOUND_CHOICES).toContain('native-ringtone');
+  it('offers the iPhone alert tones shown in the iOS-style picker', () => {
+    for (const tone of [
+      'ios-note.wav',
+      'ios-aurora.wav',
+      'ios-bamboo.wav',
+      'ios-chord.wav',
+      'ios-circles.wav',
+      'ios-complete.wav',
+      'ios-hello.wav',
+      'ios-input.wav',
+      'ios-keys.wav',
+      'ios-popcorn.wav',
+      'ios-pulse.wav',
+      'ios-synth.wav',
+      'ios-bell-tower.wav',
+      'ios-boing.wav',
+      'ios-glass.wav',
+      'ios-harp.wav',
+    ]) {
+      expect(SOUND_CHOICES, tone).toContain(tone);
+    }
+    expect(IOS_TONE_FILES).toHaveLength(16);
   });
 
-  it('lists special, native, then bundled sounds with silent last and no duplicates', () => {
-    expect(SOUND_CHOICES).toEqual(['default', ...NATIVE_SOUND_IDS, ...BUNDLED_SOUND_FILES, 'silent']);
+  it('lists default, then iPhone tones, then Zona presets, with silent last and no duplicates', () => {
+    expect(SOUND_CHOICES).toEqual(['default', ...IOS_TONE_FILES, ...ZONA_SOUND_FILES, 'silent']);
     expect(new Set(SOUND_CHOICES).size).toBe(SOUND_CHOICES.length);
   });
 
@@ -51,6 +70,7 @@ describe('notification sound picker list', () => {
     );
     expect(plugin, 'expo-notifications plugin with sounds list').toBeDefined();
     const pluginSounds = plugin?.[1]?.sounds ?? [];
+    expect(BUNDLED_SOUND_FILES).toHaveLength(25);
     for (const file of BUNDLED_SOUND_FILES) {
       expect(pluginSounds, file).toContain(`./assets/sounds/${file}`);
     }
@@ -58,11 +78,9 @@ describe('notification sound picker list', () => {
 });
 
 describe('notification sound mapping', () => {
-  it('identifies the native choices and nothing else', () => {
-    expect(NATIVE_SOUND_IDS).toEqual(['native-notification', 'native-alarm', 'native-ringtone']);
+  it('classifies iPhone tones, Zona presets, and special choices', () => {
     for (const choice of SOUND_CHOICES) {
-      const expected = choice.startsWith('native-');
-      expect(isNativeSoundId(choice), choice).toBe(expected);
+      expect(isIosToneFile(choice), choice).toBe(choice.startsWith('ios-'));
       expect(isBundledSoundFile(choice), choice).toBe(choice.endsWith('.wav'));
     }
   });
@@ -79,27 +97,19 @@ describe('notification sound mapping', () => {
     expect(soundChannelId('silent')).toBe('zona_silent');
   });
 
-  it('maps every native choice to the phone system sound on each platform', () => {
-    // APNs only accepts `default` or bundled files, and the pinned Android
-    // client resolves channel sounds to bundled resources or the system
-    // default notification sound — so native choices resolve to the system
-    // default sound (exact for native-notification, documented degradation
-    // for native-alarm / native-ringtone) with a per-choice Android channel.
-    const expected: Record<(typeof NATIVE_SOUND_IDS)[number], string> = {
-      'native-notification': 'zona_native_notification',
-      'native-alarm': 'zona_native_alarm',
-      'native-ringtone': 'zona_native_ringtone',
-    };
-    for (const nativeId of NATIVE_SOUND_IDS) {
-      expect(pushPayloadSound(nativeId), nativeId).toBe('default');
-      expect(androidChannelSound(nativeId), nativeId).toBe('default');
-      expect(previewContentSound(nativeId), nativeId).toBe(true);
-      expect(soundChannelId(nativeId), nativeId).toBe(expected[nativeId]);
+  it('maps every iPhone tone to its bundled file and a per-tone channel', () => {
+    // APNs plays bundled files by basename, so the stored choice travels
+    // unchanged end to end; the Android channel id is the slugged basename.
+    for (const tone of IOS_TONE_FILES) {
+      expect(pushPayloadSound(tone), tone).toBe(tone);
+      expect(androidChannelSound(tone), tone).toBe(tone);
+      expect(previewContentSound(tone), tone).toBe(tone);
+      expect(soundChannelId(tone), tone).toBe(`zona_${tone.replace(/\.wav$/i, '').replace(/-/g, '_')}`);
     }
   });
 
-  it('maps every bundled preset to its file and slugged channel', () => {
-    for (const file of BUNDLED_SOUND_FILES) {
+  it('maps every Zona preset to its file and slugged channel', () => {
+    for (const file of ZONA_SOUND_FILES) {
       expect(pushPayloadSound(file)).toBe(file);
       expect(androidChannelSound(file)).toBe(file);
       expect(previewContentSound(file)).toBe(file);
@@ -119,7 +129,7 @@ describe('notification sound mapping', () => {
         expect(payload).toBeNull();
         expect(channelSound).toBeNull();
         expect(preview).toBe(false);
-      } else if (isNativeSoundId(choice) || choice === 'default') {
+      } else if (choice === 'default') {
         expect(payload).toBe('default');
         expect(channelSound).toBe('default');
         expect(preview).toBe(true);

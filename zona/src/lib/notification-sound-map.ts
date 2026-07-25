@@ -9,8 +9,11 @@ import type { NotificationSound } from '../types/database';
  * the identifier set and channel-id rule and both sides are unit-tested.
  */
 
-/** Bundled custom sounds (must match app.json expo-notifications plugin list). */
-export const BUNDLED_SOUND_FILES = [
+/**
+ * Zona's own synthesized presets (assets/sounds/zona-*.wav), kept in sync with
+ * the app.json expo-notifications plugin list by unit tests.
+ */
+export const ZONA_SOUND_FILES = [
   'zona-soft.wav',
   'zona-bright.wav',
   'zona-urgent.wav',
@@ -22,65 +25,78 @@ export const BUNDLED_SOUND_FILES = [
   'zona-bloom.wav',
 ] as const;
 
+/**
+ * iPhone alert tones bundled with the app (assets/sounds/ios-*.wav), listed in
+ * the same order as the iOS-style picker the feature mirrors. iOS gives apps
+ * no API to reference the phone's system tones, so (like Slack et al.) the
+ * tones are bundled audio files that APNs plays by basename. Provenance and
+ * licensing are documented in CHANGELOG.md.
+ */
+export const IOS_TONE_FILES = [
+  'ios-note.wav',
+  'ios-aurora.wav',
+  'ios-bamboo.wav',
+  'ios-chord.wav',
+  'ios-circles.wav',
+  'ios-complete.wav',
+  'ios-hello.wav',
+  'ios-input.wav',
+  'ios-keys.wav',
+  'ios-popcorn.wav',
+  'ios-pulse.wav',
+  'ios-synth.wav',
+  'ios-bell-tower.wav',
+  'ios-boing.wav',
+  'ios-glass.wav',
+  'ios-harp.wav',
+] as const;
+
+export type IosToneFile = (typeof IOS_TONE_FILES)[number];
+
+/** Every sound file bundled in the app (iPhone tones + Zona presets). */
+export const BUNDLED_SOUND_FILES = [...IOS_TONE_FILES, ...ZONA_SOUND_FILES] as const;
+
 export type BundledSoundFile = (typeof BUNDLED_SOUND_FILES)[number];
 
 export function isBundledSoundFile(value: string): value is BundledSoundFile {
   return (BUNDLED_SOUND_FILES as readonly string[]).includes(value);
 }
 
-/** Stored identifiers for the phone's own tones, selectable in the picker. */
-export const NATIVE_SOUND_IDS = ['native-notification', 'native-alarm', 'native-ringtone'] as const;
-
-export type NativeSoundId = (typeof NATIVE_SOUND_IDS)[number];
-
-export function isNativeSoundId(value: string): value is NativeSoundId {
-  return (NATIVE_SOUND_IDS as readonly string[]).includes(value);
+export function isIosToneFile(value: string): value is IosToneFile {
+  return (IOS_TONE_FILES as readonly string[]).includes(value);
 }
 
 /**
- * Concrete `sound` value for the Expo push payload.
- *
- * APNs accepts only `default` or an audio file bundled in the app, and the
- * pinned Android client resolves payload sounds to bundled raw resources or
- * the system default — neither platform lets a third-party app play the
- * phone's alarm/ringtone tones for a notification. Native choices therefore
- * travel as `default`: the exact system notification sound for
- * `native-notification`, and the documented honest degradation for
- * `native-alarm` / `native-ringtone`. On Android 8+ the channel (see
- * `soundChannelId` / `androidChannelSound`) carries the effective tone.
+ * Concrete `sound` value for the Expo push payload. APNs accepts only
+ * `default` or an audio file bundled in the app, so every tone choice travels
+ * as its bundled basename and `silent` suppresses the sound.
  */
 export function pushPayloadSound(soundName: NotificationSound): string | null {
   if (soundName === 'silent') return null;
-  if (soundName === 'default' || isNativeSoundId(soundName)) return 'default';
+  if (soundName === 'default') return 'default';
   return soundName;
 }
 
 /**
- * Sound passed to `setNotificationChannelAsync` for a stored choice.
- *
- * The pinned expo-notifications `SoundResolver` maps channel sounds to
- * bundled raw resources only, falling back to the system default notification
- * sound for anything else — system alarm/ringtone URIs are not expressible
- * without unvetted native code. Native choices honestly map to `'default'`
- * (the phone's notification sound; exact for `native-notification`), and
- * `silent` maps to `null` (no sound).
+ * Sound passed to `setNotificationChannelAsync` for a stored choice. The
+ * pinned expo-notifications resolves channel sounds to bundled raw resources
+ * (`default` maps to the system default notification sound); `silent` maps to
+ * `null` (no sound).
  */
 export function androidChannelSound(soundName: NotificationSound): string | null {
   if (soundName === 'silent') return null;
-  if (soundName === 'default' || isNativeSoundId(soundName)) return 'default';
+  if (soundName === 'default') return 'default';
   return soundName;
 }
 
 /**
  * `sound` value for the local preview notification content: `true` plays the
  * system default sound, `false` plays none, and bundled filenames play the
- * file itself. Native choices resolve to `true` (same mapping as the push
- * payload — exact for the phone's notification sound, the documented
- * degradation for alarm/ringtone). On Android the channel sound governs.
+ * file itself (which also verifies the file made it into the build).
  */
 export function previewContentSound(soundName: NotificationSound): string | boolean {
   if (soundName === 'silent') return false;
-  if (soundName === 'default' || isNativeSoundId(soundName)) return true;
+  if (soundName === 'default') return true;
   return soundName;
 }
 
@@ -88,25 +104,38 @@ export function previewContentSound(soundName: NotificationSound): string | bool
 export function soundChannelId(soundName: NotificationSound | string | null): string {
   if (!soundName || soundName === 'silent') return 'zona_silent';
   if (soundName === 'default') return 'zona_default';
-  // zona-soft.wav → zona_soft; native-alarm → zona_native_alarm
+  // zona-soft.wav → zona_soft; ios-aurora.wav → zona_ios_aurora
   const slug = soundName.replace(/\.wav$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
   return slug.startsWith('zona_') ? slug : `zona_${slug}`;
 }
 
-/** Picker rows in display order: special, phone-native, bundled, silent last. */
+/** Picker rows in display order: default, iPhone tones, Zona presets, silent last. */
 export const SOUND_CHOICES: readonly NotificationSound[] = [
   'default',
-  ...NATIVE_SOUND_IDS,
-  ...BUNDLED_SOUND_FILES,
+  ...IOS_TONE_FILES,
+  ...ZONA_SOUND_FILES,
   'silent',
 ];
 
 export const soundLabelKeys: Record<NotificationSound, TranslationKey> = {
   default: 'sources.soundDefault',
   silent: 'sources.soundSilent',
-  'native-notification': 'sources.soundNativeNotification',
-  'native-alarm': 'sources.soundNativeAlarm',
-  'native-ringtone': 'sources.soundNativeRingtone',
+  'ios-note.wav': 'sources.soundIosNote',
+  'ios-aurora.wav': 'sources.soundIosAurora',
+  'ios-bamboo.wav': 'sources.soundIosBamboo',
+  'ios-chord.wav': 'sources.soundIosChord',
+  'ios-circles.wav': 'sources.soundIosCircles',
+  'ios-complete.wav': 'sources.soundIosComplete',
+  'ios-hello.wav': 'sources.soundIosHello',
+  'ios-input.wav': 'sources.soundIosInput',
+  'ios-keys.wav': 'sources.soundIosKeys',
+  'ios-popcorn.wav': 'sources.soundIosPopcorn',
+  'ios-pulse.wav': 'sources.soundIosPulse',
+  'ios-synth.wav': 'sources.soundIosSynth',
+  'ios-bell-tower.wav': 'sources.soundIosBellTower',
+  'ios-boing.wav': 'sources.soundIosBoing',
+  'ios-glass.wav': 'sources.soundIosGlass',
+  'ios-harp.wav': 'sources.soundIosHarp',
   'zona-soft.wav': 'sources.soundSoft',
   'zona-bright.wav': 'sources.soundBright',
   'zona-urgent.wav': 'sources.soundUrgent',
@@ -121,9 +150,22 @@ export const soundLabelKeys: Record<NotificationSound, TranslationKey> = {
 export const soundDescriptionKeys: Record<NotificationSound, TranslationKey> = {
   default: 'sources.soundDefaultDesc',
   silent: 'sources.soundSilentDesc',
-  'native-notification': 'sources.soundNativeNotificationDesc',
-  'native-alarm': 'sources.soundNativeAlarmDesc',
-  'native-ringtone': 'sources.soundNativeRingtoneDesc',
+  'ios-note.wav': 'sources.soundIosToneDesc',
+  'ios-aurora.wav': 'sources.soundIosToneDesc',
+  'ios-bamboo.wav': 'sources.soundIosToneDesc',
+  'ios-chord.wav': 'sources.soundIosToneDesc',
+  'ios-circles.wav': 'sources.soundIosToneDesc',
+  'ios-complete.wav': 'sources.soundIosToneDesc',
+  'ios-hello.wav': 'sources.soundIosToneDesc',
+  'ios-input.wav': 'sources.soundIosToneDesc',
+  'ios-keys.wav': 'sources.soundIosToneDesc',
+  'ios-popcorn.wav': 'sources.soundIosToneDesc',
+  'ios-pulse.wav': 'sources.soundIosToneDesc',
+  'ios-synth.wav': 'sources.soundIosToneDesc',
+  'ios-bell-tower.wav': 'sources.soundIosToneDesc',
+  'ios-boing.wav': 'sources.soundIosToneDesc',
+  'ios-glass.wav': 'sources.soundIosToneDesc',
+  'ios-harp.wav': 'sources.soundIosToneDesc',
   'zona-soft.wav': 'sources.soundSoftDesc',
   'zona-bright.wav': 'sources.soundBrightDesc',
   'zona-urgent.wav': 'sources.soundUrgentDesc',

@@ -27,6 +27,7 @@ import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/a
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
 import {
+  isIosToneFile,
   SOUND_CHOICES as soundChoices,
   soundDescriptionKeys,
   soundLabelKeys,
@@ -40,13 +41,19 @@ import type { SFSymbol } from 'expo-symbols';
 
 type SoundName = ApiKey['sound_name'];
 
-/** Row glyphs; anything not listed falls back to the generic speaker icon. */
-const soundGlyphs: Partial<Record<SoundName, { name: SFSymbol; fallback: string }>> = {
+type SoundGlyph = { name: SFSymbol; fallback: string };
+
+/** Row glyphs; bundled Zona presets fall back to the generic speaker icon. */
+const soundGlyphs: Partial<Record<SoundName, SoundGlyph>> = {
   silent: { name: 'speaker.slash.fill', fallback: '∅' },
-  'native-notification': { name: 'bell.fill', fallback: '🔔' },
-  'native-alarm': { name: 'alarm.fill', fallback: '⏰' },
-  'native-ringtone': { name: 'phone.fill', fallback: '📞' },
 };
+
+const iosToneGlyph: SoundGlyph = { name: 'applelogo', fallback: '♪' };
+
+function soundGlyph(choice: SoundName): SoundGlyph {
+  if (soundGlyphs[choice]) return soundGlyphs[choice];
+  return isIosToneFile(choice) ? iosToneGlyph : { name: 'speaker.wave.2.fill', fallback: '♪' };
+}
 
 function recentlyActive(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -392,8 +399,8 @@ function SoundPickerModal({
                   <View style={[styles.soundGlyph, selected && styles.soundGlyphSelected]}>
                     <AppIcon
                       color={selected ? colors.white : colors.primary}
-                      fallback={soundGlyphs[choice]?.fallback ?? '♪'}
-                      name={soundGlyphs[choice]?.name ?? 'speaker.wave.2.fill'}
+                      fallback={soundGlyph(choice).fallback}
+                      name={soundGlyph(choice).name}
                       size={16}
                     />
                   </View>
