@@ -10,23 +10,7 @@ import type { NotificationSound } from '../types/database';
  */
 
 /**
- * Zona's own synthesized presets (assets/sounds/zona-*.wav), kept in sync with
- * the app.json expo-notifications plugin list by unit tests.
- */
-export const ZONA_SOUND_FILES = [
-  'zona-soft.wav',
-  'zona-bright.wav',
-  'zona-urgent.wav',
-  'zona-chime.wav',
-  'zona-crystal.wav',
-  'zona-warm.wav',
-  'zona-pulse.wav',
-  'zona-signal.wav',
-  'zona-bloom.wav',
-] as const;
-
-/**
- * iPhone alert tones bundled with the app (assets/sounds/ios-*.wav), listed in
+ * iPhone ringtones bundled with the app (assets/sounds/ios-*.wav), listed in
  * the same order as the iOS-style picker the feature mirrors. iOS gives apps
  * no API to reference the phone's system tones, so (like Slack et al.) the
  * tones are bundled audio files that APNs plays by basename. Provenance and
@@ -103,8 +87,8 @@ export const IOS_TONE_FILES = [
 
 export type IosToneFile = (typeof IOS_TONE_FILES)[number];
 
-/** Every sound file bundled in the app (iPhone tones + Zona presets). */
-export const BUNDLED_SOUND_FILES = [...IOS_TONE_FILES, ...ZONA_SOUND_FILES] as const;
+/** Every sound file bundled in the app (the iPhone ringtone collection). */
+export const BUNDLED_SOUND_FILES = [...IOS_TONE_FILES] as const;
 
 export type BundledSoundFile = (typeof BUNDLED_SOUND_FILES)[number];
 
@@ -159,11 +143,10 @@ export function soundChannelId(soundName: NotificationSound | string | null): st
   return slug.startsWith('zona_') ? slug : `zona_${slug}`;
 }
 
-/** Picker rows in display order: default, iPhone tones, Zona presets, silent last. */
+/** Picker rows in display order: default, the iPhone ringtone collection, silent last. */
 export const SOUND_CHOICES: readonly NotificationSound[] = [
   'default',
   ...IOS_TONE_FILES,
-  ...ZONA_SOUND_FILES,
   'silent',
 ];
 
@@ -236,32 +219,27 @@ export const soundLabelKeys: Record<NotificationSound, TranslationKey> = {
   'ios-uplift.wav': 'sources.soundIosUplift',
   'ios-waves.wav': 'sources.soundIosWaves',
   'ios-xylophone.wav': 'sources.soundIosXylophone',
-  'zona-soft.wav': 'sources.soundSoft',
-  'zona-bright.wav': 'sources.soundBright',
-  'zona-urgent.wav': 'sources.soundUrgent',
-  'zona-chime.wav': 'sources.soundChime',
-  'zona-crystal.wav': 'sources.soundCrystal',
-  'zona-warm.wav': 'sources.soundWarm',
-  'zona-pulse.wav': 'sources.soundPulse',
-  'zona-signal.wav': 'sources.soundSignal',
-  'zona-bloom.wav': 'sources.soundBloom',
 };
 
 /**
- * Descriptions are shown only for the special choices and Zona's own presets.
- * iPhone tone rows show just the tone name (they are Apple's tones, not
- * Zona-built-in sounds, so there is nothing to caption).
+ * Display label for any stored `sound_name`, including legacy values the app
+ * no longer offers (e.g. removed presets whose migration has not run yet):
+ * unknown values fall back to a generic "custom sound" label instead of
+ * crashing the sources screen.
+ */
+export function soundLabelKeyFor(soundName: NotificationSound | string | null | undefined): TranslationKey {
+  if (soundName && Object.prototype.hasOwnProperty.call(soundLabelKeys, soundName)) {
+    return soundLabelKeys[soundName as NotificationSound];
+  }
+  return 'sources.soundUnknown';
+}
+
+/**
+ * Descriptions are shown only for the special choices. iPhone tone rows show
+ * just the tone name (they are Apple's tones, not Zona-built-in sounds, so
+ * there is nothing to caption).
  */
 export const soundDescriptionKeys: Record<Exclude<NotificationSound, IosToneFile>, TranslationKey> = {
   default: 'sources.soundDefaultDesc',
   silent: 'sources.soundSilentDesc',
-  'zona-soft.wav': 'sources.soundSoftDesc',
-  'zona-bright.wav': 'sources.soundBrightDesc',
-  'zona-urgent.wav': 'sources.soundUrgentDesc',
-  'zona-chime.wav': 'sources.soundChimeDesc',
-  'zona-crystal.wav': 'sources.soundCrystalDesc',
-  'zona-warm.wav': 'sources.soundWarmDesc',
-  'zona-pulse.wav': 'sources.soundPulseDesc',
-  'zona-signal.wav': 'sources.soundSignalDesc',
-  'zona-bloom.wav': 'sources.soundBloomDesc',
 };

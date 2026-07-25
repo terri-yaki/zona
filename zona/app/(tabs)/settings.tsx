@@ -10,6 +10,13 @@ import { getAppOptions, updateAppOptions, type AppOptionFlags } from '@/data/opt
 import { deleteAccount } from '@/lib/api';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
 import {
+  advanceDeleteConfirmation,
+  cancelDeleteConfirmation,
+  canDeleteAccount,
+  DELETE_CONFIRMATION_IDLE,
+  type DeleteConfirmationStep,
+} from '@/lib/delete-confirmation';
+import {
   getLiveActivityCapability,
   liveActivityCapabilityLabel,
   liveActivityPlatformSupported,
@@ -42,6 +49,7 @@ export default function SettingsScreen() {
   const [registering, setRegistering] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<DeleteConfirmationStep>(DELETE_CONFIRMATION_IDLE);
   const [options, setOptions] = useState<AppOptions | null>(null);
   const [savingOption, setSavingOption] = useState<keyof AppOptionFlags | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
@@ -198,27 +206,53 @@ export default function SettingsScreen() {
     }
   }
 
+  // Two consecutive explicit confirmations gate the destructive call; the
+  // transitions live in the pure delete-confirmation unit. Canceling either
+  // dialog resets the flow and no delete request can fire.
   function confirmDeletion() {
     if (!userId || deleting) return;
     const expectedUserId = userId;
+    // The flow starts from the machine's current state (always idle here —
+    // the modal alerts block re-entry, and cancel/delete reset it to idle).
+    const firstStep = advanceDeleteConfirmation(deleteStep);
+    setDeleteStep(firstStep);
     Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody', { accountId: expectedUserId }), [
-      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel', onPress: () => setDeleteStep(cancelDeleteConfirmation()) },
+      {
+        text: t('settings.deleteContinue'),
+        style: 'destructive',
+        onPress: () => confirmDeletionFinal(expectedUserId, firstStep),
+      },
+    ]);
+  }
+
+  function confirmDeletionFinal(expectedUserId: string, step: DeleteConfirmationStep) {
+    const armed = advanceDeleteConfirmation(step);
+    setDeleteStep(armed);
+    Alert.alert(t('settings.deleteFinalTitle'), t('settings.deleteFinalBody'), [
+      { text: t('common.cancel'), style: 'cancel', onPress: () => setDeleteStep(cancelDeleteConfirmation()) },
       {
         text: t('settings.deleteAccount'),
         style: 'destructive',
-        onPress: () => {
-          setDeleting(true);
-          void deleteAccount(expectedUserId)
-            .then(async (result) => {
-              if (result.userId !== expectedUserId) throw new Error(t('settings.deleteMismatch'));
-              await supabase.auth.signOut({ scope: 'local' });
-              router.replace('/sign-in');
-            })
-            .catch((error) => Alert.alert(t('settings.deleteError'), error instanceof Error ? error.message : t('common.tryAgain')))
-            .finally(() => setDeleting(false));
-        },
+        onPress: () => void performAccountDelete(expectedUserId, armed),
       },
     ]);
+  }
+
+  async function performAccountDelete(expectedUserId: string, step: DeleteConfirmationStep) {
+    if (!canDeleteAccount(step)) return;
+    setDeleteStep(cancelDeleteConfirmation());
+    setDeleting(true);
+    try {
+      const result = await deleteAccount(expectedUserId);
+      if (result.userId !== expectedUserId) throw new Error(t('settings.deleteMismatch'));
+      await supabase.auth.signOut({ scope: 'local' });
+      router.replace('/sign-in');
+    } catch (error) {
+      Alert.alert(t('settings.deleteError'), error instanceof Error ? error.message : t('common.tryAgain'));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   const busy = signingOut || deleting;

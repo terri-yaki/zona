@@ -8,6 +8,26 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Settings → "Delete account and data" now requires two consecutive explicit
+  confirmations before any delete request fires: the first dialog explains
+  the permanent deletion, the second is the final confirmation, and canceling
+  either aborts the flow. The gating logic is a pure, unit-tested state
+  machine (`delete-confirmation.ts`); the destructive call is only reachable
+  from the doubly-confirmed state.
+
+### Removed
+
+- The Zona custom sound presets (`zona-*.wav`) are retired now that the
+  iPhone ringtone collection covers the picker: the nine bundled presets,
+  their generator script, `app.json` plugin entries, i18n strings, type
+  members, and `notify` allow-list entries are gone. The picker offers only
+  Default, the 66 iPhone tones, and Silent. Migration
+  `202607250003_remove_zona_sound_presets` rewrites any stored preset
+  selections to `default` before tightening the check constraint; the app
+  shows a "Custom sound" fallback label for stored values it no longer
+  offers, and the push path keeps falling back to `default` for unknown
+  values.
+
 - Friendly in-app “What’s New” history in Settings, with user-focused release
   highlights in English and Traditional Chinese.
 - English and Traditional Chinese app languages, with automatic system-language

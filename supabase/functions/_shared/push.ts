@@ -92,15 +92,6 @@ const iosToneFiles = [
 const allowedSounds = new Set([
   'default',
   ...iosToneFiles,
-  'zona-soft.wav',
-  'zona-bright.wav',
-  'zona-urgent.wav',
-  'zona-chime.wav',
-  'zona-crystal.wav',
-  'zona-warm.wav',
-  'zona-pulse.wav',
-  'zona-signal.wav',
-  'zona-bloom.wav',
 ]);
 
 export function resolveSound(playSound: boolean, soundName: string | null | undefined): string | null {
@@ -142,8 +133,8 @@ export function createPushMessage(
   behavior: PushBehavior = { soundName: 'default', showPreview: true },
 ) {
   // Expo → APNs: `sound` must be the bundled basename including extension
-  // (e.g. zona-soft.wav, ios-aurora.wav) or `default`. Missing files make iOS
-  // fall back to the system default.
+  // (e.g. ios-aurora.wav) or `default`. Missing files make iOS fall back to
+  // the system default.
   const sound = behavior.soundName;
   return {
     to,

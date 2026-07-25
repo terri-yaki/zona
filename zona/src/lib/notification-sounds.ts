@@ -5,7 +5,6 @@ import { translate } from '@/i18n';
 import {
   androidChannelSound,
   BUNDLED_SOUND_FILES,
-  isIosToneFile,
   previewContentSound,
   soundChannelId,
   soundLabelKeys,
@@ -49,9 +48,7 @@ export function ensureNotificationSoundChannels(): Promise<void> {
     });
     for (const file of BUNDLED_SOUND_FILES) {
       await Notifications.setNotificationChannelAsync(soundChannelId(file), {
-        name: isIosToneFile(file)
-          ? translate(soundLabelKeys[file])
-          : translate('sound.channelNamed', { name: file.replace(/\.wav$/i, '').replace(/^zona[_-]?/i, '') }),
+        name: translate(soundLabelKeys[file]),
         importance: Notifications.AndroidImportance.MAX,
         // Basename including extension — must match the file in the app bundle.
         sound: androidChannelSound(file),
@@ -80,9 +77,7 @@ export async function previewNotificationSound(soundName: NotificationSound): Pr
     ? translate('sound.previewSilent')
     : soundName === 'default'
     ? translate('sound.previewDefault')
-    : translate('sound.previewNamed', {
-        name: isIosToneFile(soundName) ? translate(soundLabelKeys[soundName]) : soundName,
-      });
+    : translate('sound.previewNamed', { name: translate(soundLabelKeys[soundName]) });
 
   await Notifications.scheduleNotificationAsync({
     content: {

@@ -14,8 +14,8 @@ import {
   SOUND_CHOICES,
   soundChannelId,
   soundDescriptionKeys,
+  soundLabelKeyFor,
   soundLabelKeys,
-  ZONA_SOUND_FILES,
 } from '../lib/notification-sound-map';
 import type { NotificationSound } from '../types/database';
 
@@ -31,9 +31,31 @@ describe('notification sound picker list', () => {
     }
   });
 
-  it('lists default, then iPhone tones, then Zona presets, with silent last and no duplicates', () => {
-    expect(SOUND_CHOICES).toEqual(['default', ...IOS_TONE_FILES, ...ZONA_SOUND_FILES, 'silent']);
+  it('offers only default, the 66 iPhone tones, and silent (68 rows), with no duplicates', () => {
+    expect(SOUND_CHOICES).toEqual(['default', ...IOS_TONE_FILES, 'silent']);
+    expect(SOUND_CHOICES).toHaveLength(68);
+    expect(SOUND_CHOICES.some((choice) => choice.startsWith('zona-'))).toBe(false);
     expect(new Set(SOUND_CHOICES).size).toBe(SOUND_CHOICES.length);
+  });
+
+  it('labels any stored sound safely, including legacy values no longer offered', () => {
+    expect(soundLabelKeyFor('default')).toBe('sources.soundDefault');
+    expect(soundLabelKeyFor('ios-aurora.wav')).toBe('sources.soundIosAurora');
+    expect(soundLabelKeyFor('silent')).toBe('sources.soundSilent');
+
+    // Legacy presets removed from the app must still render a sane label.
+    const fallbackKey = soundLabelKeyFor('zona-soft.wav');
+    expect(fallbackKey).toBe('sources.soundUnknown');
+    expect(soundLabelKeyFor('zona-pulse.wav')).toBe(fallbackKey);
+    expect(soundLabelKeyFor('ios-not-a-tone.wav')).toBe(fallbackKey);
+    expect(soundLabelKeyFor(null)).toBe(fallbackKey);
+    expect(soundLabelKeyFor(undefined)).toBe(fallbackKey);
+    expect(soundLabelKeyFor('')).toBe(fallbackKey);
+
+    for (const catalog of [en, zhHant]) {
+      expect(typeof catalog[fallbackKey], 'fallback label resolves').toBe('string');
+      expect(catalog[fallbackKey].length).toBeGreaterThan(0);
+    }
   });
 
   it('shows a resolvable label for every choice, and captions only non-iPhone rows', () => {
@@ -65,10 +87,11 @@ describe('notification sound picker list', () => {
     );
     expect(plugin, 'expo-notifications plugin with sounds list').toBeDefined();
     const pluginSounds = plugin?.[1]?.sounds ?? [];
-    expect(BUNDLED_SOUND_FILES).toHaveLength(75);
+    expect(BUNDLED_SOUND_FILES).toHaveLength(66);
     for (const file of BUNDLED_SOUND_FILES) {
       expect(pluginSounds, file).toContain(`./assets/sounds/${file}`);
     }
+    expect(pluginSounds.some((sound) => sound.includes('zona-'))).toBe(false);
   });
 });
 
@@ -100,15 +123,6 @@ describe('notification sound mapping', () => {
       expect(androidChannelSound(tone), tone).toBe(tone);
       expect(previewContentSound(tone), tone).toBe(tone);
       expect(soundChannelId(tone), tone).toBe(`zona_${tone.replace(/\.wav$/i, '').replace(/-/g, '_')}`);
-    }
-  });
-
-  it('maps every Zona preset to its file and slugged channel', () => {
-    for (const file of ZONA_SOUND_FILES) {
-      expect(pushPayloadSound(file)).toBe(file);
-      expect(androidChannelSound(file)).toBe(file);
-      expect(previewContentSound(file)).toBe(file);
-      expect(soundChannelId(file)).toBe(file.replace(/\.wav$/i, '').replace(/-/g, '_'));
     }
   });
 

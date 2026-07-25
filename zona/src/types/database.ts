@@ -69,16 +69,7 @@ export type NotificationSound =
   | 'ios-twinkle.wav'
   | 'ios-uplift.wav'
   | 'ios-waves.wav'
-  | 'ios-xylophone.wav'
-  | 'zona-soft.wav'
-  | 'zona-bright.wav'
-  | 'zona-urgent.wav'
-  | 'zona-chime.wav'
-  | 'zona-crystal.wav'
-  | 'zona-warm.wav'
-  | 'zona-pulse.wav'
-  | 'zona-signal.wav'
-  | 'zona-bloom.wav';
+  | 'ios-xylophone.wav';
 
 export type Database = {
   public: {

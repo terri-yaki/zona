@@ -96,16 +96,7 @@
             "./assets/sounds/ios-twinkle.wav",
             "./assets/sounds/ios-uplift.wav",
             "./assets/sounds/ios-waves.wav",
-            "./assets/sounds/ios-xylophone.wav",
-            "./assets/sounds/zona-soft.wav",
-            "./assets/sounds/zona-bright.wav",
-            "./assets/sounds/zona-urgent.wav",
-            "./assets/sounds/zona-chime.wav",
-            "./assets/sounds/zona-crystal.wav",
-            "./assets/sounds/zona-warm.wav",
-            "./assets/sounds/zona-pulse.wav",
-            "./assets/sounds/zona-signal.wav",
-            "./assets/sounds/zona-bloom.wav"
+            "./assets/sounds/ios-xylophone.wav"
           ]
         }
       ],

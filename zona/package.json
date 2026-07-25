@@ -6,7 +6,6 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo start --ios",
-    "generate:sounds": "node scripts/generate-sounds.mjs",
     "check:sdk56": "node scripts/check-sdk56.mjs",
     "release:check": "node scripts/check-release-config.mjs",
     "typecheck": "tsc --noEmit",

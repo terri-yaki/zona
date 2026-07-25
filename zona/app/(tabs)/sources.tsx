@@ -30,6 +30,7 @@ import {
   isIosToneFile,
   SOUND_CHOICES as soundChoices,
   soundDescriptionKeys,
+  soundLabelKeyFor,
   soundLabelKeys,
 } from '@/lib/notification-sound-map';
 import { previewNotificationSound } from '@/lib/notification-sounds';
@@ -318,7 +319,7 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed]}
                     >
                       <AppIcon color={colors.primary} fallback="♪" name="speaker.wave.2.fill" size={12} />
-                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeys[item.api_key?.sound_name ?? 'default'])}</Text>
+                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeyFor(item.api_key?.sound_name))}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
