@@ -26,44 +26,27 @@ import { useSources } from '@/hooks/useSources';
 import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
+import {
+  SOUND_CHOICES as soundChoices,
+  soundDescriptionKeys,
+  soundLabelKeys,
+} from '@/lib/notification-sound-map';
 import { previewNotificationSound } from '@/lib/notification-sounds';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
 import type { ApiKey, Source } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
-import type { TranslationKey } from '@/i18n/en';
+import type { SFSymbol } from 'expo-symbols';
 
 type SoundName = ApiKey['sound_name'];
 
-const soundLabelKeys: Record<SoundName, TranslationKey> = {
-  default: 'sources.soundDefault',
-  silent: 'sources.soundSilent',
-  'zona-soft.wav': 'sources.soundSoft',
-  'zona-bright.wav': 'sources.soundBright',
-  'zona-urgent.wav': 'sources.soundUrgent',
-  'zona-chime.wav': 'sources.soundChime',
-  'zona-crystal.wav': 'sources.soundCrystal',
-  'zona-warm.wav': 'sources.soundWarm',
-  'zona-pulse.wav': 'sources.soundPulse',
-  'zona-signal.wav': 'sources.soundSignal',
-  'zona-bloom.wav': 'sources.soundBloom',
+/** Row glyphs; anything not listed falls back to the generic speaker icon. */
+const soundGlyphs: Partial<Record<SoundName, { name: SFSymbol; fallback: string }>> = {
+  silent: { name: 'speaker.slash.fill', fallback: '∅' },
+  'native-notification': { name: 'bell.fill', fallback: '🔔' },
+  'native-alarm': { name: 'alarm.fill', fallback: '⏰' },
+  'native-ringtone': { name: 'phone.fill', fallback: '📞' },
 };
-
-const soundDescriptionKeys: Record<SoundName, TranslationKey> = {
-  default: 'sources.soundDefaultDesc',
-  silent: 'sources.soundSilentDesc',
-  'zona-soft.wav': 'sources.soundSoftDesc',
-  'zona-bright.wav': 'sources.soundBrightDesc',
-  'zona-urgent.wav': 'sources.soundUrgentDesc',
-  'zona-chime.wav': 'sources.soundChimeDesc',
-  'zona-crystal.wav': 'sources.soundCrystalDesc',
-  'zona-warm.wav': 'sources.soundWarmDesc',
-  'zona-pulse.wav': 'sources.soundPulseDesc',
-  'zona-signal.wav': 'sources.soundSignalDesc',
-  'zona-bloom.wav': 'sources.soundBloomDesc',
-};
-
-const soundChoices: SoundName[] = ['default', 'zona-soft.wav', 'zona-bright.wav', 'zona-urgent.wav', 'zona-chime.wav', 'zona-crystal.wav', 'zona-warm.wav', 'zona-pulse.wav', 'zona-signal.wav', 'zona-bloom.wav', 'silent'];
 
 function recentlyActive(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -409,8 +392,8 @@ function SoundPickerModal({
                   <View style={[styles.soundGlyph, selected && styles.soundGlyphSelected]}>
                     <AppIcon
                       color={selected ? colors.white : colors.primary}
-                      fallback={choice === 'silent' ? '∅' : '♪'}
-                      name={choice === 'silent' ? 'speaker.slash.fill' : 'speaker.wave.2.fill'}
+                      fallback={soundGlyphs[choice]?.fallback ?? '♪'}
+                      name={soundGlyphs[choice]?.name ?? 'speaker.wave.2.fill'}
                       size={16}
                     />
                   </View>

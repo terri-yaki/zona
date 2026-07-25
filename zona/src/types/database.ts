@@ -1,9 +1,12 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-/** Bundled / special notification sound identifiers stored on api_keys.sound_name. */
+/** Bundled / native / special notification sound identifiers stored on api_keys.sound_name. */
 export type NotificationSound =
   | 'default'
   | 'silent'
+  | 'native-notification'
+  | 'native-alarm'
+  | 'native-ringtone'
   | 'zona-soft.wav'
   | 'zona-bright.wav'
   | 'zona-urgent.wav'

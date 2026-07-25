@@ -47,6 +47,18 @@ to use semantic application versions. Build numbers are managed by EAS.
   options, and a reusable per-source test-alert action.
 - Per-source notification sound presets (default, silent, soft, bright, urgent,
   chime, crystal, warm, pulse, signal, and bloom) with bundled iOS sound assets.
+- Phone-native sound choices in the per-source picker (migration
+  `202607250002`): the phone's notification sound, alarm sound, and ringtone
+  now appear beside the bundled presets. A pure app-side mapping
+  (`notification-sound-map.ts`) resolves each choice for preview, push
+  payload, and Android channel; the `notify` allow-list accepts the new
+  identifiers. Platform limits are honored honestly: APNs only plays
+  `default` or bundled files, and the pinned expo-notifications resolves
+  Android channel sounds to bundled resources or the system default
+  notification sound — so `native-notification` plays the phone's exact
+  notification sound on both platforms, while `native-alarm` and
+  `native-ringtone` degrade to the system default notification sound
+  (documented in code and in `docs/API.md`).
 
 ### Changed
 
