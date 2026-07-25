@@ -16,4 +16,19 @@ export type CreatedSource = {
   ingestUrl: string;
 };
 
-export type DeleteAccountResult = { deleted: true };
+export type DeleteAccountCleanup = {
+  apiKeys: number;
+  appOptions: number;
+  attachments: number;
+  notifications: number;
+  pushDevices: number;
+  rateEvents: number;
+  sourceCredentials: number;
+  sources: number;
+};
+
+export type DeleteAccountResult = {
+  cleanup: DeleteAccountCleanup;
+  deleted: true;
+  userId: string;
+};

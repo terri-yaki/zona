@@ -76,6 +76,14 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Production-hardening migration `202607200002`: owner-matching composite
   foreign keys, advisory locks serializing revoke against ingest, and
   idempotency constraints; sender examples now send `Idempotency-Key`.
+- Account deletion hardening (migration `202607250001`): a security-definer
+  `delete_account_data_internal` revokes every API key and source under an
+  advisory lock before removing rows and returns a per-table deletion audit;
+  `delete-account` now also purges Storage attachments, requires the client to
+  pass the expected account ID (409 on mismatch), and verifies the Auth user
+  is actually gone before reporting success. Settings refuses to sign out
+  unless the server confirms deletion of the exact signed-in account, fixing
+  deleted accounts whose keys kept working because the Auth user survived.
 
 ### Known release blockers
 

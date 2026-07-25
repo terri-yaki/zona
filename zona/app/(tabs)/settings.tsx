@@ -199,16 +199,18 @@ export default function SettingsScreen() {
   }
 
   function confirmDeletion() {
-    if (deleting) return;
-    Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody'), [
+    if (!userId || deleting) return;
+    const expectedUserId = userId;
+    Alert.alert(t('settings.deleteTitle'), t('settings.deleteBody', { accountId: expectedUserId }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('settings.deleteAccount'),
         style: 'destructive',
         onPress: () => {
           setDeleting(true);
-          void deleteAccount()
-            .then(async () => {
+          void deleteAccount(expectedUserId)
+            .then(async (result) => {
+              if (result.userId !== expectedUserId) throw new Error(t('settings.deleteMismatch'));
               await supabase.auth.signOut({ scope: 'local' });
               router.replace('/sign-in');
             })

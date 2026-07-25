@@ -1,4 +1,4 @@
-import { createClient, type User } from '@supabase/supabase-js';
+import { createClient, type User } from 'npm:@supabase/supabase-js@2.110.7';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const publishableKey = Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY');

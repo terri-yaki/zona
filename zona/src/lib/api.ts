@@ -4,6 +4,7 @@ import { dataError, functionError } from './errors';
 import { env } from './env';
 import { createSourceCredential } from './source-token';
 import { supabase } from './supabase';
+import { isDeleteAccountResult } from './validation';
 import { translate } from '@/i18n';
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -100,8 +101,10 @@ export function unregisterPushDevice(deviceId: string) {
   }, (value): value is { unregistered: boolean } => object(value) && value.unregistered === true);
 }
 
-export function deleteAccount() {
-  return invoke<DeleteAccountResult>('delete-account', { confirmation: 'DELETE' }, (value): value is DeleteAccountResult => (
-    object(value) && value.deleted === true
-  ));
+export function deleteAccount(expectedUserId: string) {
+  return invoke<DeleteAccountResult>(
+    'delete-account',
+    { confirmation: 'DELETE', expectedUserId },
+    (value): value is DeleteAccountResult => isDeleteAccountResult(value, expectedUserId),
+  );
 }
