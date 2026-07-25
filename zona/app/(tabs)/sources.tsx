@@ -406,7 +406,9 @@ function SoundPickerModal({
                   </View>
                   <View style={styles.soundCopy}>
                     <Text style={[styles.soundLabel, selected && styles.soundLabelSelected]}>{t(soundLabelKeys[choice])}</Text>
-                    <Text style={styles.soundDescription}>{t(soundDescriptionKeys[choice])}</Text>
+                    {!isIosToneFile(choice) && (
+                      <Text style={styles.soundDescription}>{t(soundDescriptionKeys[choice])}</Text>
+                    )}
                   </View>
                   {selected ? (
                     <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} />

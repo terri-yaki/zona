@@ -20,28 +20,15 @@ import {
 import type { NotificationSound } from '../types/database';
 
 describe('notification sound picker list', () => {
-  it('offers the iPhone alert tones shown in the iOS-style picker', () => {
-    for (const tone of [
-      'ios-note.wav',
-      'ios-aurora.wav',
-      'ios-bamboo.wav',
-      'ios-chord.wav',
-      'ios-circles.wav',
-      'ios-complete.wav',
-      'ios-hello.wav',
-      'ios-input.wav',
-      'ios-keys.wav',
-      'ios-popcorn.wav',
-      'ios-pulse.wav',
-      'ios-synth.wav',
-      'ios-bell-tower.wav',
-      'ios-boing.wav',
-      'ios-glass.wav',
-      'ios-harp.wav',
-    ]) {
+  it('offers the full bundled iPhone ringtone collection', () => {
+    expect(IOS_TONE_FILES).toHaveLength(66);
+    for (const tone of IOS_TONE_FILES) {
       expect(SOUND_CHOICES, tone).toContain(tone);
     }
-    expect(IOS_TONE_FILES).toHaveLength(16);
+    // Spot-check the tones from the reference picker screenshot.
+    for (const tone of ['ios-note.wav', 'ios-aurora.wav', 'ios-bamboo.wav', 'ios-chord.wav', 'ios-boing.wav', 'ios-glass.wav', 'ios-harp.wav']) {
+      expect(SOUND_CHOICES, tone).toContain(tone);
+    }
   });
 
   it('lists default, then iPhone tones, then Zona presets, with silent last and no duplicates', () => {
@@ -49,15 +36,23 @@ describe('notification sound picker list', () => {
     expect(new Set(SOUND_CHOICES).size).toBe(SOUND_CHOICES.length);
   });
 
-  it('has resolvable label and description strings in every catalog for every choice', () => {
+  it('shows a resolvable label for every choice, and captions only non-iPhone rows', () => {
     for (const choice of SOUND_CHOICES) {
       for (const catalog of [en, zhHant]) {
         const label = catalog[soundLabelKeys[choice]];
-        const description = catalog[soundDescriptionKeys[choice]];
         expect(typeof label, `${choice} label`).toBe('string');
         expect(label.length, `${choice} label`).toBeGreaterThan(0);
-        expect(typeof description, `${choice} description`).toBe('string');
-        expect(description.length, `${choice} description`).toBeGreaterThan(0);
+      }
+      if (isIosToneFile(choice)) {
+        // iPhone tones are Apple's own sounds — the row shows just the name.
+        expect(soundDescriptionKeys, `${choice} has no caption`).not.toHaveProperty(choice);
+      } else {
+        const descriptionKey = soundDescriptionKeys[choice];
+        for (const catalog of [en, zhHant]) {
+          const description = catalog[descriptionKey];
+          expect(typeof description, `${choice} description`).toBe('string');
+          expect(description.length, `${choice} description`).toBeGreaterThan(0);
+        }
       }
     }
   });
@@ -70,7 +65,7 @@ describe('notification sound picker list', () => {
     );
     expect(plugin, 'expo-notifications plugin with sounds list').toBeDefined();
     const pluginSounds = plugin?.[1]?.sounds ?? [];
-    expect(BUNDLED_SOUND_FILES).toHaveLength(25);
+    expect(BUNDLED_SOUND_FILES).toHaveLength(75);
     for (const file of BUNDLED_SOUND_FILES) {
       expect(pluginSounds, file).toContain(`./assets/sounds/${file}`);
     }

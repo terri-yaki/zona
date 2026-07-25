@@ -90,6 +90,8 @@ Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', ()
   assertEquals(resolveSound(true, 'ios-aurora.wav'), 'ios-aurora.wav');
   assertEquals(resolveSound(true, 'ios-boing.wav'), 'ios-boing.wav');
   assertEquals(resolveSound(true, 'ios-harp.wav'), 'ios-harp.wav');
+  assertEquals(resolveSound(true, 'ios-stargaze.wav'), 'ios-stargaze.wav');
+  assertEquals(resolveSound(true, 'ios-by-the-seaside.wav'), 'ios-by-the-seaside.wav');
   assertEquals(resolveSound(false, 'ios-glass.wav'), null);
   assertEquals(resolveSound(true, 'ios-not-bundled.wav'), 'default');
 
@@ -97,6 +99,7 @@ Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', ()
   // in zona/src/lib/notification-sound-map.ts.
   assertEquals(soundChannelId('ios-aurora.wav'), 'zona_ios_aurora');
   assertEquals(soundChannelId('ios-bell-tower.wav'), 'zona_ios_bell_tower');
+  assertEquals(soundChannelId('ios-by-the-seaside.wav'), 'zona_ios_by_the_seaside');
   assertEquals(soundChannelId('zona-soft.wav'), 'zona_soft');
 
   const message = createPushMessage(

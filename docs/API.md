@@ -16,7 +16,7 @@ The app displays a safe API-key registry backed by `public.api_keys`:
 | `name` | User-editable PC/application label. |
 | `key_prefix` | Short non-secret identifier; never the full key or its hash. |
 | `is_active` | Reversible pause/resume switch. Paused keys receive `401`. |
-| `sound_name` | Per-source choice: default, silent, a bundled iPhone alert tone (note, aurora, bamboo, chord, circles, complete, hello, input, keys, popcorn, pulse, synth, bell-tower, boing, glass, harp — stored as `ios-*.wav`), or a bundled Zona preset (`zona-*.wav`: soft, bright, urgent, chime, crystal, warm, pulse, signal, bloom). |
+| `sound_name` | Per-source choice: default, silent, a bundled iPhone ringtone (66 classic tones, stored as `ios-*.wav`: alarm, apex, …, waves, xylophone), or a bundled Zona preset (`zona-*.wav`: soft, bright, urgent, chime, crystal, warm, pulse, signal, bloom). |
 | `last_used_at` | Last newly accepted notification. |
 | `expires_at` | Optional future expiry. |
 | `revoked_at` | Permanent revocation time. |
