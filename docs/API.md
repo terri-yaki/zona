@@ -16,10 +16,15 @@ The app displays a safe API-key registry backed by `public.api_keys`:
 | `name` | User-editable PC/application label. |
 | `key_prefix` | Short non-secret identifier; never the full key or its hash. |
 | `is_active` | Reversible pause/resume switch. Paused keys receive `401`. |
-| `sound_name` | Per-source choice: default, silent, soft, bright, urgent, chime, crystal, warm, pulse, signal, or bloom. |
+| `sound_name` | Per-source choice: default, silent, or a bundled iPhone ringtone (66 classic tones, stored as `ios-*.wav`: alarm, apex, …, waves, xylophone). Retired `zona-*.wav` presets are rewritten to `default` by migration `202607250003`. |
 | `last_used_at` | Last newly accepted notification. |
 | `expires_at` | Optional future expiry. |
 | `revoked_at` | Permanent revocation time. |
+
+`public.app_changelog` holds the app's What's New release notes (bilingual
+title/summary plus a JSONB `items` array), readable by any signed-in install
+and writable only via the service role, so content updates ship without an
+app release.
 
 Notification behavior is stored per account in `public.app_options`.
 `push_enabled=false` keeps accepting inbox records but skips remote push;

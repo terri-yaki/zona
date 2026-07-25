@@ -55,7 +55,7 @@ export async function setApiKeySound(apiKeyId: string, soundName: import('@/type
     if (code === '23514' || /sound_name|check constraint/i.test(detail)) {
       throw dataError(
         error,
-        'This sound is not allowed on the server yet. Apply migration 202607240004_more_notification_sounds (supabase db push) and try again.',
+        'This sound is not allowed on the server yet. Apply migration 202607250003_remove_zona_sound_presets (supabase db push) and try again.',
       );
     }
     throw dataError(error, translate('sources.soundError'));

@@ -26,44 +26,35 @@ import { useSources } from '@/hooks/useSources';
 import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
+import {
+  isIosToneFile,
+  SOUND_CHOICES as soundChoices,
+  soundDescriptionKeys,
+  soundLabelKeyFor,
+  soundLabelKeys,
+} from '@/lib/notification-sound-map';
 import { previewNotificationSound } from '@/lib/notification-sounds';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
 import type { ApiKey, Source } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
-import type { TranslationKey } from '@/i18n/en';
+import type { SFSymbol } from 'expo-symbols';
 
 type SoundName = ApiKey['sound_name'];
 
-const soundLabelKeys: Record<SoundName, TranslationKey> = {
-  default: 'sources.soundDefault',
-  silent: 'sources.soundSilent',
-  'zona-soft.wav': 'sources.soundSoft',
-  'zona-bright.wav': 'sources.soundBright',
-  'zona-urgent.wav': 'sources.soundUrgent',
-  'zona-chime.wav': 'sources.soundChime',
-  'zona-crystal.wav': 'sources.soundCrystal',
-  'zona-warm.wav': 'sources.soundWarm',
-  'zona-pulse.wav': 'sources.soundPulse',
-  'zona-signal.wav': 'sources.soundSignal',
-  'zona-bloom.wav': 'sources.soundBloom',
+type SoundGlyph = { name: SFSymbol; fallback: string };
+
+/** Row glyphs; bundled Zona presets fall back to the generic speaker icon. */
+const soundGlyphs: Partial<Record<SoundName, SoundGlyph>> = {
+  silent: { name: 'speaker.slash.fill', fallback: '∅' },
 };
 
-const soundDescriptionKeys: Record<SoundName, TranslationKey> = {
-  default: 'sources.soundDefaultDesc',
-  silent: 'sources.soundSilentDesc',
-  'zona-soft.wav': 'sources.soundSoftDesc',
-  'zona-bright.wav': 'sources.soundBrightDesc',
-  'zona-urgent.wav': 'sources.soundUrgentDesc',
-  'zona-chime.wav': 'sources.soundChimeDesc',
-  'zona-crystal.wav': 'sources.soundCrystalDesc',
-  'zona-warm.wav': 'sources.soundWarmDesc',
-  'zona-pulse.wav': 'sources.soundPulseDesc',
-  'zona-signal.wav': 'sources.soundSignalDesc',
-  'zona-bloom.wav': 'sources.soundBloomDesc',
-};
+const iosToneGlyph: SoundGlyph = { name: 'applelogo', fallback: '♪' };
 
-const soundChoices: SoundName[] = ['default', 'zona-soft.wav', 'zona-bright.wav', 'zona-urgent.wav', 'zona-chime.wav', 'zona-crystal.wav', 'zona-warm.wav', 'zona-pulse.wav', 'zona-signal.wav', 'zona-bloom.wav', 'silent'];
+function soundGlyph(choice: SoundName): SoundGlyph {
+  if (soundGlyphs[choice]) return soundGlyphs[choice];
+  return isIosToneFile(choice) ? iosToneGlyph : { name: 'speaker.wave.2.fill', fallback: '♪' };
+}
 
 function recentlyActive(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -328,7 +319,7 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed]}
                     >
                       <AppIcon color={colors.primary} fallback="♪" name="speaker.wave.2.fill" size={12} />
-                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeys[item.api_key?.sound_name ?? 'default'])}</Text>
+                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeyFor(item.api_key?.sound_name))}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
@@ -409,14 +400,16 @@ function SoundPickerModal({
                   <View style={[styles.soundGlyph, selected && styles.soundGlyphSelected]}>
                     <AppIcon
                       color={selected ? colors.white : colors.primary}
-                      fallback={choice === 'silent' ? '∅' : '♪'}
-                      name={choice === 'silent' ? 'speaker.slash.fill' : 'speaker.wave.2.fill'}
+                      fallback={soundGlyph(choice).fallback}
+                      name={soundGlyph(choice).name}
                       size={16}
                     />
                   </View>
                   <View style={styles.soundCopy}>
                     <Text style={[styles.soundLabel, selected && styles.soundLabelSelected]}>{t(soundLabelKeys[choice])}</Text>
-                    <Text style={styles.soundDescription}>{t(soundDescriptionKeys[choice])}</Text>
+                    {!isIosToneFile(choice) && (
+                      <Text style={styles.soundDescription}>{t(soundDescriptionKeys[choice])}</Text>
+                    )}
                   </View>
                   {selected ? (
                     <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} />

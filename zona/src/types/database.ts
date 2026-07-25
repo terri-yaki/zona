@@ -4,19 +4,113 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type NotificationSound =
   | 'default'
   | 'silent'
-  | 'zona-soft.wav'
-  | 'zona-bright.wav'
-  | 'zona-urgent.wav'
-  | 'zona-chime.wav'
-  | 'zona-crystal.wav'
-  | 'zona-warm.wav'
-  | 'zona-pulse.wav'
-  | 'zona-signal.wav'
-  | 'zona-bloom.wav';
+  | 'ios-alarm.wav'
+  | 'ios-apex.wav'
+  | 'ios-ascending.wav'
+  | 'ios-aurora.wav'
+  | 'ios-bamboo.wav'
+  | 'ios-bark.wav'
+  | 'ios-beacon.wav'
+  | 'ios-bell-tower.wav'
+  | 'ios-blues.wav'
+  | 'ios-boing.wav'
+  | 'ios-bulletin.wav'
+  | 'ios-by-the-seaside.wav'
+  | 'ios-chimes.wav'
+  | 'ios-chord.wav'
+  | 'ios-circles.wav'
+  | 'ios-circuit.wav'
+  | 'ios-complete.wav'
+  | 'ios-constellation.wav'
+  | 'ios-cosmic.wav'
+  | 'ios-crickets.wav'
+  | 'ios-crystals.wav'
+  | 'ios-digital.wav'
+  | 'ios-doorbell.wav'
+  | 'ios-duck.wav'
+  | 'ios-glass.wav'
+  | 'ios-harp.wav'
+  | 'ios-hello.wav'
+  | 'ios-hillside.wav'
+  | 'ios-illuminate.wav'
+  | 'ios-input.wav'
+  | 'ios-keys.wav'
+  | 'ios-marimba.wav'
+  | 'ios-motorcycle.wav'
+  | 'ios-night-owl.wav'
+  | 'ios-note.wav'
+  | 'ios-old-car-horn.wav'
+  | 'ios-old-phone.wav'
+  | 'ios-opening.wav'
+  | 'ios-piano-riff.wav'
+  | 'ios-pinball.wav'
+  | 'ios-playtime.wav'
+  | 'ios-popcorn.wav'
+  | 'ios-presto.wav'
+  | 'ios-pulse.wav'
+  | 'ios-radar.wav'
+  | 'ios-radiate.wav'
+  | 'ios-reflection.wav'
+  | 'ios-ripples.wav'
+  | 'ios-robot.wav'
+  | 'ios-sci-fi.wav'
+  | 'ios-sencha.wav'
+  | 'ios-signal.wav'
+  | 'ios-silk.wav'
+  | 'ios-slow-rise.wav'
+  | 'ios-sonar.wav'
+  | 'ios-stargaze.wav'
+  | 'ios-strum.wav'
+  | 'ios-summit.wav'
+  | 'ios-synth.wav'
+  | 'ios-timba.wav'
+  | 'ios-time-passing.wav'
+  | 'ios-trill.wav'
+  | 'ios-twinkle.wav'
+  | 'ios-uplift.wav'
+  | 'ios-waves.wav'
+  | 'ios-xylophone.wav';
 
 export type Database = {
   public: {
     Tables: {
+      app_changelog: {
+        Row: {
+          created_at: string;
+          id: string;
+          items: Json;
+          released_at: string;
+          summary_en: string;
+          summary_zh_hant: string;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at: string;
+          version: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          items: Json;
+          released_at: string;
+          summary_en: string;
+          summary_zh_hant: string;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at?: string;
+          version: string;
+        };
+        Update: {
+          items?: Json;
+          released_at?: string;
+          summary_en?: string;
+          summary_zh_hant?: string;
+          title_en?: string;
+          title_zh_hant?: string;
+          updated_at?: string;
+          version?: string;
+        };
+        Relationships: [];
+      };
       app_options: {
         Row: {
           created_at: string;

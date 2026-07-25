@@ -8,6 +8,43 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Server-driven What's New: release notes now live in a new
+  `public.app_changelog` table (migration `202607250004`, RLS read for
+  signed-in installs, writes service-only) seeded with the 0.0.1/0.0.2
+  history in English and Traditional Chinese. The screen fetches it on open
+  — so changelog content can be updated without shipping an app build — and
+  falls back to the bundled copy when the table is unreachable or empty.
+- Preview builds now auto-increment the remote iOS build number
+  (`eas.json` `preview.autoIncrement`), matching the production profile.
+- Settings → "Delete account and data" now requires two consecutive explicit
+  confirmations before any delete request fires: the first dialog explains
+  the permanent deletion, the second is the final confirmation, and canceling
+  either aborts the flow. The gating logic is a pure, unit-tested state
+  machine (`delete-confirmation.ts`); the destructive call is only reachable
+  from the doubly-confirmed state.
+
+### Fixed
+
+- Live backend repairs applied during the migration deploy: restored the
+  missing `notification-attachments` Storage bucket and owner policies
+  (migration `202607260001`), and fixed `delete_account_data_internal` calling
+  `pg_catalog.coalesce` — a keyword, not a function — which made every account
+  deletion fail with `INTERNAL_ERROR` (migration `202607260002`). The
+  `delete-account` Edge Function was redeployed and verified end to end.
+
+### Removed
+
+- The Zona custom sound presets (`zona-*.wav`) are retired now that the
+  iPhone ringtone collection covers the picker: the nine bundled presets,
+  their generator script, `app.json` plugin entries, i18n strings, type
+  members, and `notify` allow-list entries are gone. The picker offers only
+  Default, the 66 iPhone tones, and Silent. Migration
+  `202607250003_remove_zona_sound_presets` rewrites any stored preset
+  selections to `default` before tightening the check constraint; the app
+  shows a "Custom sound" fallback label for stored values it no longer
+  offers, and the push path keeps falling back to `default` for unknown
+  values.
+
 - Friendly in-app “What’s New” history in Settings, with user-focused release
   highlights in English and Traditional Chinese.
 - English and Traditional Chinese app languages, with automatic system-language
@@ -47,6 +84,19 @@ to use semantic application versions. Build numbers are managed by EAS.
   options, and a reusable per-source test-alert action.
 - Per-source notification sound presets (default, silent, soft, bright, urgent,
   chime, crystal, warm, pulse, signal, and bloom) with bundled iOS sound assets.
+- iPhone ringtone choices in the per-source picker (migration
+  `202607250002_ios_alert_tone_sounds`): the full classic iPhone ringtone
+  collection (66 tones, from Alarm and Aurora to Waves and Xylophone) now
+  appears beside the bundled Zona presets, listed name-only in the style of
+  iOS-native sound pickers. iOS gives apps no API to reference the phone's
+  system tones, so the tones ship as bundled audio files
+  (`assets/sounds/ios-*.wav`) that APNs plays by basename. A pure app-side
+  mapping (`notification-sound-map.ts`) resolves each choice for preview,
+  push payload, and Android channel, and the `notify` allow-list accepts the
+  new identifiers. **Licensing note:** the tone audio originates from Apple
+  system-sound collections mirrored for development use; it is acceptable
+  for private/preview builds but must be reviewed before any App Store
+  release.
 
 ### Changed
 

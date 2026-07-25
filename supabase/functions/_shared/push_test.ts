@@ -1,6 +1,15 @@
 import { assertEquals, assertThrows } from '@std/assert';
 
-import { assertPushPayloadFits, byteLength, chunk, createPushMessage, MAX_EXPO_MESSAGE_BYTES, resolveSound, ticketError } from './push.ts';
+import {
+  assertPushPayloadFits,
+  byteLength,
+  chunk,
+  createPushMessage,
+  MAX_EXPO_MESSAGE_BYTES,
+  resolveSound,
+  soundChannelId,
+  ticketError,
+} from './push.ts';
 
 Deno.test('push batches never exceed the Expo request limit', () => {
   const batches = chunk(Array.from({ length: 201 }, (_, index) => index));
@@ -55,12 +64,16 @@ Deno.test('push behavior can hide previews and disable sound', () => {
 });
 
 Deno.test('per-source sounds are allowlisted and respect the global setting', () => {
-  assertEquals(resolveSound(true, 'zona-soft.wav'), 'zona-soft.wav');
-  assertEquals(resolveSound(true, 'zona-chime.wav'), 'zona-chime.wav');
-  assertEquals(resolveSound(true, 'zona-bloom.wav'), 'zona-bloom.wav');
+  assertEquals(resolveSound(true, 'ios-note.wav'), 'ios-note.wav');
+  assertEquals(resolveSound(true, 'ios-xylophone.wav'), 'ios-xylophone.wav');
   assertEquals(resolveSound(true, 'not-bundled.wav'), 'default');
   assertEquals(resolveSound(true, 'silent'), null);
-  assertEquals(resolveSound(false, 'zona-urgent.wav'), null);
+  assertEquals(resolveSound(false, 'ios-urgent.wav'), null);
+
+  // Retired Zona presets and any other unknown stored value degrade safely
+  // to the default sound on the push path.
+  assertEquals(resolveSound(true, 'zona-soft.wav'), 'default');
+  assertEquals(resolveSound(true, 'zona-bloom.wav'), 'default');
 
   const message = createPushMessage(
     'ExpoPushToken[token]',
@@ -69,10 +82,40 @@ Deno.test('per-source sounds are allowlisted and respect the global setting', ()
     'Office',
     '00000000-0000-4000-8000-000000000000',
     '00000000-0000-4000-8000-000000000001',
-    { soundName: 'zona-bright.wav', showPreview: true },
+    { soundName: 'ios-marimba.wav', showPreview: true },
   );
-  assertEquals(message.sound, 'zona-bright.wav');
-  assertEquals(message.channelId, 'zona_bright');
+  assertEquals(message.sound, 'ios-marimba.wav');
+  assertEquals(message.channelId, 'zona_ios_marimba');
+});
+
+Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', () => {
+  // APNs plays bundled files by basename, so the stored choice survives
+  // end to end unchanged.
+  assertEquals(resolveSound(true, 'ios-aurora.wav'), 'ios-aurora.wav');
+  assertEquals(resolveSound(true, 'ios-boing.wav'), 'ios-boing.wav');
+  assertEquals(resolveSound(true, 'ios-harp.wav'), 'ios-harp.wav');
+  assertEquals(resolveSound(true, 'ios-stargaze.wav'), 'ios-stargaze.wav');
+  assertEquals(resolveSound(true, 'ios-by-the-seaside.wav'), 'ios-by-the-seaside.wav');
+  assertEquals(resolveSound(false, 'ios-glass.wav'), null);
+  assertEquals(resolveSound(true, 'ios-not-bundled.wav'), 'default');
+
+  // Each tone keeps its own Android channel id, matching the app-side mapping
+  // in zona/src/lib/notification-sound-map.ts.
+  assertEquals(soundChannelId('ios-aurora.wav'), 'zona_ios_aurora');
+  assertEquals(soundChannelId('ios-bell-tower.wav'), 'zona_ios_bell_tower');
+  assertEquals(soundChannelId('ios-by-the-seaside.wav'), 'zona_ios_by_the_seaside');
+
+  const message = createPushMessage(
+    'ExpoPushToken[token]',
+    'Title',
+    'Body',
+    'Office',
+    '00000000-0000-4000-8000-000000000000',
+    '00000000-0000-4000-8000-000000000001',
+    { soundName: 'ios-aurora.wav', showPreview: true },
+  );
+  assertEquals(message.sound, 'ios-aurora.wav');
+  assertEquals(message.channelId, 'zona_ios_aurora');
 });
 
 Deno.test('ticket errors are recorded even when Expo returns HTTP 200', () => {
