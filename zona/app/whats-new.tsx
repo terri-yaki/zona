@@ -1,15 +1,36 @@
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
-import { whatsNewReleases } from '@/content/whats-new';
+import { fetchChangelogRows } from '@/data/changelog';
+import { getLocaleTag } from '@/i18n';
+import { bundledChangelog, toChangelogReleases, type ChangelogRow } from '@/lib/changelog';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius, shadows } from '@/theme';
 
 export default function WhatsNewScreen() {
-  const { t } = useI18n();
-  const installedVersion = Constants.expoConfig?.version ?? whatsNewReleases[0].version;
+  const { language, t } = useI18n();
+  const [serverRows, setServerRows] = useState<ChangelogRow[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetchChangelogRows().then((rows) => {
+      if (active && rows) setServerRows(rows);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Server content wins when available (auto-updates without an app release);
+  // the bundled copy covers offline and unmigrated backends.
+  const releases = useMemo(
+    () => (serverRows ? toChangelogReleases(serverRows, language, getLocaleTag(language)) : bundledChangelog(language)),
+    [language, serverRows],
+  );
+  const installedVersion = Constants.expoConfig?.version ?? releases[0]?.version;
 
   return (
     <>
@@ -28,29 +49,29 @@ export default function WhatsNewScreen() {
           </View>
         </View>
 
-        {whatsNewReleases.map((release) => (
+        {releases.map((release) => (
           <View key={release.id} style={styles.release}>
             <View style={styles.releaseHeading}>
               <View style={styles.releaseHeadingCopy}>
                 <View style={styles.releaseMeta}>
                   <Text style={styles.version}>v{release.version}</Text>
-                  <Text style={styles.date}>{t(release.dateKey)}</Text>
+                  <Text style={styles.date}>{release.dateLabel}</Text>
                 </View>
-                <Text style={styles.releaseTitle}>{t(release.titleKey)}</Text>
+                <Text style={styles.releaseTitle}>{release.title}</Text>
               </View>
               {release.latest ? <Text style={styles.latest}>{t('whatsNew.latest')}</Text> : null}
             </View>
-            <Text style={styles.summary}>{t(release.summaryKey)}</Text>
+            <Text style={styles.summary}>{release.summary}</Text>
 
             <View style={styles.items}>
               {release.items.map((item, index) => (
-                <View key={item.titleKey} style={[styles.item, index > 0 && styles.itemBorder]}>
+                <View key={item.title} style={[styles.item, index > 0 && styles.itemBorder]}>
                   <View style={styles.itemIcon}>
                     <AppIcon color={index % 2 === 0 ? colors.primary : colors.accent} fallback="•" name={item.icon} size={18} />
                   </View>
                   <View style={styles.itemCopy}>
-                    <Text style={styles.itemTitle}>{t(item.titleKey)}</Text>
-                    <Text style={styles.itemBody}>{t(item.bodyKey)}</Text>
+                    <Text style={styles.itemTitle}>{item.title}</Text>
+                    <Text style={styles.itemBody}>{item.body}</Text>
                   </View>
                 </View>
               ))}

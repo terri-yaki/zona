@@ -21,6 +21,11 @@ The app displays a safe API-key registry backed by `public.api_keys`:
 | `expires_at` | Optional future expiry. |
 | `revoked_at` | Permanent revocation time. |
 
+`public.app_changelog` holds the app's What's New release notes (bilingual
+title/summary plus a JSONB `items` array), readable by any signed-in install
+and writable only via the service role, so content updates ship without an
+app release.
+
 Notification behavior is stored per account in `public.app_options`.
 `push_enabled=false` keeps accepting inbox records but skips remote push;
 `play_sound` and `show_preview` control the Expo/APNs payload. The global

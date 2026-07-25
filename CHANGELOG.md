@@ -8,6 +8,14 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Server-driven What's New: release notes now live in a new
+  `public.app_changelog` table (migration `202607250004`, RLS read for
+  signed-in installs, writes service-only) seeded with the 0.0.1/0.0.2
+  history in English and Traditional Chinese. The screen fetches it on open
+  — so changelog content can be updated without shipping an app build — and
+  falls back to the bundled copy when the table is unreachable or empty.
+- Preview builds now auto-increment the remote iOS build number
+  (`eas.json` `preview.autoIncrement`), matching the production profile.
 - Settings → "Delete account and data" now requires two consecutive explicit
   confirmations before any delete request fires: the first dialog explains
   the permanent deletion, the second is the final confirmation, and canceling

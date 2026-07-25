@@ -74,6 +74,43 @@ export type NotificationSound =
 export type Database = {
   public: {
     Tables: {
+      app_changelog: {
+        Row: {
+          created_at: string;
+          id: string;
+          items: Json;
+          released_at: string;
+          summary_en: string;
+          summary_zh_hant: string;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at: string;
+          version: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          items: Json;
+          released_at: string;
+          summary_en: string;
+          summary_zh_hant: string;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at?: string;
+          version: string;
+        };
+        Update: {
+          items?: Json;
+          released_at?: string;
+          summary_en?: string;
+          summary_zh_hant?: string;
+          title_en?: string;
+          title_zh_hant?: string;
+          updated_at?: string;
+          version?: string;
+        };
+        Relationships: [];
+      };
       app_options: {
         Row: {
           created_at: string;
