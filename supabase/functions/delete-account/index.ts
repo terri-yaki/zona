@@ -7,8 +7,8 @@ type DeleteBody = { confirmation?: unknown; expectedUserId?: unknown };
 function isMissingUser(error: unknown) {
   if (!error || typeof error !== 'object') return false;
   const candidate = error as { message?: unknown; status?: unknown };
-  return candidate.status === 404
-    || (typeof candidate.message === 'string' && /user not found/i.test(candidate.message));
+  return candidate.status === 404 ||
+    (typeof candidate.message === 'string' && /user not found/i.test(candidate.message));
 }
 
 async function removeAccountAttachments(userId: string) {
@@ -61,11 +61,15 @@ Deno.serve(async (req) => {
     if (verification.user) throw new Error('ACCOUNT_DELETE_NOT_CONFIRMED');
     if (verificationError && !isMissingUser(verificationError)) throw verificationError;
 
-    return json({
-      deleted: true,
-      userId: user.id,
-      cleanup: { ...(cleanup ?? {}), attachments },
-    }, 200, { 'Cache-Control': 'no-store' });
+    return json(
+      {
+        deleted: true,
+        userId: user.id,
+        cleanup: { ...(cleanup ?? {}), attachments },
+      },
+      200,
+      { 'Cache-Control': 'no-store' },
+    );
   } catch (error) {
     const code = error instanceof Error ? error.message : 'UNKNOWN';
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);

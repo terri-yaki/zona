@@ -1,3 +1,6 @@
+// Inline npm: specifier is deliberate: the hosted Edge Function bundler cannot
+// resolve deno.json import maps on Docker-less CLI deploys.
+// deno-lint-ignore no-import-prefix
 import { createClient, type User } from 'npm:@supabase/supabase-js@2.110.7';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
