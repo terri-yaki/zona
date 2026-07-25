@@ -23,6 +23,15 @@ to use semantic application versions. Build numbers are managed by EAS.
   machine (`delete-confirmation.ts`); the destructive call is only reachable
   from the doubly-confirmed state.
 
+### Fixed
+
+- Live backend repairs applied during the migration deploy: restored the
+  missing `notification-attachments` Storage bucket and owner policies
+  (migration `202607260001`), and fixed `delete_account_data_internal` calling
+  `pg_catalog.coalesce` — a keyword, not a function — which made every account
+  deletion fail with `INTERNAL_ERROR` (migration `202607260002`). The
+  `delete-account` Edge Function was redeployed and verified end to end.
+
 ### Removed
 
 - The Zona custom sound presets (`zona-*.wav`) are retired now that the
