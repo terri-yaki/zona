@@ -13,6 +13,7 @@ const [title = 'Test from Node.js', body = 'Zona is connected.'] = process.argv.
 
 // Optional evidence image (PNG/JPEG/WebP, at most 5 MiB).
 const attachment = process.env.ZONA_ATTACHMENT ?? null;
+const severity = process.env.ZONA_SEVERITY?.trim() || null;
 
 // Reuse the same key when retrying a send; a replay returns the original
 // notification instead of creating a duplicate.
@@ -30,6 +31,7 @@ if (attachment) {
   form.set('title', title);
   form.set('body', body);
   form.set('category', 'test');
+  if (severity) form.set('severity', severity);
   form.set('data', JSON.stringify({ sender: 'send-notification.mjs' }));
   form.set('attachment', new File([bytes], basename(attachment)));
   payload = form;
@@ -39,6 +41,7 @@ if (attachment) {
     title,
     body,
     category: 'test',
+    ...(severity ? { severity } : {}),
     data: { sender: 'send-notification.mjs' },
   });
 }

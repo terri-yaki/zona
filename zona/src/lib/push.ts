@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 
 import { registerPushToken, unregisterPushDevice } from './api';
 import { ensureNotificationSoundChannels } from './notification-sounds';
-import { isAndroidFirebaseConfigurationError, nativePushPlatform } from './push-platform';
+import { isAndroidPushConfigurationError, nativePushPlatform } from './push-platform';
 import { translate } from '@/i18n';
 
 const installationKey = 'zona.installation-id';
@@ -121,7 +121,7 @@ export async function enablePushNotifications(userId: string): Promise<'register
     await saveHealth(userId, 'registered');
     return 'registered';
   } catch (error) {
-    if (Platform.OS === 'android' && isAndroidFirebaseConfigurationError(error)) {
+    if (Platform.OS === 'android' && isAndroidPushConfigurationError(error)) {
       await saveHealth(userId, 'android-unconfigured');
       return 'android-unconfigured';
     }
@@ -149,7 +149,7 @@ export async function syncPushRegistration(userId: string): Promise<'registered'
     await saveHealth(userId, 'registered');
     return 'registered';
   } catch (error) {
-    if (Platform.OS === 'android' && isAndroidFirebaseConfigurationError(error)) {
+    if (Platform.OS === 'android' && isAndroidPushConfigurationError(error)) {
       await saveHealth(userId, 'android-unconfigured');
       return 'android-unconfigured';
     }

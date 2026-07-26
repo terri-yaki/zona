@@ -52,7 +52,7 @@ supabase functions serve --env-file supabase/.env.local
 Use the local values printed by `supabase status` in `zona/.env`. Push testing
 requires a physical device, a linked EAS project ID, and a development or store
 build; Expo Go cannot receive remote push notifications. Android additionally
-requires the Firebase configuration in `../docs/ANDROID_PUSH.md`.
+requires the push transport configuration in `../docs/ANDROID_PUSH.md`.
 
 ## Operational checks
 

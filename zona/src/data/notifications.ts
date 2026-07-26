@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
 import type { Json } from '@/types/database';
 
-const notificationColumns = 'id,user_id,source_id,source_name_snapshot,title,body,category,data,created_at,read_at,expires_at,attachment_path,attachment_mime,attachment_bytes';
+const notificationColumns = 'id,user_id,source_id,source_name_snapshot,title,body,category,severity,data,created_at,read_at,expires_at,attachment_path,attachment_mime,attachment_bytes';
 export const inboxPageSize = 50;
 
 export type InboxCursor = { createdAt: string; id: string };
@@ -25,6 +25,7 @@ function rowToNotification(row: {
   expires_at: string;
   id: string;
   read_at: string | null;
+  severity: 'low' | 'medium' | 'high' | 'critical' | null;
   source_id: string;
   source_name_snapshot: string;
   title: string;

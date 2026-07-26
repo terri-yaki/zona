@@ -21,8 +21,8 @@ npx expo start --clear
 Expo Go can test authentication, source management, inbox synchronization, and
 the sending API. Tap **Not now** during notification onboarding. Push tokens
 require a physical device and an EAS development, preview, or production build;
-Expo Go cannot receive remote pushes. Android builds also require the Firebase
-setup in `../docs/ANDROID_PUSH.md`.
+Expo Go cannot receive remote pushes. Android builds also require the push
+transport setup in `../docs/ANDROID_PUSH.md`.
 
 ## Build for TestFlight
 

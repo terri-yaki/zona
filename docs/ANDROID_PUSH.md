@@ -1,19 +1,20 @@
 # Android push setup
 
-Zona uses Expo Push Service, with Firebase Cloud Messaging (FCM) underneath on
-Android. `google-services.json` identifies the Android app inside the native
-build; an FCM V1 service-account key lets Expo deliver pushes to that Firebase
-project. These are separate credentials and both are required.
+Zona uses Supabase for authentication, storage, the durable inbox, and the
+notification relay. Expo Push Service delivers remote notifications; Android
+uses Google's FCM transport underneath Expo. `google-services.json` identifies
+the Android package inside the native build, while an FCM V1 service-account
+key lets Expo send to it. These transport credentials do not replace Supabase.
 
-The Android package is `com.terriyaki.zona`. A build made before adding Firebase
-configuration cannot be repaired with an OTA update; install a newly built APK
-or AAB after completing this setup.
+The Android package is `com.terriyaki.zona`. A build made before adding Android
+push configuration cannot be repaired with an OTA update; install a newly
+built APK or AAB after completing this setup.
 
-## 1. Create the Firebase Android app
+## 1. Register the Android package for push
 
-1. Open Firebase Console and select or create the Firebase project used for
-   Zona.
-2. Add an Android app with package name `com.terriyaki.zona`.
+1. Follow [Expo's Android push-credential guide](https://docs.expo.dev/push-notifications/fcm-credentials/)
+   to create the Google transport project used by Zona.
+2. Register an Android app with package name `com.terriyaki.zona`.
 3. Download its `google-services.json`.
 
 For local native builds, place that file at `zona/google-services.json`. It is
@@ -34,7 +35,7 @@ back to the local gitignored file.
 
 ## 2. Upload the FCM V1 server credential
 
-Create a Firebase service-account JSON key with permission to send FCM messages,
+Create a Google service-account JSON key with permission to send FCM messages,
 then upload it through EAS:
 
 ```powershell
@@ -86,7 +87,7 @@ internal test that does not need Metro, build the `preview` profile instead.
 5. Confirm the alert appears both as a system notification and in the inbox.
 6. Put Zona in the background and repeat using `examples/send-notification.ps1`.
 
-If the app reports that Firebase is not configured, inspect the build profile's
-EAS environment and rebuild. If registration succeeds but delivery fails,
-check the FCM V1 credential in EAS and the Expo ticket stored in
+If the app reports that Android push is not configured, inspect the build
+profile's EAS environment and rebuild. If registration succeeds but delivery
+fails, check the FCM V1 credential in EAS and the Expo ticket stored in
 `private.push_delivery_logs`.

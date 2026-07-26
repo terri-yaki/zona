@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { relativeTime, sourceInitial } from '@/lib/format';
+import { severityAppearance } from '@/lib/notification-severity';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -9,10 +10,21 @@ import { useI18n } from '@/providers/LocalizationProvider';
 export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
   const { t } = useI18n();
   const unread = !item.read_at;
+  const severity = severityAppearance(item.severity);
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, unread && styles.unread, pressed && styles.pressed]}>
-      <View style={[styles.avatar, unread && styles.avatarUnread]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: severity.background, borderColor: severity.border },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={[styles.avatar, { borderColor: severity.border }]}>
         <Text style={styles.avatarText}>{sourceInitial(item.source_name_snapshot)}</Text>
+        <View style={styles.bellBadge}>
+          <AppIcon color={severity.icon} fallback="!" name="bell.fill" size={11} />
+        </View>
       </View>
       <View style={styles.content}>
         <View style={styles.metaRow}>
@@ -35,11 +47,10 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
 
 const styles = StyleSheet.create({
   card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: '#E9EEEB', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
-  unread: { backgroundColor: colors.unread, borderColor: '#D3E7DE' },
   pressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
-  avatar: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 13, height: 44, justifyContent: 'center', width: 44 },
-  avatarUnread: { backgroundColor: colors.primary },
-  avatarText: { color: colors.white, fontSize: 17, fontWeight: '800' },
+  avatar: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 13, borderWidth: 1, height: 44, justifyContent: 'center', position: 'relative', width: 44 },
+  avatarText: { color: colors.primary, fontSize: 17, fontWeight: '800' },
+  bellBadge: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 9, bottom: -4, height: 18, justifyContent: 'center', position: 'absolute', right: -4, width: 18 },
   content: { flex: 1 },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginBottom: 5 },
   sourceRow: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 7 },

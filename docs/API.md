@@ -110,6 +110,7 @@ in the URL query string.
   "title": "Build complete",
   "body": "The release build finished successfully.",
   "category": "build",
+  "severity": "high",
   "data": {
     "buildId": "2026.07.26.14",
     "branch": "main",
@@ -123,10 +124,11 @@ in the URL query string.
 | `title` | string | Yes | 1–120 characters after surrounding whitespace is removed. |
 | `body` | string | Yes | 1–2,000 characters after surrounding whitespace is removed. |
 | `category` | string or `null` | No | 1–80 characters when present. Omitted, `null`, or `""` means no category. |
+| `severity` | string or `null` | No | `low`, `medium`, `high`, or `critical` (case-insensitive). Omitted, `null`, or `""` keeps the default white appearance. |
 | `data` | JSON object | No | Defaults to `{}`. The serialized object must be at most 4,096 UTF-8 bytes. Arrays and primitive values are rejected. |
 
 `data` is stored with the inbox item for application-specific context. It does
-not alter routing, source identity, sound, or push behavior. Use namespaced,
+not alter routing, source identity, sound, severity, or push behavior. Use namespaced,
 non-sensitive keys and keep large logs or files outside this field.
 
 Only the documented fields are part of the contract. In particular,
@@ -150,6 +152,7 @@ curl --request POST \
     "title": "Build complete",
     "body": "The release build finished successfully.",
     "category": "build",
+    "severity": "high",
     "data": {"buildId": "2026.07.26.14", "branch": "main"}
   }'
 ```
@@ -165,10 +168,11 @@ $headers = @{
 }
 $payload = @{
   title = 'Deployment complete'
-  body = 'Version 0.0.3 is online.'
+  body = 'Version 0.0.5 is online.'
   category = 'deploy'
+  severity = 'medium'
   data = @{
-    version = '0.0.3'
+    version = '0.0.5'
     environment = 'production'
   }
 } | ConvertTo-Json -Depth 5
@@ -181,6 +185,25 @@ Invoke-RestMethod `
   -Body $payload `
   -TimeoutSec 10
 ```
+
+### Severity appearance
+
+Severity is optional and affects presentation, not delivery priority, sound,
+rate limits, or source identity:
+
+| Value | Inbox card | Notification icon accent |
+| --- | --- | --- |
+| omitted / `null` / `""` | White | Zona green |
+| `low` | Candy green | Green |
+| `medium` | Candy yellow | Yellow |
+| `high` | Candy orange | Orange |
+| `critical` | Candy red | Red |
+
+Android supports a per-message notification icon accent. iOS controls the app
+icon shown in a system notification, so the severity color is visible after
+the alert is opened in Zona's inbox rather than tinting the iOS app icon.
+Severity participates in idempotency: reusing a key with a different severity
+returns `409 IDEMPOTENCY_CONFLICT`.
 
 ### Node.js 20+
 
@@ -199,6 +222,7 @@ const response = await fetch(endpoint, {
     title: 'Service recovered',
     body: 'The API health check is passing again.',
     category: 'health',
+    severity: 'low',
     data: { service: 'orders-api', status: 'healthy' },
   }),
   signal: AbortSignal.timeout(10_000),
@@ -213,6 +237,7 @@ The repository also includes a ready-to-run Node sender:
 
 ```powershell
 $env:ZONA_SOURCE_TOKEN = 'zona_live_REPLACE_WITH_YOUR_SOURCE_TOKEN'
+$env:ZONA_SEVERITY = 'high' # optional
 node .\examples\send-notification.mjs 'Render complete' 'All frames finished.'
 ```
 
@@ -284,6 +309,7 @@ curl --request POST \
   --form "title=Build failed" \
   --form "body=Unit tests failed on the release branch; screenshot attached." \
   --form "category=build" \
+  --form "severity=high" \
   --form 'data={"buildId":"2026.07.26.15","branch":"release"}' \
   --form "attachment=@failure-screenshot.png"
 ```
@@ -303,6 +329,7 @@ $eventId = 'build-' + [guid]::NewGuid().ToString()
   -Title 'Build failed' `
   -Body 'Unit tests failed on the release branch.' `
   -Category 'build' `
+  -Severity 'high' `
   -IdempotencyKey $eventId `
   -Attachment 'D:\screenshots\failure.png'
 ```
@@ -325,6 +352,7 @@ fields = {
     "title": "Build failed",
     "body": "Unit tests failed; screenshot attached.",
     "category": "build",
+    "severity": "high",
     "data": json.dumps({"buildId": "2026.07.26.16"}),
 }
 
@@ -432,6 +460,7 @@ Senders cannot change these settings in a notification request:
 | `title` | 1–120 characters |
 | `body` | 1–2,000 characters |
 | `category` | 1–80 characters when present |
+| `severity` | `low`, `medium`, `high`, or `critical` when present |
 | `data` | JSON object, at most 4 KiB serialized UTF-8 |
 | Conservative generated push payload | 3,800 serialized UTF-8 bytes |
 | Rate per source | 60 accepted requests in a rolling minute |

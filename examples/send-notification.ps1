@@ -2,6 +2,7 @@ param(
   [Parameter(Mandatory = $true)][string]$Title,
   [Parameter(Mandatory = $true)][string]$Body,
   [string]$Category = "test",
+  [ValidateSet("low", "medium", "high", "critical")][string]$Severity,
   [string]$IdempotencyKey = "ps-$([guid]::NewGuid().ToString())",
   # Optional evidence image path (PNG/JPEG/WebP, at most 5 MiB).
   [string]$Attachment
@@ -46,6 +47,7 @@ if ($Attachment) {
     $multipart.Add((New-Object System.Net.Http.StringContent($Title, $utf8)), "title")
     $multipart.Add((New-Object System.Net.Http.StringContent($Body, $utf8)), "body")
     $multipart.Add((New-Object System.Net.Http.StringContent($Category, $utf8)), "category")
+    if ($Severity) { $multipart.Add((New-Object System.Net.Http.StringContent($Severity, $utf8)), "severity") }
     $metadata = @{ sender = "send-notification.ps1" } | ConvertTo-Json -Compress
     $multipart.Add((New-Object System.Net.Http.StringContent($metadata, $utf8)), "data")
 
@@ -72,6 +74,8 @@ if ($Attachment) {
     body = $Body
     category = $Category
     data = @{ sender = "send-notification.ps1" }
-  } | ConvertTo-Json -Depth 5
-  Invoke-RestMethod -Method Post -Uri $notifyUrl -Headers $headers -ContentType "application/json" -Body $payload -TimeoutSec 10
+  }
+  if ($Severity) { $payload.severity = $Severity }
+  $json = $payload | ConvertTo-Json -Depth 5
+  Invoke-RestMethod -Method Post -Uri $notifyUrl -Headers $headers -ContentType "application/json" -Body $json -TimeoutSec 10
 }

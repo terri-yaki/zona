@@ -29,7 +29,7 @@ export default function NewSourceScreen() {
   const [testMessage, setTestMessage] = useState<string | null>(null);
 
   const curl = useMemo(() => created
-    ? `curl -X POST "${created.ingestUrl}" -H "Authorization: Bearer ${created.token}" -H "Idempotency-Key: replace-with-a-unique-event-id" -H "Content-Type: application/json" -d '{"title":"Build complete","body":"The release build finished.","category":"build"}'`
+    ? `curl -X POST "${created.ingestUrl}" -H "Authorization: Bearer ${created.token}" -H "Idempotency-Key: replace-with-a-unique-event-id" -H "Content-Type: application/json" -d '{"title":"Build complete","body":"The release build finished.","category":"build","severity":"medium"}'`
     : '', [created]);
 
   if (loading) return <LoadingScreen />;

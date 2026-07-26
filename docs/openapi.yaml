@@ -44,7 +44,8 @@ paths:
         identical payload returns the stored notification with
         `idempotentReplay: true` and does not create a duplicate or retry
         push. Reusing the key with a different payload is rejected with
-        `409 IDEMPOTENCY_CONFLICT`.
+        `409 IDEMPOTENCY_CONFLICT`. Optional severity is part of that payload,
+        so changing only severity is also a conflict.
 
         One evidence image (PNG/JPEG/WebP, at most 5 MiB) may be attached by
         sending `multipart/form-data` with an `attachment` file part. The
@@ -66,6 +67,7 @@ paths:
                   title: Build complete
                   body: The release build finished successfully.
                   category: build
+                  severity: high
                   data:
                     eventId: build-2026-07-20-14
           multipart/form-data:
@@ -435,6 +437,10 @@ components:
           type: [string, 'null']
           minLength: 1
           maxLength: 80
+        severity:
+          type: [string, 'null']
+          enum: [low, medium, high, critical, null]
+          description: Optional visual urgency. Null or omitted uses the neutral white inbox style.
         data:
           type: object
           description: |
@@ -504,6 +510,9 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
         data:
           type: string
           description: JSON-encoded object, at most 4096 UTF-8 bytes when serialized.
