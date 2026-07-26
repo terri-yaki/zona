@@ -140,6 +140,8 @@ required gates.
   sober, precise documentation tone.
 - Migrations are forward-only — do not fold changes into an already-applied
   migration (see the header of `202607200002_production_hardening.sql`).
+  Follow the pre-push checklist in `docs/DB_MIGRATIONS.md` before any
+  `supabase db push` or merge that carries a migration.
 - Record notable changes in `CHANGELOG.md` (Keep a Changelog format).
 - Architectural changes that touch tokens, auth, RLS, or retention require an
   ADR and threat-model update, not just code.
