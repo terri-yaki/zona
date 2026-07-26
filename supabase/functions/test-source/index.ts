@@ -1,6 +1,13 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
-import { createPushMessage, type ExpoTicket, resolveDeviceSound, resolveSound, ticketError } from '../_shared/push.ts';
+import {
+  createPushMessage,
+  type ExpoTicket,
+  resolveDeviceChannelId,
+  resolveDeviceSound,
+  resolveSound,
+  ticketError,
+} from '../_shared/push.ts';
 import { requireUser, service } from '../_shared/supabase.ts';
 import { uuid } from '../_shared/validation.ts';
 
@@ -94,8 +101,12 @@ Deno.serve(async (req) => {
     if (devicesError) console.error('test push device lookup', devicesError);
 
     const devices = (storedDevices ?? []) as PushDevice[];
-    const messages = devices.map((device) =>
-      createPushMessage(
+    const messages = devices.map((device) => {
+      const deviceSound = resolveDeviceSound(
+        device.platform,
+        resolveSound(options.play_sound, accepted.sound_name),
+      );
+      return createPushMessage(
         device.expo_push_token,
         'Zona is connected',
         `This test alert came from ${accepted.source_name}.`,
@@ -103,11 +114,12 @@ Deno.serve(async (req) => {
         accepted.notification_id,
         accepted.source_id,
         {
-          soundName: resolveDeviceSound(device.platform, resolveSound(options.play_sound, accepted.sound_name)),
+          channelId: resolveDeviceChannelId(device.platform, accepted.source_id, deviceSound),
+          soundName: deviceSound,
           showPreview: options.show_preview,
         },
-      )
-    );
+      );
+    });
 
     let pushAccepted = 0;
     if (messages.length) {

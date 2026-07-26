@@ -5,7 +5,9 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Sc
 
 import { AppIcon } from '@/components/AppIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { useBottomSafePadding } from '@/components/TabScreen';
 import { createSource } from '@/lib/api';
+import { ensureAndroidSourceNotificationChannel } from '@/lib/android-source-notifications';
 import { normalizeOptional, validateSourceInput } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -16,6 +18,7 @@ export default function NewSourceScreen() {
   const router = useRouter();
   const { session, loading } = useAuth();
   const { t } = useI18n();
+  const bottomPadding = useBottomSafePadding(22);
   const [displayName, setDisplayName] = useState('');
   const [hostname, setHostname] = useState('');
   const [working, setWorking] = useState(false);
@@ -47,7 +50,11 @@ export default function NewSourceScreen() {
     if (error) { Alert.alert(t('sourceNew.checkSource'), error); return; }
     setWorking(true);
     try {
-      setCreated(await createSource(displayName.trim(), normalizeOptional(hostname)));
+      const next = await createSource(displayName.trim(), normalizeOptional(hostname));
+      setCreated(next);
+      void ensureAndroidSourceNotificationChannel(next.sourceId, next.displayName).catch((channelError) => {
+        console.warn('Could not create the Android source notification channel.', channelError);
+      });
     } catch (caught) {
       Alert.alert(t('sourceNew.createError'), caught instanceof Error ? caught.message : t('common.tryAgain'));
     } finally {
@@ -90,7 +97,7 @@ export default function NewSourceScreen() {
     return (
       <>
         <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false, title: t('sourceNew.saveHeader') }} />
-        <ScrollView contentContainerStyle={styles.page}>
+        <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
         <View style={styles.successMark}><AppIcon color={colors.success} fallback="✓" name="checkmark" size={25} /></View>
         <Text style={styles.title}>{t('sourceNew.saveTitle')}</Text>
         <Text style={styles.help}>{t('sourceNew.saveHelp', { name: created.displayName })}</Text>
@@ -112,7 +119,7 @@ export default function NewSourceScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]} keyboardShouldPersistTaps="handled">
         <View style={styles.sourceIcon}><AppIcon color={colors.primary} fallback="□" name="desktopcomputer" size={29} /></View>
         <Text style={styles.title}>{t('sourceNew.nameTitle')}</Text>
         <Text style={styles.help}>{t('sourceNew.nameHelp')}</Text>

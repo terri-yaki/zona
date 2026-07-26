@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
+import { useBottomSafePadding } from '@/components/TabScreen';
 import { fetchChangelogRows } from '@/data/changelog';
 import { getLocaleTag } from '@/i18n';
 import { bundledChangelog, toChangelogReleases, type ChangelogRow } from '@/lib/changelog';
@@ -12,6 +13,7 @@ import { colors, radius, shadows } from '@/theme';
 
 export default function WhatsNewScreen() {
   const { language, t } = useI18n();
+  const bottomPadding = useBottomSafePadding(22);
   const [serverRows, setServerRows] = useState<ChangelogRow[] | null>(null);
 
   useEffect(() => {
@@ -35,7 +37,7 @@ export default function WhatsNewScreen() {
   return (
     <>
       <Stack.Screen options={{ title: t('nav.whatsNew') }} />
-      <ScrollView contentContainerStyle={styles.page}>
+      <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
             <AppIcon color={colors.white} fallback="+" name="sparkles" size={27} />
@@ -90,7 +92,7 @@ export default function WhatsNewScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: colors.background, flexGrow: 1, padding: 16, paddingBottom: 38 },
+  page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, paddingHorizontal: 23, paddingVertical: 28 },
   heroIcon: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 20, height: 54, justifyContent: 'center', marginBottom: 15, width: 54 },
   eyebrow: { color: '#D8EAE4', fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },

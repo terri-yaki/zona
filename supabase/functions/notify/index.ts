@@ -9,6 +9,7 @@ import {
   createPushMessage,
   type ExpoTicket,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveDeviceChannelId,
   resolveDeviceSound,
   resolveSound,
   ticketError,
@@ -289,17 +290,22 @@ Deno.serve(async (req) => {
     let pushAccepted = 0;
     const devices = (pushDevices ?? []) as PushDevice[];
     for (const deviceBatch of chunk(devices)) {
-      const messages = deviceBatch.map((device) =>
-        createPushMessage(
+      const messages = deviceBatch.map((device) => {
+        const deviceSound = resolveDeviceSound(device.platform, soundName);
+        return createPushMessage(
           device.expo_push_token,
           payload.title,
           payload.body,
           accepted.source_name,
           accepted.notification_id,
           accepted.source_id,
-          { soundName: resolveDeviceSound(device.platform, soundName), showPreview: appOptions.show_preview },
-        )
-      );
+          {
+            channelId: resolveDeviceChannelId(device.platform, accepted.source_id, deviceSound),
+            soundName: deviceSound,
+            showPreview: appOptions.show_preview,
+          },
+        );
+      });
 
       // The conservative pre-ingest check should make this unreachable, but
       // retain a final check against actual source/token values as defense in depth.

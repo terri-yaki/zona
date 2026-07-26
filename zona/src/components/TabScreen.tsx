@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/theme';
@@ -28,8 +28,16 @@ export function TabScreen({
 /** Bottom padding for scroll/list content under the native tab bar. */
 export function useTabBarContentPadding(extra = 24) {
   const insets = useSafeAreaInsets();
+  // NativeTabs already applies Android's bottom system/tab-bar inset.
+  if (Platform.OS === 'android') return extra;
   // Native tab bar is roughly 49pt content + home indicator; keep a cushion.
   return Math.max(insets.bottom, 8) + 56 + extra;
+}
+
+/** Bottom padding for stack screens and sheets rendered outside NativeTabs. */
+export function useBottomSafePadding(extra = 16) {
+  const insets = useSafeAreaInsets();
+  return Math.max(insets.bottom, 12) + extra;
 }
 
 export function TabScrollBackground({ children }: { children?: ReactNode }) {

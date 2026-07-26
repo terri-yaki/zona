@@ -6,9 +6,11 @@ import {
   chunk,
   createPushMessage,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveDeviceChannelId,
   resolveDeviceSound,
   resolveSound,
   soundChannelId,
+  sourceNotificationChannelId,
   ticketError,
 } from './push.ts';
 
@@ -94,6 +96,11 @@ Deno.test('Android uses channels that exist without bundling iPhone tones', () =
   assertEquals(resolveDeviceSound('android', 'ios-aurora.wav'), 'default');
   assertEquals(resolveDeviceSound('android', 'default'), 'default');
   assertEquals(resolveDeviceSound('android', null), null);
+  const sourceId = '00000000-0000-4000-8000-000000000001';
+  assertEquals(sourceNotificationChannelId(sourceId), 'zona_source_00000000_0000_4000_8000_000000000001');
+  assertEquals(resolveDeviceChannelId('android', sourceId, 'default'), sourceNotificationChannelId(sourceId));
+  assertEquals(resolveDeviceChannelId('android', sourceId, null), 'zona_silent');
+  assertEquals(resolveDeviceChannelId('ios', sourceId, 'ios-aurora.wav'), 'zona_default');
 });
 
 Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', () => {

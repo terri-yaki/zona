@@ -97,6 +97,8 @@ export const zhHant = {
   'sources.rename': '重新命名',
   'sources.soundTitle': '通知提示音',
   'sources.soundSubtitle': '選擇 %{name} 的提示音',
+  'sources.soundAndroid': '裝置提示音',
+  'sources.soundAndroidChannelDesc': '此來源的通知，可在 Android 設定中選擇鈴聲或設為靜音。',
   'sources.soundDefault': '預設',
   'sources.soundSilent': '靜音',
   'sources.soundIosAlarm': 'Alarm',

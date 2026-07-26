@@ -11,6 +11,7 @@ export type ExpoTicket = {
 };
 
 export type PushBehavior = {
+  channelId?: string;
   soundName: string | null;
   showPreview: boolean;
 };
@@ -106,6 +107,16 @@ export function resolveDeviceSound(platform: PushPlatform, soundName: string | n
   return soundName;
 }
 
+export function sourceNotificationChannelId(sourceId: string): string {
+  const normalized = sourceId.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return `zona_source_${normalized}`;
+}
+
+export function resolveDeviceChannelId(platform: PushPlatform, sourceId: string, soundName: string | null): string {
+  if (platform === 'android' && soundName) return sourceNotificationChannelId(sourceId);
+  return soundChannelId(soundName);
+}
+
 export function chunk<T>(values: T[], size = EXPO_PUSH_BATCH_SIZE): T[][] {
   if (!Number.isSafeInteger(size) || size < 1 || size > EXPO_PUSH_BATCH_SIZE) {
     throw new Error('INVALID_BATCH_SIZE');
@@ -143,7 +154,7 @@ export function createPushMessage(
   return {
     to,
     priority: 'high',
-    channelId: soundChannelId(sound),
+    channelId: behavior.channelId ?? soundChannelId(sound),
     ...(sound ? { sound } : { sound: null }),
     title: behavior.showPreview ? title : 'New Zona alert',
     subtitle: behavior.showPreview ? `From ${sourceName}` : 'Zona',

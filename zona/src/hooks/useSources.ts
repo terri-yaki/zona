@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
 import { listSources } from '@/data/sources';
+import { syncAndroidSourceNotificationChannels } from '@/lib/android-source-notifications';
 import { useAuth } from '@/providers/AuthProvider';
 import { translate } from '@/i18n';
 import type { Source } from '@/types';
@@ -34,7 +35,12 @@ export function useSources(includeRevoked = true) {
     setError(null);
     try {
       const next = await listSources({ includeRevoked });
-      if (request === generation.current) commit(next);
+      if (request === generation.current) {
+        commit(next);
+        void syncAndroidSourceNotificationChannels(next).catch((channelError) => {
+          console.warn('Could not synchronize Android source notification channels.', channelError);
+        });
+      }
     } catch (caught) {
       if (request === generation.current) setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
     } finally {

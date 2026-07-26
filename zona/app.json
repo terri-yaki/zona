@@ -5,7 +5,7 @@
     "version": "0.0.3",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "scheme": "zona",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -16,7 +16,8 @@
       "fallbackToCacheTimeout": 0
     },
     "android": {
-      "package": "com.terriyaki.zona"
+      "package": "com.terriyaki.zona",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "ios": {
       "icon": "./assets/icon.png",
@@ -105,6 +106,13 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "style": "dark"
+        }
+      ],
       [
         "expo-live-activity",
         {

@@ -28,9 +28,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Android push registration now uses Firebase-aware native configuration,
   creates notification channels before requesting a token, preserves the
   Android platform through the relay and database, and shows a useful setup
-  message instead of exposing the raw `Default FirebaseApp` error. Real and
-  in-app test alerts use the Android default or silent channel while iOS keeps
-  its per-source custom tones.
+  message instead of exposing the raw `Default FirebaseApp` error. Each source
+  gets native Android sound settings, while iOS keeps its bundled per-source
+  tones. Android screens, sheets, keyboard behavior, system bars, tab icons,
+  and shared icons now follow Android safe areas and Material conventions.
 - Live backend repairs applied during the migration deploy: restored the
   missing `notification-attachments` Storage bucket and owner policies
   (migration `202607260001`), and fixed `delete_account_data_internal` calling

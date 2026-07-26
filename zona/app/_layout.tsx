@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Stack, useRouter, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
@@ -114,6 +115,7 @@ function RootNavigator() {
           <PushRegistrationSync />
           <LiveActivitySync />
           <NotificationNavigation />
+          <NavigationBar style="dark" />
           <StatusBar style="dark" />
           <Stack screenOptions={{
             contentStyle: { backgroundColor: colors.background },

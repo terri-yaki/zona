@@ -59,9 +59,10 @@ npx supabase functions deploy test-source
 ```
 
 The migration permits `android` in `push_devices.platform`. The functions keep
-the actual platform when registering and use Android's default or silent
-notification channels. Existing iOS per-source custom tones are unchanged;
-Android currently falls back to the system default for those iOS-only tones.
+the actual platform when registering and route audible alerts through a stable
+Android notification channel for each source. Existing iOS per-source custom
+tones are unchanged; on Android, tap **Device sound** for a source to choose its
+ringtone or silence that source in Android's native notification settings.
 
 ## 4. Make and install a new Android build
 
@@ -80,9 +81,10 @@ internal test that does not need Metro, build the `preview` profile instead.
 
 1. Open Zona and allow notifications. Android 13 and newer asks at runtime.
 2. In Settings, confirm **Zona relay** says **Registered**.
-3. Create or open an API key and send its test alert.
-4. Confirm the alert appears both as a system notification and in the inbox.
-5. Put Zona in the background and repeat using `examples/send-notification.ps1`.
+3. Open an API key, tap **Device sound**, and choose that source's Android sound.
+4. Send its test alert and confirm the selected channel sound plays.
+5. Confirm the alert appears both as a system notification and in the inbox.
+6. Put Zona in the background and repeat using `examples/send-notification.ps1`.
 
 If the app reports that Firebase is not configured, inspect the build profile's
 EAS environment and rebuild. If registration succeeds but delivery fails,

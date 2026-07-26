@@ -95,6 +95,8 @@ export const en = {
   'sources.rename': 'Rename',
   'sources.soundTitle': 'Notification sound',
   'sources.soundSubtitle': 'Choose the sound for %{name}',
+  'sources.soundAndroid': 'Device sound',
+  'sources.soundAndroidChannelDesc': 'Alerts from this source. Choose its ringtone or silence it in Android settings.',
   'sources.soundDefault': 'Default',
   'sources.soundSilent': 'Silent',
   'sources.soundIosAlarm': 'Alarm',
