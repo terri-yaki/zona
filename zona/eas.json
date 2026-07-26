@@ -19,6 +19,12 @@
       "autoIncrement": true,
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "buildType": "apk",
+        "env": {
+          "ZONA_ANDROID_NO_SOUND_ASSETS": "1"
+        }
       }
     },
     "production": {

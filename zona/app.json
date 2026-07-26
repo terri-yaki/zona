@@ -15,6 +15,9 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
+    "android": {
+      "package": "com.terriyaki.zona"
+    },
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": false,
