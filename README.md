@@ -23,7 +23,7 @@ push and the app keeps a seven-day inbox.
    displayed. Tokens are never shown again.
 
 See `docs/API.md` for the notification request contract and production notes.
-Android Firebase and EAS setup is documented in `docs/ANDROID_PUSH.md`.
+Android push and EAS setup is documented in `docs/ANDROID_PUSH.md`.
 Preview app updates (OTA vs new IPA) are documented in `docs/PREVIEW_UPDATES.md`.
 
 For a quick Windows test after creating a source token in the app:

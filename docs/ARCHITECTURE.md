@@ -24,7 +24,7 @@ flowchart LR
 
   subgraph Push["Push providers"]
     EXPO["Expo Push Service"] --> APNS["Apple APNs"]
-    EXPO --> FCM["Firebase Cloud Messaging"]
+    EXPO --> FCM["Google FCM transport"]
   end
 
   subgraph Phone["iOS or Android / Expo SDK 56"]

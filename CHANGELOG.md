@@ -164,8 +164,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
-- Missing Firebase configuration now produces a useful setup message instead
-  of exposing the raw `Default FirebaseApp` error.
+- Missing Android push configuration now produces a useful setup message
+  instead of exposing a raw native initialization error.
 
 ## [0.1.0] - 2026-07-20
 
