@@ -33,6 +33,7 @@
         "expo-notifications",
         {
           "color": "#2F6B5F",
+          "defaultChannel": "zona_default",
           "sounds": [
             "./assets/sounds/ios-alarm.wav",
             "./assets/sounds/ios-apex.wav",

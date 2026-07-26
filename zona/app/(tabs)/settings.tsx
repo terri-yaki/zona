@@ -102,6 +102,8 @@ export default function SettingsScreen() {
           { text: t('common.notNow'), style: 'cancel' },
           { text: t('settings.openSettings'), onPress: () => void Linking.openSettings() },
         ]);
+      } else if (status === 'android-unconfigured') {
+        Alert.alert(t('settings.androidConfigTitle'), t('settings.androidConfigBody'));
       } else {
         Alert.alert(
           t('settings.pushStatus'),

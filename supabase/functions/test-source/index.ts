@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
-import { createPushMessage, type ExpoTicket, resolveSound, ticketError } from '../_shared/push.ts';
+import { createPushMessage, type ExpoTicket, resolveDeviceSound, resolveSound, ticketError } from '../_shared/push.ts';
 import { requireUser, service } from '../_shared/supabase.ts';
 import { uuid } from '../_shared/validation.ts';
 
@@ -13,7 +13,7 @@ type TestNotification = {
   sound_name: string;
 };
 
-type PushDevice = { id: string; expo_push_token: string };
+type PushDevice = { id: string; expo_push_token: string; platform: 'android' | 'ios' };
 type AppOptions = { push_enabled: boolean; play_sound: boolean; show_preview: boolean };
 
 const expoEndpoint = 'https://exp.host/--/api/v2/push/send';
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     const { data: storedDevices, error: devicesError } = options.push_enabled
       ? await service
         .from('push_devices')
-        .select('id, expo_push_token')
+        .select('id, expo_push_token, platform')
         .eq('user_id', user.id)
         .is('disabled_at', null)
         .order('updated_at', { ascending: false })
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
         accepted.notification_id,
         accepted.source_id,
         {
-          soundName: resolveSound(options.play_sound, accepted.sound_name),
+          soundName: resolveDeviceSound(device.platform, resolveSound(options.play_sound, accepted.sound_name)),
           showPreview: options.show_preview,
         },
       )

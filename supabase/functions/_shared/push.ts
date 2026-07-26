@@ -15,6 +15,8 @@ export type PushBehavior = {
   showPreview: boolean;
 };
 
+export type PushPlatform = 'android' | 'ios';
+
 /**
  * Bundled iPhone alert tones selectable in the app. Mirrors
  * `zona/src/lib/notification-sound-map.ts` (IOS_TONE_FILES) — keep both sides
@@ -99,6 +101,11 @@ export function resolveSound(playSound: boolean, soundName: string | null | unde
   return soundName && allowedSounds.has(soundName) ? soundName : 'default';
 }
 
+export function resolveDeviceSound(platform: PushPlatform, soundName: string | null): string | null {
+  if (platform === 'android' && soundName && soundName !== 'default') return 'default';
+  return soundName;
+}
+
 export function chunk<T>(values: T[], size = EXPO_PUSH_BATCH_SIZE): T[][] {
   if (!Number.isSafeInteger(size) || size < 1 || size > EXPO_PUSH_BATCH_SIZE) {
     throw new Error('INVALID_BATCH_SIZE');
@@ -117,10 +124,7 @@ export function byteLength(value: unknown): number {
 /** Android notification channel id for a sound choice (matches the app-side mapping). */
 export function soundChannelId(soundName: string | null): string {
   if (!soundName) return 'zona_silent';
-  if (soundName === 'default') return 'zona_default';
-  // zona-soft.wav → zona_soft; ios-aurora.wav → zona_ios_aurora
-  const slug = soundName.replace(/\.wav$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  return slug.startsWith('zona_') ? slug : `zona_${slug}`;
+  return 'zona_default';
 }
 
 export function createPushMessage(

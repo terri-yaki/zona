@@ -27,7 +27,8 @@ Deno.serve(async (req) => {
     if (body.action !== undefined && body.action !== 'register') return json({ error: 'INVALID_ACTION' }, 400);
 
     const token = requiredString(body.token, 255, 'INVALID_TOKEN');
-    if (!expoTokenPattern.test(token) || deviceId.length < 8 || body.platform !== 'ios') {
+    const platform = body.platform === 'android' || body.platform === 'ios' ? body.platform : null;
+    if (!expoTokenPattern.test(token) || deviceId.length < 8 || !platform) {
       return json({ error: 'INVALID_DEVICE' }, 400);
     }
 
@@ -35,7 +36,7 @@ Deno.serve(async (req) => {
       p_user_id: user.id,
       p_device_id: deviceId,
       p_expo_push_token: token,
-      p_platform: 'ios',
+      p_platform: platform,
     });
     if (error) {
       if (error.message.includes('TOKEN_CONFLICT')) throw new Error('TOKEN_CONFLICT');

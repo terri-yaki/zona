@@ -5,6 +5,7 @@ import { env } from './env';
 import { createSourceCredential } from './source-token';
 import { supabase } from './supabase';
 import { isDeleteAccountResult } from './validation';
+import type { NativePushPlatform } from './push-platform';
 import { translate } from '@/i18n';
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -85,12 +86,12 @@ export function testSource(sourceId: string) {
   );
 }
 
-export function registerPushToken(token: string, deviceId: string) {
+export function registerPushToken(token: string, deviceId: string, platform: NativePushPlatform) {
   return invoke<{ registered: boolean }>('register-push-token', {
     action: 'register',
     token,
     deviceId,
-    platform: 'ios',
+    platform,
   }, (value): value is { registered: boolean } => object(value) && value.registered === true);
 }
 

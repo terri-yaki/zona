@@ -115,14 +115,12 @@ describe('notification sound mapping', () => {
     expect(soundChannelId('silent')).toBe('zona_silent');
   });
 
-  it('maps every iPhone tone to its bundled file and a per-tone channel', () => {
-    // APNs plays bundled files by basename, so the stored choice travels
-    // unchanged end to end; the Android channel id is the slugged basename.
+  it('keeps iPhone tone files for APNs and falls back to Android default sound', () => {
     for (const tone of IOS_TONE_FILES) {
       expect(pushPayloadSound(tone), tone).toBe(tone);
-      expect(androidChannelSound(tone), tone).toBe(tone);
+      expect(androidChannelSound(tone), tone).toBe('default');
       expect(previewContentSound(tone), tone).toBe(tone);
-      expect(soundChannelId(tone), tone).toBe(`zona_${tone.replace(/\.wav$/i, '').replace(/-/g, '_')}`);
+      expect(soundChannelId(tone), tone).toBe('zona_default');
     }
   });
 
@@ -144,7 +142,7 @@ describe('notification sound mapping', () => {
         expect(preview).toBe(true);
       } else {
         expect(payload).toBe(choice);
-        expect(channelSound).toBe(choice);
+        expect(channelSound).toBe('default');
         expect(preview).toBe(choice);
       }
     }

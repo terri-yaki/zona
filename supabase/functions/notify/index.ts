@@ -9,6 +9,7 @@ import {
   createPushMessage,
   type ExpoTicket,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveDeviceSound,
   resolveSound,
   ticketError,
 } from '../_shared/push.ts';
@@ -25,7 +26,7 @@ type IngestResult = {
   attachment_path: string | null;
 };
 
-type PushDevice = { id: string; expo_push_token: string };
+type PushDevice = { id: string; expo_push_token: string; platform: 'android' | 'ios' };
 
 type AppOptions = {
   push_enabled: boolean;
@@ -273,7 +274,7 @@ Deno.serve(async (req) => {
     const { data: pushDevices, error: devicesError } = appOptions.push_enabled
       ? await service
         .from('push_devices')
-        .select('id, expo_push_token')
+        .select('id, expo_push_token, platform')
         .eq('user_id', accepted.owner_user_id)
         .is('disabled_at', null)
         .order('updated_at', { ascending: false })
@@ -296,7 +297,7 @@ Deno.serve(async (req) => {
           accepted.source_name,
           accepted.notification_id,
           accepted.source_id,
-          { soundName, showPreview: appOptions.show_preview },
+          { soundName: resolveDeviceSound(device.platform, soundName), showPreview: appOptions.show_preview },
         )
       );
 

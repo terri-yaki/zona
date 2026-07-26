@@ -4,7 +4,6 @@ import { Platform } from 'react-native';
 import { translate } from '@/i18n';
 import {
   androidChannelSound,
-  BUNDLED_SOUND_FILES,
   previewContentSound,
   soundChannelId,
   soundLabelKeys,
@@ -24,8 +23,8 @@ export {
 let channelsReady: Promise<void> | null = null;
 
 /**
- * Create Android notification channels for each custom sound.
- * iOS uses the bundled filename from the push payload directly (no channels).
+ * Create Android default and silent channels. iOS-only custom tones fall back
+ * to the default channel; iOS plays their bundled filename without channels.
  */
 export function ensureNotificationSoundChannels(): Promise<void> {
   if (Platform.OS !== 'android') return Promise.resolve();
@@ -46,15 +45,6 @@ export function ensureNotificationSoundChannels(): Promise<void> {
       sound: androidChannelSound('silent'),
       vibrationPattern: [0, 120],
     });
-    for (const file of BUNDLED_SOUND_FILES) {
-      await Notifications.setNotificationChannelAsync(soundChannelId(file), {
-        name: translate(soundLabelKeys[file]),
-        importance: Notifications.AndroidImportance.MAX,
-        // Basename including extension — must match the file in the app bundle.
-        sound: androidChannelSound(file),
-        vibrationPattern: [0, 180],
-      });
-    }
   })().catch((error) => {
     channelsReady = null;
     console.warn('Could not register notification sound channels.', error);
@@ -73,17 +63,21 @@ export async function previewNotificationSound(soundName: NotificationSound): Pr
 
   await ensureNotificationSoundChannels();
 
+  const usesAndroidFallback = Platform.OS === 'android' && soundName !== 'default' && soundName !== 'silent';
   const body = soundName === 'silent'
     ? translate('sound.previewSilent')
-    : soundName === 'default'
+    : soundName === 'default' || usesAndroidFallback
     ? translate('sound.previewDefault')
     : translate('sound.previewNamed', { name: translate(soundLabelKeys[soundName]) });
+  const contentSound = Platform.OS === 'android'
+    ? androidChannelSound(soundName) ?? false
+    : previewContentSound(soundName);
 
   await Notifications.scheduleNotificationAsync({
     content: {
       title: translate('sound.previewTitle'),
       body,
-      sound: previewContentSound(soundName),
+      sound: contentSound,
       ...(Platform.OS === 'android' ? { channelId: soundChannelId(soundName) } : {}),
     },
     trigger: null,

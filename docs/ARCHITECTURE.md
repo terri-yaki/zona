@@ -1,6 +1,6 @@
 # Zona architecture
 
-This document describes version 1 of Zona: an Expo SDK 54 iPhone application,
+This document describes version 1 of Zona: an Expo SDK 56 mobile application,
 Supabase backend, and direct source API. It is normative alongside the
 [PRD](PRD.md) and [ADR 0001](adr/0001-source-token-architecture.md).
 
@@ -24,17 +24,19 @@ flowchart LR
 
   subgraph Push["Push providers"]
     EXPO["Expo Push Service"] --> APNS["Apple APNs"]
+    EXPO --> FCM["Firebase Cloud Messaging"]
   end
 
-  subgraph Phone["iPhone / Expo SDK 54"]
+  subgraph Phone["iOS or Android / Expo SDK 56"]
     APP["Zona app"]
-    IOS["iOS notification UI"]
+    NATIVE["Native notification UI"]
   end
 
   B -->|"TLS + source Bearer token"| N
   N -->|"hash lookup + atomic ingest"| DB
   N -->|"best-effort ticket request"| EXPO
-  APNS --> IOS
+  APNS --> NATIVE
+  FCM --> NATIVE
   APP -->|"anonymous session"| AUTH
   APP -->|"user JWT"| U
   APP -->|"RLS reads/updates/deletes"| DB
@@ -58,7 +60,7 @@ flowchart LR
 8. Revocation affects one source credential immediately and does not revoke
    sibling sources.
 9. Version 1 contains no remote command channel or arbitrary shell execution.
-10. Native compatibility is pinned to Expo SDK 54 until an explicit upgrade is
+10. Native compatibility is pinned to Expo SDK 56 until an explicit upgrade is
     designed, tested, and recorded.
 
 ## Component boundaries
@@ -89,7 +91,7 @@ than putting transport or persistence directly into screens.
 - `create-source`: verifies a user JWT, generates a credential, stores its hash
   through a service-only database function, and returns the secret once.
 - `manage-source`: verifies owner scope before rename or revoke.
-- `register-push-token`: registers or removes one iPhone installation while
+- `register-push-token`: registers or removes one iOS or Android installation while
   preventing cross-account token reassignment.
 
 Supabase gateway JWT verification is intentionally disabled in configuration;

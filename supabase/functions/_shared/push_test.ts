@@ -6,6 +6,7 @@ import {
   chunk,
   createPushMessage,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveDeviceSound,
   resolveSound,
   soundChannelId,
   ticketError,
@@ -85,7 +86,14 @@ Deno.test('per-source sounds are allowlisted and respect the global setting', ()
     { soundName: 'ios-marimba.wav', showPreview: true },
   );
   assertEquals(message.sound, 'ios-marimba.wav');
-  assertEquals(message.channelId, 'zona_ios_marimba');
+  assertEquals(message.channelId, 'zona_default');
+});
+
+Deno.test('Android uses channels that exist without bundling iPhone tones', () => {
+  assertEquals(resolveDeviceSound('ios', 'ios-aurora.wav'), 'ios-aurora.wav');
+  assertEquals(resolveDeviceSound('android', 'ios-aurora.wav'), 'default');
+  assertEquals(resolveDeviceSound('android', 'default'), 'default');
+  assertEquals(resolveDeviceSound('android', null), null);
 });
 
 Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', () => {
@@ -99,11 +107,11 @@ Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', ()
   assertEquals(resolveSound(false, 'ios-glass.wav'), null);
   assertEquals(resolveSound(true, 'ios-not-bundled.wav'), 'default');
 
-  // Each tone keeps its own Android channel id, matching the app-side mapping
-  // in zona/src/lib/notification-sound-map.ts.
-  assertEquals(soundChannelId('ios-aurora.wav'), 'zona_ios_aurora');
-  assertEquals(soundChannelId('ios-bell-tower.wav'), 'zona_ios_bell_tower');
-  assertEquals(soundChannelId('ios-by-the-seaside.wav'), 'zona_ios_by_the_seaside');
+  // Android uses the default channel because these files are bundled only in
+  // iOS builds.
+  assertEquals(soundChannelId('ios-aurora.wav'), 'zona_default');
+  assertEquals(soundChannelId('ios-bell-tower.wav'), 'zona_default');
+  assertEquals(soundChannelId('ios-by-the-seaside.wav'), 'zona_default');
 
   const message = createPushMessage(
     'ExpoPushToken[token]',
@@ -115,7 +123,7 @@ Deno.test('bundled iPhone tones pass the allow-list and travel as basenames', ()
     { soundName: 'ios-aurora.wav', showPreview: true },
   );
   assertEquals(message.sound, 'ios-aurora.wav');
-  assertEquals(message.channelId, 'zona_ios_aurora');
+  assertEquals(message.channelId, 'zona_default');
 });
 
 Deno.test('ticket errors are recorded even when Expo returns HTTP 200', () => {
