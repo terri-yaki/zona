@@ -101,7 +101,8 @@ security-sensitive invariant and needs endpoint tests in CI.
 ### Notification ingestion
 
 `notify` accepts only a source Bearer credential. It validates the bounded JSON
-contract and the required `Idempotency-Key` header, hashes the credential, and
+contract (including optional severity) and the required `Idempotency-Key`
+header, hashes the credential, and
 invokes a security-definer database function. That transaction authenticates
 the source, replays or rejects a previously seen idempotency key, serializes
 per-source and per-account rate checks, updates last activity, and inserts the
@@ -120,7 +121,7 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference | Owner RLS read/write |
 | `private.source_credentials` | SHA-256 credential hashes | Service-only |
 | `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
-| `public.notifications` | Seven-day durable inbox | Owner RLS read/read-state/delete |
+| `public.notifications` | Seven-day durable inbox, including nullable constrained severity | Owner RLS read/read-state/delete |
 | `private.ingest_requests` | Rolling rate-limit evidence | Service/database function only |
 | `private.account_rate_events` | Hourly account-level rate evidence | Service/database function only |
 | `private.push_delivery_logs` | Expo ticket attempt diagnostics | Service/database function only |
@@ -163,7 +164,8 @@ verify it, and revoke the old source.
    from magic bytes, never from names or headers), and calls atomic ingestion.
 3. Database locks the source’s rate-limit key, verifies API-key active/expiry
    state and revocation, records usage, snapshots the source name, and inserts
-   the notification. The image’s SHA-256 participates in the idempotency hash.
+   the notification. Severity and the image’s SHA-256 participate in the
+   idempotency hash.
 4. A sent image is uploaded to the private `notification-attachments` bucket at
    `{user_id}/{notification_id}` and its metadata is written to the row.
 5. Function reads `app_options` and the originating API key's `sound_name`; it

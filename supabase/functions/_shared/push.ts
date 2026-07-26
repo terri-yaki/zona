@@ -12,6 +12,8 @@ export type ExpoTicket = {
 
 export type PushBehavior = {
   channelId?: string;
+  color?: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical' | null;
   soundName: string | null;
   showPreview: boolean;
 };
@@ -155,16 +157,25 @@ export function createPushMessage(
     to,
     priority: 'high',
     channelId: behavior.channelId ?? soundChannelId(sound),
+    ...(behavior.color ? { color: behavior.color } : {}),
     ...(sound ? { sound } : { sound: null }),
     title: behavior.showPreview ? title : 'New Zona alert',
     subtitle: behavior.showPreview ? `From ${sourceName}` : 'Zona',
     body: behavior.showPreview ? body : 'Open Zona to view this notification.',
     ttl: 3_600,
-    data: { notificationId, sourceId },
+    data: {
+      notificationId,
+      sourceId,
+      ...(behavior.severity ? { severity: behavior.severity } : {}),
+    },
   };
 }
 
-export function assertPushPayloadFits(title: string, body: string): void {
+export function assertPushPayloadFits(
+  title: string,
+  body: string,
+  severity: PushBehavior['severity'] = null,
+): void {
   // The source name is not known until the authenticated RPC resolves. Probe
   // with the maximum possible UTF-8 source name and normal identifier sizes so
   // every payload accepted here remains below Expo/APNs' 4 KiB total limit.
@@ -176,6 +187,12 @@ export function assertPushPayloadFits(title: string, body: string): void {
     maximumSourceName,
     '00000000-0000-4000-8000-000000000000',
     '00000000-0000-4000-8000-000000000000',
+    {
+      color: severity ? '#000000' : undefined,
+      severity,
+      soundName: 'default',
+      showPreview: true,
+    },
   );
   if (byteLength(probe) > MAX_EXPO_MESSAGE_BYTES) throw new Error('INVALID_PAYLOAD');
 }

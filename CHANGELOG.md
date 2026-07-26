@@ -8,6 +8,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Optional notification severity for v0.0.5: send `low`, `medium`, `high`, or
+  `critical` through the JSON or multipart API. Inbox cards use candy green,
+  yellow, orange, or red backgrounds, Android notification icons receive the
+  matching accent color, and omitted severity stays clean white.
 - Server-driven What's New: release notes now live in a new
   `public.app_changelog` table (migration `202607250004`, RLS read for
   signed-in installs, writes service-only) seeded with the 0.0.1/0.0.2

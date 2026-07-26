@@ -66,6 +66,29 @@ Deno.test('push behavior can hide previews and disable sound', () => {
   assertEquals(message.channelId, 'zona_silent');
 });
 
+Deno.test('severity colors the Android icon and travels in routing data', () => {
+  const message = createPushMessage(
+    'ExpoPushToken[token]',
+    'Critical alert',
+    'Production is down',
+    'Office',
+    '00000000-0000-4000-8000-000000000000',
+    '00000000-0000-4000-8000-000000000001',
+    {
+      color: '#E9435D',
+      severity: 'critical',
+      soundName: 'default',
+      showPreview: true,
+    },
+  );
+  assertEquals(message.color, '#E9435D');
+  assertEquals(message.data, {
+    notificationId: '00000000-0000-4000-8000-000000000000',
+    sourceId: '00000000-0000-4000-8000-000000000001',
+    severity: 'critical',
+  });
+});
+
 Deno.test('per-source sounds are allowlisted and respect the global setting', () => {
   assertEquals(resolveSound(true, 'ios-note.wav'), 'ios-note.wav');
   assertEquals(resolveSound(true, 'ios-xylophone.wav'), 'ios-xylophone.wav');

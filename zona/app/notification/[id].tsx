@@ -10,6 +10,7 @@ import { useBottomSafePadding } from '@/components/TabScreen';
 import { deleteNotification, getNotification, markNotificationRead } from '@/data/notifications';
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
+import { severityAppearance } from '@/lib/notification-severity';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -197,10 +198,16 @@ export default function NotificationDetailScreen() {
   }
 
   const deleteBusy = confirmingDelete || deleting;
+  const severity = severityAppearance(item.severity);
   return (
     <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
       <View style={styles.sourceRow}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{sourceInitial(item.source_name_snapshot)}</Text></View>
+        <View style={[styles.avatar, { backgroundColor: severity.background, borderColor: severity.border }]}>
+          <Text style={styles.avatarText}>{sourceInitial(item.source_name_snapshot)}</Text>
+          <View style={styles.bellBadge}>
+            <AppIcon color={severity.icon} fallback="!" name="bell.fill" size={12} />
+          </View>
+        </View>
         <View style={styles.sourceCopy}>
           <Text numberOfLines={1} style={styles.source}>{item.source_name_snapshot}</Text>
           <Text style={styles.time}>{new Date(item.created_at).toLocaleString(getLocaleTag(language))} · {relativeTime(item.created_at)}</Text>
@@ -298,8 +305,9 @@ const styles = StyleSheet.create({
   inboxButton: { alignItems: 'center', alignSelf: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.full, justifyContent: 'center', marginTop: 18, minHeight: 44, paddingHorizontal: 18 },
   inboxButtonText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   sourceRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 23 },
-  avatar: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 15, height: 50, justifyContent: 'center', width: 50 },
-  avatarText: { color: colors.white, fontSize: 19, fontWeight: '800' },
+  avatar: { alignItems: 'center', borderRadius: 15, borderWidth: 1, height: 50, justifyContent: 'center', position: 'relative', width: 50 },
+  avatarText: { color: colors.primary, fontSize: 19, fontWeight: '800' },
+  bellBadge: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 10, bottom: -4, height: 20, justifyContent: 'center', position: 'absolute', right: -4, width: 20 },
   sourceCopy: { flex: 1 },
   source: { color: colors.text, fontSize: 16, fontWeight: '700' },
   time: { color: colors.muted, fontSize: 11, marginTop: 3 },

@@ -1,5 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+export type NotificationSeverity = 'low' | 'medium' | 'high' | 'critical';
+
 /** Bundled / special notification sound identifiers stored on api_keys.sound_name. */
 export type NotificationSound =
   | 'default'
@@ -192,6 +194,7 @@ export type Database = {
           expires_at: string;
           id: string;
           read_at: string | null;
+          severity: NotificationSeverity | null;
           source_id: string;
           source_name_snapshot: string;
           title: string;
@@ -208,6 +211,7 @@ export type Database = {
           expires_at?: string;
           id?: string;
           read_at?: string | null;
+          severity?: NotificationSeverity | null;
           source_id: string;
           source_name_snapshot: string;
           title: string;
@@ -224,6 +228,7 @@ export type Database = {
           expires_at?: string;
           id?: string;
           read_at?: string | null;
+          severity?: NotificationSeverity | null;
           source_id?: string;
           source_name_snapshot?: string;
           title?: string;

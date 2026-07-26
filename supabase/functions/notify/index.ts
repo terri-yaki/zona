@@ -15,6 +15,7 @@ import {
   ticketError,
 } from '../_shared/push.ts';
 import { service } from '../_shared/supabase.ts';
+import { type NotificationSeverity, parseSeverity, severityColor } from '../_shared/severity.ts';
 import { idempotencyKey, optionalString, requiredString } from '../_shared/validation.ts';
 
 type IngestResult = {
@@ -41,6 +42,7 @@ type NotifyPayload = {
   title: string;
   body: string;
   category: string | null;
+  severity: NotificationSeverity | null;
   metadata: Record<string, unknown>;
   attachment: { bytes: Uint8Array; mime: string } | null;
 };
@@ -119,9 +121,10 @@ async function readNotifyPayload(req: Request): Promise<NotifyPayload> {
   const title = requiredString(body.title, 120);
   const messageBody = requiredString(body.body, 2_000);
   const category = optionalString(body.category, 80);
+  const severity = parseSeverity(body.severity);
   const metadata = metadataOrThrow(body.data);
-  assertPushPayloadFits(title, messageBody);
-  return { title, body: messageBody, category, metadata, attachment: null };
+  assertPushPayloadFits(title, messageBody, severity);
+  return { title, body: messageBody, category, severity, metadata, attachment: null };
 }
 
 async function readMultipartPayload(req: Request): Promise<NotifyPayload> {
@@ -138,6 +141,7 @@ async function readMultipartPayload(req: Request): Promise<NotifyPayload> {
   const title = requiredString(form.get('title'), 120);
   const messageBody = requiredString(form.get('body'), 2_000);
   const category = optionalString(form.get('category'), 80);
+  const severity = parseSeverity(form.get('severity'));
 
   const rawData = form.get('data');
   let parsedData: unknown;
@@ -161,8 +165,8 @@ async function readMultipartPayload(req: Request): Promise<NotifyPayload> {
     attachment = { bytes, mime };
   }
 
-  assertPushPayloadFits(title, messageBody);
-  return { title, body: messageBody, category, metadata, attachment };
+  assertPushPayloadFits(title, messageBody, severity);
+  return { title, body: messageBody, category, severity, metadata, attachment };
 }
 
 Deno.serve(async (req) => {
@@ -181,6 +185,7 @@ Deno.serve(async (req) => {
       p_title: payload.title,
       p_body: payload.body,
       p_category: payload.category,
+      p_severity: payload.severity,
       p_data: payload.metadata,
       p_attachment_hash: attachmentHash,
     });
@@ -301,6 +306,8 @@ Deno.serve(async (req) => {
           accepted.source_id,
           {
             channelId: resolveDeviceChannelId(device.platform, accepted.source_id, deviceSound),
+            color: device.platform === 'android' ? severityColor(payload.severity) : undefined,
+            severity: payload.severity,
             soundName: deviceSound,
             showPreview: appOptions.show_preview,
           },

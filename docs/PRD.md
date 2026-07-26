@@ -90,8 +90,9 @@ The user must be able to:
 
 ### Notification ingestion and inbox
 
-- **NOTI-01** `title` and `body` are required; category and object metadata are
-  optional and validated according to the OpenAPI contract.
+- **NOTI-01** `title` and `body` are required; category, object metadata, and
+  severity (`low`, `medium`, `high`, or `critical`) are optional and validated
+  according to the OpenAPI contract.
 - **NOTI-02** Acceptance must atomically rate-limit the authenticated source,
   update its last activity, snapshot its display name, and insert the inbox
   record before any external push attempt.
@@ -110,6 +111,8 @@ The user must be able to:
   most 5 MiB, verified by magic bytes). The image is stored in a private
   bucket readable only by its owner, participates in idempotency, is
   best-effort like push, and shares the seven-day retention.
+- **NOTI-10** Severity participates in idempotency and changes presentation,
+  not delivery priority. Null severity uses a neutral white inbox card.
 
 ### iPhone push registration
 
