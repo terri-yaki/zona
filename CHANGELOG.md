@@ -25,13 +25,6 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
-- Android push registration now uses Firebase-aware native configuration,
-  creates notification channels before requesting a token, preserves the
-  Android platform through the relay and database, and shows a useful setup
-  message instead of exposing the raw `Default FirebaseApp` error. Each source
-  gets native Android sound settings, while iOS keeps its bundled per-source
-  tones. Android screens, sheets, keyboard behavior, system bars, tab icons,
-  and shared icons now follow Android safe areas and Material conventions.
 - Live backend repairs applied during the migration deploy: restored the
   missing `notification-attachments` Storage bucket and owner policies
   (migration `202607260001`), and fixed `delete_account_data_internal` calling
@@ -149,6 +142,26 @@ to use semantic application versions. Build numbers are managed by EAS.
   CI/integration tests, and signed TestFlight verification.
 - Resolve or approve a time-bounded mitigation for outstanding SDK-54
   dependency advisories without forcing an unplanned SDK upgrade.
+
+## [0.0.4] - 2026-07-26
+
+### Added
+
+- Zona now supports Android! Android builds can register with Expo through
+  FCM, receive source-aware notifications, and keep each source on its own
+  native notification channel.
+
+### Changed
+
+- Android screens, sheets, keyboard behavior, system bars, bottom tabs, and
+  shared icons now follow Android safe areas and Material conventions.
+- Per-source sound controls are platform-native: Android opens that source's
+  notification-channel settings, while iOS keeps the bundled ringtone picker.
+
+### Fixed
+
+- Missing Firebase configuration now produces a useful setup message instead
+  of exposing the raw `Default FirebaseApp` error.
 
 ## [0.1.0] - 2026-07-20
 
