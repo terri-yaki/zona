@@ -119,8 +119,7 @@ export function pushPayloadSound(soundName: NotificationSound): string | null {
  */
 export function androidChannelSound(soundName: NotificationSound): string | null {
   if (soundName === 'silent') return null;
-  if (soundName === 'default') return 'default';
-  return soundName;
+  return 'default';
 }
 
 /**
@@ -137,10 +136,7 @@ export function previewContentSound(soundName: NotificationSound): string | bool
 /** Android channel id for a sound choice (must match server push channelId). */
 export function soundChannelId(soundName: NotificationSound | string | null): string {
   if (!soundName || soundName === 'silent') return 'zona_silent';
-  if (soundName === 'default') return 'zona_default';
-  // zona-soft.wav → zona_soft; ios-aurora.wav → zona_ios_aurora
-  const slug = soundName.replace(/\.wav$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  return slug.startsWith('zona_') ? slug : `zona_${slug}`;
+  return 'zona_default';
 }
 
 /** Picker rows in display order: default, the iPhone ringtone collection, silent last. */

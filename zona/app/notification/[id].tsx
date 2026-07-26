@@ -6,6 +6,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { ErrorState } from '@/components/ErrorState';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { useBottomSafePadding } from '@/components/TabScreen';
 import { deleteNotification, getNotification, markNotificationRead } from '@/data/notifications';
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
@@ -23,6 +24,7 @@ export default function NotificationDetailScreen() {
   const { language, t } = useI18n();
   const { id: idParameter } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
+  const bottomPadding = useBottomSafePadding(24);
   const candidateId = Array.isArray(idParameter) ? idParameter[0] : idParameter;
   const id = candidateId && uuidPattern.test(candidateId) ? candidateId : null;
   const userId = session?.user.id;
@@ -196,7 +198,7 @@ export default function NotificationDetailScreen() {
 
   const deleteBusy = confirmingDelete || deleting;
   return (
-    <ScrollView contentContainerStyle={styles.page}>
+    <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
       <View style={styles.sourceRow}>
         <View style={styles.avatar}><Text style={styles.avatarText}>{sourceInitial(item.source_name_snapshot)}</Text></View>
         <View style={styles.sourceCopy}>

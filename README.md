@@ -1,12 +1,12 @@
 # Zona
 
-Zona is a private, multi-source notification inbox for iPhone. Any local app can
+Zona is a private, multi-source notification inbox for iOS and Android. Any local app can
 send an alert through an authenticated Supabase Edge Function; Expo delivers the
 push and the app keeps a seven-day inbox.
 
 ## Projects
 
-- `zona/` — Expo Router iPhone application (Expo SDK 54).
+- `zona/` — Expo Router mobile application (Expo SDK 56).
 - `supabase/` — database migration and Edge Functions.
 - `examples/` — small PowerShell and Node.js senders that document the API.
 
@@ -23,6 +23,7 @@ push and the app keeps a seven-day inbox.
    displayed. Tokens are never shown again.
 
 See `docs/API.md` for the notification request contract and production notes.
+Android Firebase and EAS setup is documented in `docs/ANDROID_PUSH.md`.
 Preview app updates (OTA vs new IPA) are documented in `docs/PREVIEW_UPDATES.md`.
 
 For a quick Windows test after creating a source token in the app:
@@ -61,4 +62,4 @@ release procedure remain open.
 Local apps never receive a Supabase service key and never write to database
 tables. A source token authenticates only the `/notify` Edge Function. The
 server hashes tokens, derives the source identity from the hash, rate-limits
-each source, and applies database row-level security to iPhone reads.
+each source, and applies database row-level security to mobile inbox reads.

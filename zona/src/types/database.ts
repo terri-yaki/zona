@@ -238,7 +238,7 @@ export type Database = {
           device_id: string;
           expo_push_token: string;
           id: string;
-          platform: 'ios';
+          platform: 'android' | 'ios';
           updated_at: string;
           user_id: string;
         };
@@ -248,7 +248,7 @@ export type Database = {
           device_id: string;
           expo_push_token: string;
           id?: string;
-          platform?: 'ios';
+          platform?: 'android' | 'ios';
           updated_at?: string;
           user_id: string;
         };
@@ -258,7 +258,7 @@ export type Database = {
           device_id?: string;
           expo_push_token?: string;
           id?: string;
-          platform?: 'ios';
+          platform?: 'android' | 'ios';
           updated_at?: string;
           user_id?: string;
         };

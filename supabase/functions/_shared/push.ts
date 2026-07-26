@@ -11,9 +11,12 @@ export type ExpoTicket = {
 };
 
 export type PushBehavior = {
+  channelId?: string;
   soundName: string | null;
   showPreview: boolean;
 };
+
+export type PushPlatform = 'android' | 'ios';
 
 /**
  * Bundled iPhone alert tones selectable in the app. Mirrors
@@ -99,6 +102,21 @@ export function resolveSound(playSound: boolean, soundName: string | null | unde
   return soundName && allowedSounds.has(soundName) ? soundName : 'default';
 }
 
+export function resolveDeviceSound(platform: PushPlatform, soundName: string | null): string | null {
+  if (platform === 'android' && soundName && soundName !== 'default') return 'default';
+  return soundName;
+}
+
+export function sourceNotificationChannelId(sourceId: string): string {
+  const normalized = sourceId.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return `zona_source_${normalized}`;
+}
+
+export function resolveDeviceChannelId(platform: PushPlatform, sourceId: string, soundName: string | null): string {
+  if (platform === 'android' && soundName) return sourceNotificationChannelId(sourceId);
+  return soundChannelId(soundName);
+}
+
 export function chunk<T>(values: T[], size = EXPO_PUSH_BATCH_SIZE): T[][] {
   if (!Number.isSafeInteger(size) || size < 1 || size > EXPO_PUSH_BATCH_SIZE) {
     throw new Error('INVALID_BATCH_SIZE');
@@ -117,10 +135,7 @@ export function byteLength(value: unknown): number {
 /** Android notification channel id for a sound choice (matches the app-side mapping). */
 export function soundChannelId(soundName: string | null): string {
   if (!soundName) return 'zona_silent';
-  if (soundName === 'default') return 'zona_default';
-  // zona-soft.wav → zona_soft; ios-aurora.wav → zona_ios_aurora
-  const slug = soundName.replace(/\.wav$/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-  return slug.startsWith('zona_') ? slug : `zona_${slug}`;
+  return 'zona_default';
 }
 
 export function createPushMessage(
@@ -139,7 +154,7 @@ export function createPushMessage(
   return {
     to,
     priority: 'high',
-    channelId: soundChannelId(sound),
+    channelId: behavior.channelId ?? soundChannelId(sound),
     ...(sound ? { sound } : { sound: null }),
     title: behavior.showPreview ? title : 'New Zona alert',
     subtitle: behavior.showPreview ? `From ${sourceName}` : 'Zona',

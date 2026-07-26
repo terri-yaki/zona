@@ -9,6 +9,8 @@ import {
   createPushMessage,
   type ExpoTicket,
   MAX_EXPO_MESSAGE_BYTES,
+  resolveDeviceChannelId,
+  resolveDeviceSound,
   resolveSound,
   ticketError,
 } from '../_shared/push.ts';
@@ -25,7 +27,7 @@ type IngestResult = {
   attachment_path: string | null;
 };
 
-type PushDevice = { id: string; expo_push_token: string };
+type PushDevice = { id: string; expo_push_token: string; platform: 'android' | 'ios' };
 
 type AppOptions = {
   push_enabled: boolean;
@@ -273,7 +275,7 @@ Deno.serve(async (req) => {
     const { data: pushDevices, error: devicesError } = appOptions.push_enabled
       ? await service
         .from('push_devices')
-        .select('id, expo_push_token')
+        .select('id, expo_push_token, platform')
         .eq('user_id', accepted.owner_user_id)
         .is('disabled_at', null)
         .order('updated_at', { ascending: false })
@@ -288,17 +290,22 @@ Deno.serve(async (req) => {
     let pushAccepted = 0;
     const devices = (pushDevices ?? []) as PushDevice[];
     for (const deviceBatch of chunk(devices)) {
-      const messages = deviceBatch.map((device) =>
-        createPushMessage(
+      const messages = deviceBatch.map((device) => {
+        const deviceSound = resolveDeviceSound(device.platform, soundName);
+        return createPushMessage(
           device.expo_push_token,
           payload.title,
           payload.body,
           accepted.source_name,
           accepted.notification_id,
           accepted.source_id,
-          { soundName, showPreview: appOptions.show_preview },
-        )
-      );
+          {
+            channelId: resolveDeviceChannelId(device.platform, accepted.source_id, deviceSound),
+            soundName: deviceSound,
+            showPreview: appOptions.show_preview,
+          },
+        );
+      });
 
       // The conservative pre-ingest check should make this unreachable, but
       // retain a final check against actual source/token values as defense in depth.

@@ -2,10 +2,10 @@
   "expo": {
     "name": "Zona",
     "slug": "zona",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "scheme": "zona",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -16,7 +16,8 @@
       "fallbackToCacheTimeout": 0
     },
     "android": {
-      "package": "com.terriyaki.zona"
+      "package": "com.terriyaki.zona",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "ios": {
       "icon": "./assets/icon.png",
@@ -33,6 +34,7 @@
         "expo-notifications",
         {
           "color": "#2F6B5F",
+          "defaultChannel": "zona_default",
           "sounds": [
             "./assets/sounds/ios-alarm.wav",
             "./assets/sounds/ios-apex.wav",
@@ -104,6 +106,13 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "style": "dark"
+        }
+      ],
       [
         "expo-live-activity",
         {

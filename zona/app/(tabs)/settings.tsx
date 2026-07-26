@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
-import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
+import { TabScreen, useBottomSafePadding, useTabBarContentPadding } from '@/components/TabScreen';
 import { listNotifications, unreadNotificationCount } from '@/data/notifications';
 import { getAppOptions, updateAppOptions, type AppOptionFlags } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
@@ -102,6 +102,8 @@ export default function SettingsScreen() {
           { text: t('common.notNow'), style: 'cancel' },
           { text: t('settings.openSettings'), onPress: () => void Linking.openSettings() },
         ]);
+      } else if (status === 'android-unconfigured') {
+        Alert.alert(t('settings.androidConfigTitle'), t('settings.androidConfigBody'));
       } else {
         Alert.alert(
           t('settings.pushStatus'),
@@ -420,6 +422,7 @@ function LanguageModal({ onClose, onSelect, preference, visible }: {
   visible: boolean;
 }) {
   const { languageName, t } = useI18n();
+  const bottomPadding = useBottomSafePadding(14);
   const choices: { label: string; value: LanguagePreference }[] = [
     { label: t('settings.languageSystemWithValue', { language: languageName }), value: 'system' },
     { label: 'English', value: 'en' },
@@ -428,7 +431,7 @@ function LanguageModal({ onClose, onSelect, preference, visible }: {
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
       <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalBackdrop}>
-        <Pressable onPress={() => undefined} style={styles.modalSheet}>
+        <Pressable onPress={() => undefined} style={[styles.modalSheet, { paddingBottom: bottomPadding }]}>
           <View style={styles.modalHeader}>
             <View>
               <Text style={styles.modalTitle}>{t('settings.languageTitle')}</Text>
@@ -513,7 +516,7 @@ const styles = StyleSheet.create({
   link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },
   languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },
   modalBackdrop: { backgroundColor: 'rgba(18, 35, 29, 0.3)', flex: 1, justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingBottom: 34, paddingHorizontal: 18, paddingTop: 18 },
+  modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingHorizontal: 18, paddingTop: 18 },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   modalTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
   modalBody: { color: colors.muted, fontSize: 12, marginTop: 4 },

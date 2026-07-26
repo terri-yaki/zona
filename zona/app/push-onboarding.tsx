@@ -27,6 +27,7 @@ export default function PushOnboardingScreen() {
         if (result === 'denied') Alert.alert(t('onboarding.offTitle'), t('onboarding.offBody'));
         if (result === 'simulator') Alert.alert(t('onboarding.deviceTitle'), t('onboarding.deviceBody'));
         if (result === 'expo-go') Alert.alert(t('onboarding.expoTitle'), t('onboarding.expoBody'));
+        if (result === 'android-unconfigured') Alert.alert(t('onboarding.androidConfigTitle'), t('onboarding.androidConfigBody'));
       }
       await markPushOnboardingComplete(authenticatedUserId);
       router.replace('/(tabs)');

@@ -143,6 +143,26 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Resolve or approve a time-bounded mitigation for outstanding SDK-54
   dependency advisories without forcing an unplanned SDK upgrade.
 
+## [0.0.4] - 2026-07-26
+
+### Added
+
+- Zona now supports Android! Android builds can register with Expo through
+  FCM, receive source-aware notifications, and keep each source on its own
+  native notification channel.
+
+### Changed
+
+- Android screens, sheets, keyboard behavior, system bars, bottom tabs, and
+  shared icons now follow Android safe areas and Material conventions.
+- Per-source sound controls are platform-native: Android opens that source's
+  notification-channel settings, while iOS keeps the bundled ringtone picker.
+
+### Fixed
+
+- Missing Firebase configuration now produces a useful setup message instead
+  of exposing the raw `Default FirebaseApp` error.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

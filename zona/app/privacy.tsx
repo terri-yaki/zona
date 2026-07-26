@@ -2,14 +2,16 @@ import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius } from '@/theme';
+import { useBottomSafePadding } from '@/components/TabScreen';
 import { useI18n } from '@/providers/LocalizationProvider';
 
 export default function PrivacyScreen() {
   const { t } = useI18n();
+  const bottomPadding = useBottomSafePadding(18);
   return (
     <>
       <Stack.Screen options={{ title: t('nav.privacy') }} />
-      <ScrollView contentContainerStyle={styles.page}>
+      <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
         <Text style={styles.title}>{t('privacy.title')}</Text>
         <Text style={styles.intro}>{t('privacy.intro')}</Text>
         <PrivacySection title={t('privacy.accountTitle')} body={t('privacy.accountBody')} />

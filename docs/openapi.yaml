@@ -310,7 +310,7 @@ paths:
     post:
       operationId: managePushRegistration
       tags: [Mobile]
-      summary: Register or remove one iPhone installation.
+      summary: Register or remove one iOS or Android installation.
       security:
         - userBearer: []
       requestBody:
@@ -675,7 +675,7 @@ components:
           maxLength: 200
         platform:
           type: string
-          const: ios
+          enum: [ios, android]
 
     UnregisterPushRequest:
       type: object

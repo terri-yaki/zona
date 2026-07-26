@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import { NavigationBar } from 'expo-navigation-bar';
+import { StatusBar } from 'expo-status-bar';
 import {
   Animated,
   Dimensions,
@@ -71,6 +73,8 @@ export function ImageLightbox({ uri, accessibilityLabel, previewStyle }: Props) 
         transparent
         visible={open}
       >
+        <NavigationBar style="light" />
+        <StatusBar style="light" />
         {Platform.OS === 'ios'
           ? <IosZoomViewer onClose={() => setOpen(false)} uri={uri} />
           : <AndroidZoomViewer onClose={() => setOpen(false)} uri={uri} />}

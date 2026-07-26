@@ -1,6 +1,6 @@
-import type { SFSymbol } from 'expo-symbols';
+import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { createElement, type ReactElement, type ReactNode } from 'react';
-import { type ColorValue, StyleSheet, Text, View } from 'react-native';
+import { Platform, type ColorValue, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   name: SFSymbol;
@@ -10,13 +10,54 @@ type Props = {
 };
 
 type SymbolViewComponent = (props: {
-  name: SFSymbol | string;
+  name: SFSymbol | { android?: AndroidSymbol; ios?: SFSymbol; web?: AndroidSymbol };
   tintColor?: ColorValue;
   size?: number;
   weight?: string;
   resizeMode?: string;
   fallback?: ReactNode;
 }) => ReactElement | null;
+
+const androidSymbols = {
+  'antenna.radiowaves.left.and.right': 'cell_tower',
+  'arrow.clockwise': 'refresh',
+  'arrow.down.circle': 'download',
+  'arrow.right': 'arrow_forward',
+  'bell.badge.fill': 'notifications_active',
+  bell: 'notifications',
+  'bolt.fill': 'bolt',
+  checkmark: 'check',
+  'checkmark.circle.fill': 'check_circle',
+  'chevron.right': 'chevron_right',
+  clock: 'schedule',
+  desktopcomputer: 'computer',
+  'doc.on.doc': 'content_copy',
+  'exclamationmark.triangle.fill': 'warning',
+  globe: 'language',
+  'hand.raised.fill': 'privacy_tip',
+  'key.fill': 'vpn_key',
+  pencil: 'edit',
+  person: 'person',
+  'person.crop.circle.fill': 'account_circle',
+  photo: 'image',
+  'photo.fill': 'image',
+  plus: 'add',
+  'rectangle.3.group.fill': 'view_carousel',
+  'rectangle.portrait.and.arrow.right': 'logout',
+  'speaker.slash.fill': 'volume_off',
+  'speaker.wave.2.fill': 'volume_up',
+  sparkles: 'auto_awesome',
+  trash: 'delete',
+  tray: 'inbox',
+  'tray.full.fill': 'inbox',
+  xmark: 'close',
+  'xmark.circle': 'cancel',
+} satisfies Partial<Record<SFSymbol, AndroidSymbol>>;
+
+function crossPlatformName(name: SFSymbol) {
+  const android = androidSymbols[name as keyof typeof androidSymbols];
+  return android ? { android, ios: name, web: android } : name;
+}
 
 let SymbolView: SymbolViewComponent | null | undefined;
 
@@ -48,11 +89,11 @@ export function AppIcon({ name, color = '#17221E', size = 22, fallback = '•' }
 
   return createElement(view, {
     fallback: <FallbackIcon color={color} fallback={fallback} size={size} />,
-    name,
+    name: crossPlatformName(name),
     resizeMode: 'scaleAspectFit',
     size,
     tintColor: color,
-    weight: 'semibold',
+    weight: Platform.OS === 'ios' ? 'semibold' : undefined,
   });
 }
 

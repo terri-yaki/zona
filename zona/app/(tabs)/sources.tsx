@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +28,7 @@ import { useSources } from '@/hooks/useSources';
 import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
+import { openAndroidSourceNotificationSettings } from '@/lib/android-source-notifications';
 import {
   isIosToneFile,
   SOUND_CHOICES as soundChoices,
@@ -67,35 +70,42 @@ export default function SourcesScreen() {
   const { error, load, loading, patchSource, refresh, refreshing, sources } = useSources(true);
   const bottomPad = useTabBarContentPadding();
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const [renameSourceTarget, setRenameSourceTarget] = useState<Source | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameValidationError, setRenameValidationError] = useState<string | null>(null);
   const [soundPickerSource, setSoundPickerSource] = useState<Source | null>(null);
 
   function askRename(source: Source) {
     if (busySourceId) return;
-    Alert.prompt(
-      t('sources.renameTitle'),
-      t('sources.renameBody'),
-      async (name) => {
-        const normalized = name.trim();
-        if (!normalized || normalized === source.display_name) return;
-        const validationError = validateSourceInput(normalized, source.hostname ?? '');
-        if (validationError) {
-          Alert.alert(t('sources.nameError'), validationError);
-          return;
-        }
+    setRenameSourceTarget(source);
+    setRenameValue(source.display_name);
+    setRenameValidationError(null);
+  }
 
-        setBusySourceId(source.id);
-        try {
-          await renameSource(source.id, normalized);
-          await load();
-        } catch (caught) {
-          Alert.alert(t('sources.renameError'), userMessage(caught));
-        } finally {
-          setBusySourceId(null);
-        }
-      },
-      'plain-text',
-      source.display_name,
-    );
+  async function submitRename() {
+    const source = renameSourceTarget;
+    if (!source || busySourceId) return;
+    const normalized = renameValue.trim();
+    if (!normalized || normalized === source.display_name) {
+      setRenameSourceTarget(null);
+      return;
+    }
+    const validationError = validateSourceInput(normalized, source.hostname ?? '');
+    if (validationError) {
+      setRenameValidationError(validationError);
+      return;
+    }
+
+    setBusySourceId(source.id);
+    try {
+      await renameSource(source.id, normalized);
+      setRenameSourceTarget(null);
+      await load();
+    } catch (caught) {
+      Alert.alert(t('sources.renameError'), userMessage(caught));
+    } finally {
+      setBusySourceId(null);
+    }
   }
 
   function askRevoke(source: Source) {
@@ -163,6 +173,12 @@ export default function SourcesScreen() {
 
   function askSound(source: Source) {
     if (busySourceId || !source.api_key) return;
+    if (Platform.OS === 'android') {
+      void openAndroidSourceNotificationSettings(source.id, source.display_name).catch((error) => {
+        Alert.alert(t('sources.soundError'), userMessage(error));
+      });
+      return;
+    }
     setSoundPickerSource(source);
   }
 
@@ -170,7 +186,7 @@ export default function SourcesScreen() {
     const source = soundPickerSource;
     setSoundPickerSource(null);
     if (!source) return;
-    // Local preview verifies the .wav is in this IPA; remote push uses the same basename.
+    // iOS previews the bundled file; Android sound choices live in its native channel settings.
     void previewNotificationSound(soundName).catch((error) => {
       console.warn('Sound preview failed.', error);
     });
@@ -319,7 +335,9 @@ export default function SourcesScreen() {
                       style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed]}
                     >
                       <AppIcon color={colors.primary} fallback="♪" name="speaker.wave.2.fill" size={12} />
-                      <Text numberOfLines={1} style={styles.action}>{t(soundLabelKeyFor(item.api_key?.sound_name))}</Text>
+                      <Text numberOfLines={1} style={styles.action}>
+                        {Platform.OS === 'android' ? t('sources.soundAndroid') : t(soundLabelKeyFor(item.api_key?.sound_name))}
+                      </Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
@@ -347,7 +365,62 @@ export default function SourcesScreen() {
         onClose={() => setSoundPickerSource(null)}
         onSelect={selectSound}
       />
+      <RenameSourceModal
+        busy={Boolean(renameSourceTarget && busySourceId === renameSourceTarget.id)}
+        error={renameValidationError}
+        onChange={setRenameValue}
+        onClose={() => {
+          if (!busySourceId) setRenameSourceTarget(null);
+        }}
+        onSubmit={() => void submitRename()}
+        value={renameValue}
+        visible={Boolean(renameSourceTarget)}
+      />
     </TabScreen>
+  );
+}
+
+function RenameSourceModal({ busy, error, onChange, onClose, onSubmit, value, visible }: {
+  busy: boolean;
+  error: string | null;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+  value: string;
+  visible: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.renameRoot}>
+        <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.sheetBackdrop} />
+        <View style={[styles.renameSheet, { paddingBottom: Math.max(insets.bottom, 12) + 14 }]}>
+          <Text style={styles.sheetTitle}>{t('sources.renameTitle')}</Text>
+          <Text style={styles.sheetSubtitle}>{t('sources.renameBody')}</Text>
+          <TextInput
+            accessibilityLabel={t('sources.renameTitle')}
+            autoFocus
+            maxLength={80}
+            onChangeText={onChange}
+            onSubmitEditing={onSubmit}
+            returnKeyType="done"
+            selectTextOnFocus
+            style={[styles.renameInput, error && styles.renameInputError]}
+            value={value}
+          />
+          {error ? <Text accessibilityRole="alert" style={styles.renameError}>{error}</Text> : null}
+          <View style={styles.renameActions}>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={onClose} style={({ pressed }) => [styles.renameCancel, pressed && styles.actionPressed]}>
+              <Text style={styles.sheetCancelText}>{t('common.cancel')}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={onSubmit} style={({ pressed }) => [styles.renameSubmit, pressed && styles.actionPressed, busy && styles.actionDisabled]}>
+              {busy ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.renameSubmitText}>{t('sources.rename')}</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -594,4 +667,13 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   sheetCancelText: { color: colors.textSoft, fontSize: 15, fontWeight: '700' },
+  renameRoot: { flex: 1, justifyContent: 'flex-end' },
+  renameSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingHorizontal: 18, paddingTop: 20 },
+  renameInput: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, color: colors.text, fontSize: 16, minHeight: 52, paddingHorizontal: 15 },
+  renameInputError: { borderColor: colors.danger },
+  renameError: { color: colors.danger, fontSize: 12, lineHeight: 17, marginTop: 7 },
+  renameActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  renameCancel: { alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.medium, flex: 1, justifyContent: 'center', minHeight: 50 },
+  renameSubmit: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flex: 1, justifyContent: 'center', minHeight: 50 },
+  renameSubmitText: { color: colors.white, fontSize: 15, fontWeight: '700' },
 });

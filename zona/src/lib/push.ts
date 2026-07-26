@@ -6,13 +6,15 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { registerPushToken, unregisterPushDevice } from './api';
+import { ensureNotificationSoundChannels } from './notification-sounds';
+import { isAndroidFirebaseConfigurationError, nativePushPlatform } from './push-platform';
 import { translate } from '@/i18n';
 
 const installationKey = 'zona.installation-id';
 const onboardingPrefix = 'zona.push-onboarding-complete';
 const healthPrefix = 'zona.push-health';
 
-export type PushAvailability = 'registered' | 'not-granted' | 'denied' | 'simulator' | 'expo-go' | 'web' | 'unregistered' | 'error';
+export type PushAvailability = 'registered' | 'not-granted' | 'denied' | 'simulator' | 'expo-go' | 'web' | 'android-unconfigured' | 'unregistered' | 'error';
 
 export type PushRegistrationHealth = {
   status: PushAvailability;
@@ -94,10 +96,12 @@ async function registerCurrentExpoToken() {
   }
 
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-  await registerPushToken(token, await installationId());
+  const platform = nativePushPlatform(Platform.OS);
+  if (!platform) throw new Error('Push registration is not supported on this platform.');
+  await registerPushToken(token, await installationId(), platform);
 }
 
-export async function enablePushNotifications(userId: string): Promise<'registered' | 'denied' | 'simulator' | 'expo-go' | 'web'> {
+export async function enablePushNotifications(userId: string): Promise<'registered' | 'denied' | 'simulator' | 'expo-go' | 'web' | 'android-unconfigured'> {
   const unavailable = cannotUseNativePush();
   if (unavailable) {
     await saveHealth(userId, unavailable);
@@ -105,6 +109,7 @@ export async function enablePushNotifications(userId: string): Promise<'register
   }
 
   try {
+    await ensureNotificationSoundChannels();
     const current = await Notifications.getPermissionsAsync();
     const permission = current.status === 'granted' ? current : await Notifications.requestPermissionsAsync();
     if (permission.status !== 'granted') {
@@ -116,12 +121,16 @@ export async function enablePushNotifications(userId: string): Promise<'register
     await saveHealth(userId, 'registered');
     return 'registered';
   } catch (error) {
+    if (Platform.OS === 'android' && isAndroidFirebaseConfigurationError(error)) {
+      await saveHealth(userId, 'android-unconfigured');
+      return 'android-unconfigured';
+    }
     await saveHealth(userId, 'error', error);
     throw error;
   }
 }
 
-export async function syncPushRegistration(userId: string): Promise<'registered' | 'not-granted' | 'simulator' | 'expo-go' | 'web'> {
+export async function syncPushRegistration(userId: string): Promise<'registered' | 'not-granted' | 'simulator' | 'expo-go' | 'web' | 'android-unconfigured'> {
   const unavailable = cannotUseNativePush();
   if (unavailable) {
     await saveHealth(userId, unavailable);
@@ -129,6 +138,7 @@ export async function syncPushRegistration(userId: string): Promise<'registered'
   }
 
   try {
+    await ensureNotificationSoundChannels();
     const permission = await Notifications.getPermissionsAsync();
     if (permission.status !== 'granted') {
       await saveHealth(userId, 'not-granted');
@@ -139,6 +149,10 @@ export async function syncPushRegistration(userId: string): Promise<'registered'
     await saveHealth(userId, 'registered');
     return 'registered';
   } catch (error) {
+    if (Platform.OS === 'android' && isAndroidFirebaseConfigurationError(error)) {
+      await saveHealth(userId, 'android-unconfigured');
+      return 'android-unconfigured';
+    }
     await saveHealth(userId, 'error', error);
     throw error;
   }
@@ -156,15 +170,20 @@ export function addPushRegistrationRefreshListener(userId: string, onError?: (er
   let lastAt = 0;
   const minIntervalMs = 90_000;
 
-  return Notifications.addPushTokenListener(() => {
-    const now = Date.now();
-    if (inFlight || now - lastAt < minIntervalMs) return;
-    lastAt = now;
-    inFlight = true;
-    void syncPushRegistration(userId)
-      .catch((error) => onError?.(error))
-      .finally(() => {
-        inFlight = false;
-      });
-  });
+  try {
+    return Notifications.addPushTokenListener(() => {
+      const now = Date.now();
+      if (inFlight || now - lastAt < minIntervalMs) return;
+      lastAt = now;
+      inFlight = true;
+      void syncPushRegistration(userId)
+        .catch((error) => onError?.(error))
+        .finally(() => {
+          inFlight = false;
+        });
+    });
+  } catch (error) {
+    onError?.(error);
+    return { remove() {} };
+  }
 }
