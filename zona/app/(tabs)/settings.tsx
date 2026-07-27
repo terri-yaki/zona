@@ -37,11 +37,13 @@ import { useI18n } from '@/providers/LocalizationProvider';
 import { languageAutonym, type LanguagePreference } from '@/i18n';
 import { colors, radius } from '@/theme';
 import type { AppOptions } from '@/types';
+import { getUniversalConfig, type UniversalConfig } from '@/data/config';
+import { resolveUniversalConfig } from '@/lib/universal-config';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const { languageName, preference, setPreference, t } = useI18n();
+  const { languageName, preference, setPreference, t, tc } = useI18n();
   const bottomPad = useTabBarContentPadding(16);
   const userId = session?.user.id;
   const [permission, setPermission] = useState(t('settings.checking'));
@@ -54,6 +56,7 @@ export default function SettingsScreen() {
   const [savingOption, setSavingOption] = useState<keyof AppOptionFlags | null>(null);
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [config, setConfig] = useState<UniversalConfig>(() => resolveUniversalConfig(null, false));
   const [liveActivityCapability, setLiveActivityCapability] = useState<LiveActivityCapability | null>(null);
   const [languageModal, setLanguageModal] = useState(false);
   const liveActivitySupported = liveActivityPlatformSupported();
@@ -63,7 +66,9 @@ export default function SettingsScreen() {
     setHealth(await getPushRegistrationHealth(userId));
     try {
       await migrateLegacyLiveActivityPreference(userId);
-      setOptions(await getAppOptions(userId));
+      const nextOptions = await getAppOptions(userId);
+      setOptions(nextOptions);
+      setConfig(await getUniversalConfig(nextOptions.is_premium));
       setOptionsError(null);
     } catch (error) {
       setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
@@ -271,7 +276,6 @@ export default function SettingsScreen() {
   const languageValue = preference === 'system'
     ? t('settings.languageSystemWithValue', { language: languageName })
     : languageAutonym(preference);
-
   return (
     <TabScreen>
       <ScrollView
@@ -290,7 +294,7 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <SettingRow icon="person" label={t('settings.account')} value={userId ? `${userId.slice(0, 8)}…` : '—'} />
         <View style={styles.divider} />
-        <SettingRow icon="clock" label={t('settings.historyRetention')} value={t('common.sevenDays')} />
+        <SettingRow icon="clock" label={t('settings.historyRetention')} value={tc('settings.retentionDay', 'settings.retentionDays', config.retentionDays)} />
       </View>
 
       <Text style={styles.section}>{t('settings.sectionNotifications')}</Text>
@@ -383,6 +387,18 @@ export default function SettingsScreen() {
         >
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
           <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable>
+
+        <View style={styles.divider} />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => Linking.openURL(config.userGuideUrl)}
+          style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}
+        >
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="?" name="book" size={17} /></View>
+          <Text style={styles.link}>{t('settings.userGuide')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable>
       </View>

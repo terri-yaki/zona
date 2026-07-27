@@ -372,14 +372,15 @@ print(response.json())
 Attachment rules:
 
 - One optional PNG, JPEG, or WebP image.
-- Maximum image size: 5 MiB.
-- Maximum complete multipart request: 6 MiB.
+- Maximum image size: 5 MiB by default; the operator can tune this per tier,
+  so premium accounts may accept larger images.
+- Maximum complete multipart request: the image limit plus 1 MiB by default.
 - SVG, GIF, PDF, and other file types are rejected.
 - The server detects format from the file's magic bytes, not its extension or
   caller-supplied MIME type.
 - The image hash participates in idempotency.
 - The private image is readable only by the owning account and follows the same
-  seven-day retention as the notification.
+  retention window as the notification.
 
 Attachment storage is best effort. If the inbox record is accepted but Storage
 fails, the server still returns `202` with `attachmentAccepted: false` and
@@ -452,7 +453,12 @@ Senders cannot change these settings in a notification request:
 
 ## Limits
 
-| Limit | Value |
+The per-account rate, attachment size, retention, and API-key limits are
+operator-configured per tier (standard and premium) and can change without an
+API redeploy; the values below are the standard-tier defaults. Premium
+accounts may have higher values.
+
+| Limit | Standard default |
 | --- | --- |
 | JSON request body | 16 KiB total |
 | Multipart request body | 6 MiB total |
@@ -465,6 +471,8 @@ Senders cannot change these settings in a notification request:
 | Conservative generated push payload | 3,800 serialized UTF-8 bytes |
 | Rate per source | 60 accepted requests in a rolling minute |
 | Rate per account | 300 accepted requests in a rolling minute across all sources |
+| Active API keys per account | 100 (revoked keys never count) |
+| Retention | 7 days |
 
 ## Errors
 
@@ -483,9 +491,9 @@ Error responses use a small JSON envelope:
 | `401` | `INVALID_TOKEN` | Token is missing, malformed, paused, expired, unknown, or revoked. | Check the source in Zona or create a new token. |
 | `405` | `METHOD_NOT_ALLOWED` | The endpoint accepts only `POST` (plus CORS preflight). | Use `POST`. |
 | `409` | `IDEMPOTENCY_CONFLICT` | This source reused a key with different content or a different image. | Use the original content, or a new key for a genuinely new event. |
-| `413` | `PAYLOAD_TOO_LARGE` | JSON exceeded 16 KiB or multipart exceeded 6 MiB. | Reduce the request size. |
+| `413` | `PAYLOAD_TOO_LARGE` | JSON exceeded 16 KiB or multipart exceeded the configured ceiling. | Reduce the request size. |
 | `429` | `RATE_LIMITED` | This source exceeded 60 accepted requests/minute. | Wait for `Retry-After`, then retry with the same key. |
-| `429` | `ACCOUNT_RATE_LIMITED` | All sources for the account exceeded 300 accepted requests/minute. | Wait for `Retry-After`, then retry with the same key. |
+| `429` | `ACCOUNT_RATE_LIMITED` | All sources for the account exceeded the configured per-account rate. | Wait for `Retry-After`, then retry with the same key. |
 | `500` | `INTERNAL_ERROR` | The request was not confirmed as accepted. | Retry with backoff, the same key, and identical content. |
 
 Use a short client timeout and exponential backoff with jitter for network
@@ -494,7 +502,8 @@ failures and `5xx`. Do not automatically retry other `4xx` responses except
 
 ## Retention and privacy
 
-Accepted notifications and attachments are retained for seven days. The inbox
+Accepted notifications and attachments are retained for the configured
+retention window (seven days for standard accounts by default). The inbox
 record is inserted before the one best-effort Expo push request. Notification
 `data`, title, body, source name, and image may reach the iPhone and should not
 contain credentials or secrets.

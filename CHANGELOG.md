@@ -8,6 +8,37 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Operator-controlled universal app options (migration
+  `202607270001_universal_app_options`): a single-row
+  `public.universal_app_options` table holds the user-guide URL and every
+  per-user limit — maximum active API keys, notification retention in days,
+  per-account notify requests/minute, and maximum attachment bytes — each in a
+  standard and a premium variant. The table is readable by signed-in installs
+  and writable only through the service role; changing a value is a SQL update
+  with no app repackage or function redeploy. Enforcement points
+  (`create_source_internal`, `ingest_notification_internal`,
+  `attach_notification_image_internal`) and the `notify` Edge Function's
+  pre-ingest size checks resolve limits at request time through
+  `private.effective_limit`, falling back to the previous constants (100 keys,
+  7 days, 300/minute, 5 MiB) if the row is missing.
+- Premium tier foundation: `public.app_options` gains `is_premium` plus
+  subscription metadata columns (`premium_plan`, `premium_status`,
+  `premium_expires_at`, `premium_store`, `premium_product_id`,
+  `premium_customer_id`). A trigger rejects any non-service-role write to
+  those columns, so a client can never grant itself premium; tier resolution
+  happens server-side in `private.user_is_premium` (active flag whose optional
+  expiry has not passed). Purchase/subscription integration itself is out of
+  scope — only the schema and enforcement are in place.
+- Settings → User Guide now opens the operator-configured `user_guide_url`
+  from the backend, and the retention row shows the tier-resolved retention
+  window; both fall back to the shipped defaults when offline.
+
+### Changed
+
+- The `notifications_attachment_check` constraint no longer hard-caps
+  attachment bytes at 5 MiB; the tiered upper bound is enforced by
+  `attach_notification_image_internal` against the configured limit.
+
 - Optional notification severity for v0.0.5: send `low`, `medium`, `high`, or
   `critical` through the JSON or multipart API. Inbox cards use candy green,
   yellow, orange, or red backgrounds, Android notification icons receive the

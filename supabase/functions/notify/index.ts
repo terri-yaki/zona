@@ -1,7 +1,8 @@
 import { sha256, sha256Bytes } from '../_shared/crypto.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
-import { MAX_IMAGE_BYTES, sniffImageMime } from '../_shared/image.ts';
+import { sniffImageMime } from '../_shared/image.ts';
+import { resolveSenderLimits, type SenderLimits, type UniversalAppOptions } from '../_shared/limits.ts';
 import {
   assertPushPayloadFits,
   byteLength,
@@ -50,7 +51,27 @@ type NotifyPayload = {
 const expoEndpoint = 'https://exp.host/--/api/v2/push/send';
 const expoTimeoutMs = 5_000;
 const maximumPushDevices = 10;
-const maxMultipartBytes = 6 * 1024 * 1024;
+
+// The attachment cap is operator-configured per tier, so it must be resolved
+// before the request body is parsed. Any lookup failure falls back to the
+// pre-configurable constants; Postgres re-checks the same limit at attach
+// time, so this pre-check can never widen the real boundary.
+async function resolveLimits(tokenHash: string): Promise<SenderLimits> {
+  const [configResult, premiumResult] = await Promise.all([
+    service
+      .from('universal_app_options')
+      .select('attachment_max_bytes_standard, attachment_max_bytes_premium')
+      .eq('id', true)
+      .maybeSingle(),
+    service.rpc('sender_is_premium', { p_token_hash: tokenHash }),
+  ]);
+  if (configResult.error) console.error('universal options lookup', configResult.error);
+  if (premiumResult.error) console.error('sender tier lookup', premiumResult.error);
+  return resolveSenderLimits(
+    (configResult.data as UniversalAppOptions | null) ?? null,
+    premiumResult.data === true,
+  );
+}
 
 function sourceToken(req: Request): string {
   const authorization = req.headers.get('authorization');
@@ -113,9 +134,9 @@ function metadataOrThrow(value: unknown): Record<string, unknown> {
   return metadata as Record<string, unknown>;
 }
 
-async function readNotifyPayload(req: Request): Promise<NotifyPayload> {
+async function readNotifyPayload(req: Request, limits: SenderLimits): Promise<NotifyPayload> {
   const type = req.headers.get('content-type') ?? '';
-  if (type.toLowerCase().includes('multipart/form-data')) return readMultipartPayload(req);
+  if (type.toLowerCase().includes('multipart/form-data')) return readMultipartPayload(req, limits);
 
   const body = await readJson(req);
   const title = requiredString(body.title, 120);
@@ -127,9 +148,9 @@ async function readNotifyPayload(req: Request): Promise<NotifyPayload> {
   return { title, body: messageBody, category, severity, metadata, attachment: null };
 }
 
-async function readMultipartPayload(req: Request): Promise<NotifyPayload> {
+async function readMultipartPayload(req: Request, limits: SenderLimits): Promise<NotifyPayload> {
   const declaredLength = Number(req.headers.get('content-length'));
-  if (Number.isFinite(declaredLength) && declaredLength > maxMultipartBytes) throw new Error('PAYLOAD_TOO_LARGE');
+  if (Number.isFinite(declaredLength) && declaredLength > limits.multipartMaxBytes) throw new Error('PAYLOAD_TOO_LARGE');
 
   let form: FormData;
   try {
@@ -160,7 +181,7 @@ async function readMultipartPayload(req: Request): Promise<NotifyPayload> {
   if (file !== null) {
     if (typeof file === 'string') throw new Error('INVALID_PAYLOAD');
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const mime = bytes.byteLength > 0 && bytes.byteLength <= MAX_IMAGE_BYTES ? sniffImageMime(bytes) : null;
+    const mime = bytes.byteLength > 0 && bytes.byteLength <= limits.attachmentMaxBytes ? sniffImageMime(bytes) : null;
     if (!mime) throw new Error('INVALID_PAYLOAD');
     attachment = { bytes, mime };
   }
@@ -176,7 +197,8 @@ Deno.serve(async (req) => {
   try {
     const tokenHash = await sha256(sourceToken(req));
     const requestKey = idempotencyKey(req.headers.get('idempotency-key'));
-    const payload = await readNotifyPayload(req);
+    const limits = await resolveLimits(tokenHash);
+    const payload = await readNotifyPayload(req, limits);
     const attachmentHash = payload.attachment ? await sha256Bytes(payload.attachment.bytes) : null;
 
     const { data, error } = await service.rpc('ingest_notification_internal', {

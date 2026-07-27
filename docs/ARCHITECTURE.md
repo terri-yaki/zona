@@ -118,10 +118,11 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | --- | --- | --- |
 | `public.sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
 | `public.api_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage | Owner RLS read; service-managed writes |
-| `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference | Owner RLS read/write |
+| `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference; server-controlled premium tier and subscription metadata (client writes to premium columns rejected by trigger) | Owner RLS read/write; premium columns service-only |
+| `public.universal_app_options` | Single-row operator configuration: user-guide URL and per-tier limits (API keys, retention days, account notify rpm, attachment bytes) | Authenticated read; service-only writes |
 | `private.source_credentials` | SHA-256 credential hashes | Service-only |
 | `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
-| `public.notifications` | Seven-day durable inbox, including nullable constrained severity | Owner RLS read/read-state/delete |
+| `public.notifications` | Durable inbox expiring after the tier-resolved retention window (default seven days), including nullable constrained severity | Owner RLS read/read-state/delete |
 | `private.ingest_requests` | Rolling rate-limit evidence | Service/database function only |
 | `private.account_rate_events` | Hourly account-level rate evidence | Service/database function only |
 | `private.push_delivery_logs` | Expo ticket attempt diagnostics | Service/database function only |
@@ -228,7 +229,10 @@ only public values.
 ## Scaling and reliability limits
 
 - The API rate limit is per source (60/minute) and per account (300/minute
-  aggregate), not per IP. Platform-level abuse limits remain desirable.
+  aggregate by default), not per IP. The per-account value is
+  operator-configured per tier in `public.universal_app_options` and resolved
+  at ingest time by `private.effective_limit`; platform-level abuse limits
+  remain desirable.
 - The inbox must use cursor pagination; a fixed `.limit(200)` is not a complete
   seven-day inbox at permitted ingestion rates.
 - Expo recommends bounded push message batches. If installation counts grow,
@@ -236,8 +240,9 @@ only public values.
 - Senders must supply an `Idempotency-Key`; an identical replay returns the
   original record. Duplicates remain possible only when a sender mints a fresh
   key per attempt instead of per logical event.
-- Each notification may carry one evidence image (PNG/JPEG/WebP, at most
-  5 MiB, magic-byte verified) in a private bucket with owner-folder RLS.
+- Each notification may carry one evidence image (PNG/JPEG/WebP, magic-byte
+  verified, capped at the tier-resolved configured size — 5 MiB standard by
+  default) in a private bucket with owner-folder RLS.
   Rich-push images on the lock screen would need an iOS Notification Service
   Extension and are out of scope.
 - There is no push receipt worker. Invalid/stale Expo tokens are not currently

@@ -116,8 +116,15 @@ export type Database = {
       app_options: {
         Row: {
           created_at: string;
+          is_premium: boolean;
           live_activity_enabled: boolean;
           play_sound: boolean;
+          premium_customer_id: string | null;
+          premium_expires_at: string | null;
+          premium_plan: string | null;
+          premium_product_id: string | null;
+          premium_status: string | null;
+          premium_store: string | null;
           push_enabled: boolean;
           show_preview: boolean;
           updated_at: string;
@@ -296,6 +303,49 @@ export type Database = {
           last_seen_at?: string | null;
           revoked_at?: string | null;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      universal_app_options: {
+        Row: {
+          attachment_max_bytes_premium: number;
+          attachment_max_bytes_standard: number;
+          created_at: string;
+          id: boolean;
+          max_api_keys_premium: number;
+          max_api_keys_standard: number;
+          notify_rpm_premium: number;
+          notify_rpm_standard: number;
+          retention_days_premium: number;
+          retention_days_standard: number;
+          updated_at: string;
+          user_guide_url: string;
+        };
+        Insert: {
+          attachment_max_bytes_premium: number;
+          attachment_max_bytes_standard: number;
+          created_at?: string;
+          id?: boolean;
+          max_api_keys_premium: number;
+          max_api_keys_standard: number;
+          notify_rpm_premium: number;
+          notify_rpm_standard: number;
+          retention_days_premium: number;
+          retention_days_standard: number;
+          updated_at?: string;
+          user_guide_url: string;
+        };
+        Update: {
+          attachment_max_bytes_premium?: number;
+          attachment_max_bytes_standard?: number;
+          max_api_keys_premium?: number;
+          max_api_keys_standard?: number;
+          notify_rpm_premium?: number;
+          notify_rpm_standard?: number;
+          retention_days_premium?: number;
+          retention_days_standard?: number;
+          updated_at?: string;
+          user_guide_url?: string;
         };
         Relationships: [];
       };
