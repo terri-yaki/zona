@@ -28,6 +28,11 @@ Assign before starting:
 - Preview channel OTA (`eas update --channel preview`) is configured for
   internal iteration; see [PREVIEW_UPDATES.md](PREVIEW_UPDATES.md). Production
   OTA is not an approved App Store release path until explicitly enabled.
+- Native preview binaries are published via the over-the-air installer at
+  <https://terri-yaki.github.io/zona/>: the `preview` GitHub release always
+  carries the latest ad-hoc IPA as `Zona.ipa`, and `scripts/publish-preview.ps1`
+  uploads a new build without editing any web page. First-time installers must
+  trust the developer certificate in Settings.
 - Tag the immutable source revision used for backend and app artifacts.
 
 ## External blockers
