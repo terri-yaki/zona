@@ -2,7 +2,7 @@ import { sha256, sha256Bytes } from '../_shared/crypto.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
 import { sniffImageMime } from '../_shared/image.ts';
-import { resolveSenderLimits, type SenderLimits, type UniversalAppOptions } from '../_shared/limits.ts';
+import { resolveSenderLimits, type SenderLimits, type UniversalAppOptionRow } from '../_shared/limits.ts';
 import {
   assertPushPayloadFits,
   byteLength,
@@ -60,15 +60,14 @@ async function resolveLimits(tokenHash: string): Promise<SenderLimits> {
   const [configResult, premiumResult] = await Promise.all([
     service
       .from('universal_app_options')
-      .select('attachment_max_bytes_standard, attachment_max_bytes_premium')
-      .eq('id', true)
-      .maybeSingle(),
+      .select('option_name, value')
+      .in('option_name', ['attachment_max_bytes_standard', 'attachment_max_bytes_premium']),
     service.rpc('sender_is_premium', { p_token_hash: tokenHash }),
   ]);
   if (configResult.error) console.error('universal options lookup', configResult.error);
   if (premiumResult.error) console.error('sender tier lookup', premiumResult.error);
   return resolveSenderLimits(
-    (configResult.data as UniversalAppOptions | null) ?? null,
+    (configResult.data as UniversalAppOptionRow[] | null) ?? null,
     premiumResult.data === true,
   );
 }

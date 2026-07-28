@@ -8,19 +8,21 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
-- Operator-controlled universal app options (migration
-  `202607270001_universal_app_options`): a single-row
-  `public.universal_app_options` table holds the user-guide URL and every
-  per-user limit — maximum active API keys, notification retention in days,
-  per-account notify requests/minute, and maximum attachment bytes — each in a
-  standard and a premium variant. The table is readable by signed-in installs
+- Operator-controlled universal app options (migrations
+  `202607270001` and `202607280001`): `public.universal_app_options` is a
+  key/value store with `option_name`, `value`, `is_active`, `starts_at`, and
+  `expires_at`. Each per-user limit (maximum active API keys, notification
+  retention in days, per-account notify requests/minute, maximum attachment
+  bytes) is stored as two rows, one standard and one premium, plus a
+  `user_guide_url` row. Activation windows let the operator stage future
+  changes or schedule rollouts. The table is readable by signed-in installs
   and writable only through the service role; changing a value is a SQL update
   with no app repackage or function redeploy. Enforcement points
   (`create_source_internal`, `ingest_notification_internal`,
   `attach_notification_image_internal`) and the `notify` Edge Function's
   pre-ingest size checks resolve limits at request time through
   `private.effective_limit`, falling back to the previous constants (100 keys,
-  7 days, 300/minute, 5 MiB) if the row is missing.
+  7 days, 300/minute, 5 MiB) if no active matching row exists.
 - Premium tier foundation: `public.app_options` gains `is_premium` plus
   subscription metadata columns (`premium_plan`, `premium_status`,
   `premium_expires_at`, `premium_store`, `premium_product_id`,

@@ -4,16 +4,17 @@ import {
   FALLBACK_RETENTION_DAYS,
   FALLBACK_USER_GUIDE_URL,
   resolveUniversalConfig,
+  type UniversalAppOptionRow,
 } from '../lib/universal-config';
 
-const row = {
-  user_guide_url: 'https://docs.example.com/zona',
-  retention_days_standard: 7,
-  retention_days_premium: 30,
-};
+const rows: UniversalAppOptionRow[] = [
+  { option_name: 'user_guide_url', value: 'https://docs.example.com/zona' },
+  { option_name: 'retention_days_standard', value: '7' },
+  { option_name: 'retention_days_premium', value: '30' },
+];
 
 describe('resolveUniversalConfig', () => {
-  it('falls back to the shipped constants when the row is unavailable', () => {
+  it('falls back to the shipped constants when the rows are unavailable', () => {
     for (const isPremium of [false, true]) {
       expect(resolveUniversalConfig(null, isPremium)).toEqual({
         userGuideUrl: FALLBACK_USER_GUIDE_URL,
@@ -22,19 +23,22 @@ describe('resolveUniversalConfig', () => {
     }
   });
 
-  it('uses the operator-configured guide URL from the backend row', () => {
-    expect(resolveUniversalConfig(row, false).userGuideUrl).toBe('https://docs.example.com/zona');
+  it('uses the operator-configured guide URL from the backend rows', () => {
+    expect(resolveUniversalConfig(rows, false).userGuideUrl).toBe('https://docs.example.com/zona');
   });
 
   it('resolves the retention window by server-reported tier', () => {
-    expect(resolveUniversalConfig(row, false).retentionDays).toBe(7);
-    expect(resolveUniversalConfig(row, true).retentionDays).toBe(30);
+    expect(resolveUniversalConfig(rows, false).retentionDays).toBe(7);
+    expect(resolveUniversalConfig(rows, true).retentionDays).toBe(30);
   });
 
   it('rejects non-positive retention values in favor of the fallback', () => {
-    expect(resolveUniversalConfig({ ...row, retention_days_standard: 0 }, false).retentionDays)
-      .toBe(FALLBACK_RETENTION_DAYS);
-    expect(resolveUniversalConfig({ ...row, retention_days_premium: -3 }, true).retentionDays)
-      .toBe(FALLBACK_RETENTION_DAYS);
+    const broken: UniversalAppOptionRow[] = [
+      { option_name: 'user_guide_url', value: 'https://docs.example.com/zona' },
+      { option_name: 'retention_days_standard', value: '0' },
+      { option_name: 'retention_days_premium', value: '-3' },
+    ];
+    expect(resolveUniversalConfig(broken, false).retentionDays).toBe(FALLBACK_RETENTION_DAYS);
+    expect(resolveUniversalConfig(broken, true).retentionDays).toBe(FALLBACK_RETENTION_DAYS);
   });
 });

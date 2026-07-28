@@ -119,7 +119,7 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | `public.sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
 | `public.api_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage | Owner RLS read; service-managed writes |
 | `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference; server-controlled premium tier and subscription metadata (client writes to premium columns rejected by trigger) | Owner RLS read/write; premium columns service-only |
-| `public.universal_app_options` | Single-row operator configuration: user-guide URL and per-tier limits (API keys, retention days, account notify rpm, attachment bytes) | Authenticated read; service-only writes |
+| `public.universal_app_options` | Key/value operator configuration with activation windows. Holds `user_guide_url` and per-tier limits (API keys, retention days, account notify rpm, attachment bytes) as separate rows; `private.effective_limit` resolves the active value for the user's tier. | Authenticated read of active rows; service-only writes |
 | `private.source_credentials` | SHA-256 credential hashes | Service-only |
 | `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
 | `public.notifications` | Durable inbox expiring after the tier-resolved retention window (default seven days), including nullable constrained severity | Owner RLS read/read-state/delete |

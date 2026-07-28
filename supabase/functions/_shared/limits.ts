@@ -4,16 +4,9 @@
 // parsing the request body. Any missing value falls back to the constants
 // that were hardcoded before limits became configurable.
 
-export type UniversalAppOptions = {
-  user_guide_url: string;
-  max_api_keys_standard: number;
-  max_api_keys_premium: number;
-  retention_days_standard: number;
-  retention_days_premium: number;
-  notify_rpm_standard: number;
-  notify_rpm_premium: number;
-  attachment_max_bytes_standard: number;
-  attachment_max_bytes_premium: number;
+export type UniversalAppOptionRow = {
+  option_name: string;
+  value: string;
 };
 
 export type SenderLimits = {
@@ -26,14 +19,23 @@ export type SenderLimits = {
 export const FALLBACK_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 export const MULTIPART_OVERHEAD_BYTES = 1024 * 1024;
 
+function findOption(
+  rows: UniversalAppOptionRow[] | null,
+  name: string,
+  fallback: number,
+): number {
+  const raw = rows?.find((row) => row.option_name === name)?.value;
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function resolveSenderLimits(
-  options: Pick<UniversalAppOptions, 'attachment_max_bytes_standard' | 'attachment_max_bytes_premium'> | null,
+  rows: UniversalAppOptionRow[] | null,
   isPremium: boolean,
 ): SenderLimits {
-  const configured = isPremium ? options?.attachment_max_bytes_premium : options?.attachment_max_bytes_standard;
-  const attachmentMaxBytes = Number.isInteger(configured) && (configured as number) > 0
-    ? (configured as number)
-    : FALLBACK_ATTACHMENT_MAX_BYTES;
+  const key = isPremium ? 'attachment_max_bytes_premium' : 'attachment_max_bytes_standard';
+  const attachmentMaxBytes = findOption(rows, key, FALLBACK_ATTACHMENT_MAX_BYTES);
   return {
     attachmentMaxBytes,
     multipartMaxBytes: attachmentMaxBytes + MULTIPART_OVERHEAD_BYTES,
