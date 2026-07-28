@@ -17,6 +17,9 @@ const supabase = createClient(url, publishableKey, {
 });
 const result = {};
 let signedIn = false;
+let failed = null;
+let stage = 'authenticate';
+let realtimeChannel = null;
 const keepAccount = process.env.KEEP_SMOKE_ACCOUNT === '1';
 
 try {
@@ -25,7 +28,9 @@ try {
   signedIn = true;
   result.auth = Boolean(auth.user?.is_anonymous);
   if (keepAccount) result.userId = auth.user.id;
+  await supabase.realtime.setAuth(auth.session.access_token);
 
+  stage = 'create source';
   const token = `zona_live_${randomBytes(32).toString('base64url')}`;
   const tokenHash = createHash('sha256').update(token).digest('hex');
   const { data: sourceId, error: createError } = await supabase.rpc('create_source', {
@@ -38,34 +43,63 @@ try {
   result.created = typeof sourceId === 'string';
   if (keepAccount) result.sourceId = sourceId;
 
+  stage = 'read source overview';
   const { data: keyRow, error: keyError } = await supabase
-    .from('source_api_keys')
-    .select('api_key_id,api_key_name,is_active,key_prefix,sound_name')
+    .from('notification_source_overview')
+    .select('access_key_id,access_key_name,is_active,key_prefix,sound_name')
     .eq('id', sourceId)
     .single();
   if (keyError) throw keyError;
-  result.apiKey = { name: keyRow.api_key_name, isActive: keyRow.is_active, hasPrefix: Boolean(keyRow.key_prefix) };
+  result.apiKey = { name: keyRow.access_key_name, isActive: keyRow.is_active, hasPrefix: Boolean(keyRow.key_prefix) };
 
+  stage = 'update source sound';
   const { error: soundError } = await supabase
-    .from('api_keys')
-    .update({ sound_name: 'zona-soft.wav', updated_at: new Date().toISOString() })
-    .eq('id', keyRow.api_key_id);
+    .rpc('update_source_notification_sound', {
+      p_access_key_id: keyRow.access_key_id,
+      p_sound_name: 'default',
+    });
   if (soundError) throw soundError;
 
-  const { error: optionCreateError } = await supabase.from('app_options').upsert({
-    user_id: auth.user.id,
-    push_enabled: false,
-    play_sound: false,
-    show_preview: false,
+  stage = 'update preferences';
+  const { error: optionCreateError } = await supabase.rpc('update_user_notification_preferences', {
+    p_push_enabled: false,
+    p_play_sound: false,
+    p_show_preview: false,
+    p_live_activity_enabled: false,
   });
   if (optionCreateError) throw optionCreateError;
+  stage = 'read preferences';
   const { data: optionRow, error: optionError } = await supabase
-    .from('app_options')
-    .select('push_enabled,play_sound,show_preview')
-    .single();
+    .rpc('get_user_notification_preferences');
   if (optionError) throw optionError;
-  result.options = optionRow;
+  result.options = {
+    push_enabled: optionRow.push_enabled,
+    play_sound: optionRow.play_sound,
+    show_preview: optionRow.show_preview,
+  };
 
+  stage = 'read release notes';
+  const { data: release, error: releaseError } = await supabase
+    .from('app_release_notes')
+    .select('version,is_active,app_release_note_items(item_key,is_active)')
+    .eq('version', '0.0.6')
+    .single();
+  if (releaseError) throw releaseError;
+  result.releaseNotes = release.is_active && release.app_release_note_items.length >= 4;
+
+  stage = 'bootstrap runtime controls';
+  const { data: bootstrap, error: bootstrapError } = await supabase.rpc('get_app_bootstrap', {
+    p_platform: 'ios',
+    p_app_version: '0.0.6',
+    p_build_number: 14,
+    p_release_channel: 'production',
+    p_locale: 'en',
+    p_installation_id: `smoke-${auth.user.id}`,
+  });
+  if (bootstrapError) throw bootstrapError;
+  result.bootstrap = Boolean(bootstrap?.features?.['sources.create'] && bootstrap?.limits?.retentionDays);
+
+  stage = 'pause source';
   const { error: pauseError } = await supabase.rpc('manage_source', {
     p_action: 'set_active',
     p_display_name: null,
@@ -89,9 +123,11 @@ try {
     }),
   });
 
+  stage = 'send with paused source';
   const paused = await send('paused');
   result.pausedStatus = paused.status;
 
+  stage = 'activate source';
   const { error: activateError } = await supabase.rpc('manage_source', {
     p_action: 'set_active',
     p_display_name: null,
@@ -100,6 +136,21 @@ try {
   });
   if (activateError) throw activateError;
 
+  stage = 'subscribe to inbox broadcast';
+  let resolveBroadcast;
+  const broadcastReceived = new Promise((resolve) => { resolveBroadcast = resolve; });
+  const subscribed = new Promise((resolve, reject) => {
+    realtimeChannel = supabase
+      .channel(`zona:inbox:${auth.user.id}`, { config: { private: true } })
+      .on('broadcast', { event: 'changed' }, () => resolveBroadcast(true))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') resolve();
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(`Realtime ${status}`));
+      });
+  });
+  await subscribed;
+
+  stage = 'send active notification';
   const active = await send('active');
   result.activeStatus = active.status;
   const activeBody = await active.json();
@@ -108,8 +159,14 @@ try {
     && activeBody.sourceId === sourceId
     && activeBody.pushAttempted === 0
   );
+  result.realtimeInbox = await Promise.race([
+    broadcastReceived,
+    new Promise((resolve) => setTimeout(() => resolve(false), 8_000)),
+  ]);
+  if (!result.realtimeInbox) throw new Error('Inbox broadcast was not received.');
 
   if (process.platform === 'win32') {
+    stage = 'send PowerShell attachment';
     const attachmentPath = resolve(tmpdir(), `zona-smoke-${Date.now()}.png`);
     writeFileSync(
       attachmentPath,
@@ -143,14 +200,16 @@ try {
     }
   }
 
+  stage = 'send reusable test';
   const { data: tested, error: testError } = await supabase.functions.invoke('test-source', {
     body: { sourceId },
   });
   if (testError) throw testError;
   result.reusableTest = Boolean(tested?.notificationId && tested?.sourceId === sourceId && tested?.pushAttempted === 0);
 
+  stage = 'read final access key';
   const { data: finalKey, error: finalKeyError } = await supabase
-    .from('api_keys')
+    .from('source_access_keys')
     .select('is_active,last_used_at,sound_name')
     .eq('source_id', sourceId)
     .single();
@@ -160,7 +219,19 @@ try {
     hasLastUsed: Boolean(finalKey.last_used_at),
     sound: finalKey.sound_name,
   };
+} catch (error) {
+  failed = error;
+  result.failure = {
+    stage,
+    code: typeof error === 'object' && error && 'code' in error ? String(error.code) : null,
+    message: error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error && 'message' in error
+      ? String(error.message)
+      : 'Unknown smoke-test failure',
+  };
 } finally {
+  if (realtimeChannel) await supabase.removeChannel(realtimeChannel);
   if (signedIn && !keepAccount) {
     const { data, error } = await supabase.functions.invoke('delete-account', {
       body: { confirmation: 'DELETE' },
@@ -170,3 +241,4 @@ try {
 }
 
 console.log(JSON.stringify(result));
+if (failed) process.exitCode = 1;

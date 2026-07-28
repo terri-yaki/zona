@@ -1,7 +1,7 @@
 # Zona test plan
 
 This plan is the release-verification contract for the private TestFlight
-version of Zona. It covers the Expo SDK 54 app, Supabase migration and Edge
+version of Zona. It covers the Expo SDK 56 app, Supabase migration and Edge
 Functions, sender API, and physical-iPhone push behavior.
 
 Passing a compiler or finding no known bug is not proof of production
@@ -45,7 +45,7 @@ supabase db reset
 ```
 
 Add repository scripts or CI jobs for database/RLS tests, Edge Function
-contract tests, an SDK-54-compatible dependency audit, secret scanning, and
+contract tests, an SDK-56-compatible dependency audit, secret scanning, and
 migration drift. Generated output and credentials must not be committed.
 
 ## Test layers
@@ -80,6 +80,13 @@ Required database cases:
 - cleanup deletes expired notifications/delivery rows, old request rows, and
   expired attachment objects but not live data;
 - user/account deletion cascades through all owned data.
+- inactive, expired, future, platform-mismatched, and lower-priority runtime
+  rules are ignored; stable rollout assignment is deterministic;
+- presentation controls cannot bypass server ownership, RLS, quotas, or kill
+  switches; missing service-switch state fails closed;
+- inactive changelog releases and individual release-note items are hidden;
+- compatibility views preserve v0.0.5 reads while v0.0.6 owner RPCs and
+  user-scoped Realtime Broadcast prevent cross-account access.
 
 ### Edge Function contract tests
 
@@ -109,6 +116,9 @@ stack traces, SQL details, tokens, or notification content.
   same key with a different image returns 409;
 - a forced Storage failure still returns 202 with `attachmentAccepted: false`
   and retains the inbox row.
+- disabled ingestion returns `503` with `Retry-After`; disabled attachments or
+  critical severity return the documented `403` without weakening token checks;
+- disabling push still accepts and stores the inbox row with no Expo attempt.
 
 User-authenticated functions require two-user tests for cross-account rename,
 revoke, push registration, token conflict, and deletion. Gateway JWT checking is
@@ -134,6 +144,11 @@ boundaries. Cover:
 - notification interaction routing with missing, malformed, or unauthorized IDs;
 - current-installation registration refresh and safe sign-out;
 - offline transitions and recovery without representing errors as an empty inbox.
+- stale-while-revalidate runtime bootstrap caching, fail-safe compiled defaults,
+  per-feature hidden/disabled behavior, build update banners, maintenance mode,
+  and persisted dismissal of dismissible announcements;
+- severity styling returns to the neutral white presentation when its display
+  control is disabled or hidden.
 
 Timers and subscriptions must be cleaned up after navigation/unmount.
 
@@ -182,8 +197,8 @@ Expo Go results do not satisfy any remote-push row.
 
 ## Security and abuse tests
 
-- replaying a valid notification request may create a duplicate; verify this is
-  documented and does not cross source scope;
+- replaying a valid notification request with the same key/content returns the
+  original row; a changed payload conflicts and cannot cross source scope;
 - brute-force invalid source credentials do not leak existence or timing details;
 - rate limiting remains correct under parallel requests;
 - CORS and method handling expose no extra method or credential;
@@ -217,7 +232,7 @@ Copy this table into the release ticket. Blank evidence is a failed gate.
 | Clean checkout + dependency install |  |  |  |  |
 | Typecheck/lint/unit tests |  |  |  |  |
 | Deno/database/RLS/contract tests |  |  |  |  |
-| Expo Doctor + SDK 54 dependency check |  |  |  |  |
+| Expo Doctor + SDK 56 dependency check |  |  |  |  |
 | Dependency/security/secret scan |  |  |  |  |
 | iOS production export/build |  |  |  |  |
 | Multi-source E2E |  |  |  |  |

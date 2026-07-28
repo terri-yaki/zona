@@ -8,35 +8,38 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
-- Operator-controlled universal app options (migrations
-  `202607270001` and `202607280001`): `public.universal_app_options` is a
-  key/value store with `option_name`, `value`, `is_active`, `starts_at`, and
-  `expires_at`. Each per-user limit (maximum active API keys, notification
-  retention in days, per-account notify requests/minute, maximum attachment
-  bytes) is stored as two rows, one standard and one premium, plus a
-  `user_guide_url` row. Activation windows let the operator stage future
-  changes or schedule rollouts. The table is readable by signed-in installs
-  and writable only through the service role; changing a value is a SQL update
-  with no app repackage or function redeploy. Enforcement points
-  (`create_source_internal`, `ingest_notification_internal`,
-  `attach_notification_image_internal`) and the `notify` Edge Function's
-  pre-ingest size checks resolve limits at request time through
-  `private.effective_limit`, falling back to the previous constants (100 keys,
-  7 days, 300/minute, 5 MiB) if no active matching row exists.
-- Premium tier foundation: `public.app_options` gains `is_premium` plus
-  subscription metadata columns (`premium_plan`, `premium_status`,
-  `premium_expires_at`, `premium_store`, `premium_product_id`,
-  `premium_customer_id`). A trigger rejects any non-service-role write to
-  those columns, so a client can never grant itself premium; tier resolution
-  happens server-side in `private.user_is_premium` (active flag whose optional
-  expiry has not passed). Purchase/subscription integration itself is out of
-  scope — only the schema and enforcement are in place.
-- Settings → User Guide now opens the operator-configured `user_guide_url`
-  from the backend, and the retention row shows the tier-resolved retention
-  window; both fall back to the shipped defaults when offline.
+- Runtime feature controls with `enabled`, `disabled`, `hidden`, and
+  `read_only` modes; activation windows; iOS/Android/web, channel, locale,
+  tier, and build targeting; deterministic percentage rollout; localized
+  reasons; and explicit priorities. The app caches one evaluated bootstrap
+  snapshot and revalidates in the background.
+- Typed runtime settings, standard/premium plan limits, server kill switches,
+  release/update policies, and localized in-app announcements. Trusted server
+  paths enforce source creation, ingestion, testing, attachments, critical
+  severity, push delivery, rate limits, retention, and device caps rather than
+  relying on hidden client controls.
+- Normalized `app_release_notes` and `app_release_note_items`. Every What's New
+  card has its own `is_active`, order, schedule, and optional platform target;
+  RLS hides inactive content and an authoritative empty result stays empty.
+- Server-owned `private.account_entitlements`, separated from user-writable
+  notification preferences. Purchase integration remains future work.
+- User-scoped Realtime Broadcast invalidations for inbox and Live Activity,
+  decoupling v0.0.6 from physical table names.
+- Global and account-scoped runtime-control invalidations, so active apps pick
+  up operator changes promptly while a bounded poll covers missed broadcasts.
+- `docs/RUNTIME_CONTROLS.md`, including the complete control catalog, safe
+  operator examples, precedence, caching, and staged rename procedure.
 
 ### Changed
 
+- v0.0.6 uses canonical relation names such as `notification_sources`,
+  `source_access_keys`, `notification_source_overview`, `inbox_notifications`,
+  `push_registrations`, and `user_notification_preferences`. Compatibility
+  views and owner-checked RPCs keep v0.0.5 working until the physical rename
+  cutover after adoption.
+- Settings now receives guide URL and tier-resolved retention through the
+  cached bootstrap instead of a focus-time config query. Preference creation
+  and read are one RPC instead of an upsert/select waterfall.
 - The `notifications_attachment_check` constraint no longer hard-caps
   attachment bytes at 5 MiB; the tiered upper bound is enforced by
   `attach_notification_image_internal` against the configured limit.
@@ -45,12 +48,11 @@ to use semantic application versions. Build numbers are managed by EAS.
   `critical` through the JSON or multipart API. Inbox cards use candy green,
   yellow, orange, or red backgrounds, Android notification icons receive the
   matching accent color, and omitted severity stays clean white.
-- Server-driven What's New: release notes now live in a new
-  `public.app_changelog` table (migration `202607250004`, RLS read for
-  signed-in installs, writes service-only) seeded with the 0.0.1/0.0.2
-  history in English and Traditional Chinese. The screen fetches it on open
-  — so changelog content can be updated without shipping an app build — and
-  falls back to the bundled copy when the table is unreachable or empty.
+- Server-driven What's New began with `public.app_changelog` and is now
+  normalized into release and item tables. The screen fetches it on open, so
+  content can be updated without shipping an app build, and uses bundled copy
+  only when the backend is unreachable—not when the operator publishes an
+  intentionally empty result.
 - Preview builds now auto-increment the remote iOS build number
   (`eas.json` `preview.autoIncrement`), matching the production profile.
 - Settings → "Delete account and data" now requires two consecutive explicit
@@ -62,6 +64,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
+- Corrected the legacy premium-field guard's invalid
+  `pg_catalog.current_user` reference. `current_user` is SQL syntax, and the
+  qualified form caused preference creation/update to fail with `42P01`; the
+  forward repair migration restores the owner preference RPCs.
 - Live backend repairs applied during the migration deploy: restored the
   missing `notification-attachments` Storage bucket and owner policies
   (migration `202607260001`), and fixed `delete_account_data_internal` calling
@@ -113,7 +119,7 @@ to use semantic application versions. Build numbers are managed by EAS.
   user via the admin API.
 - Cursor-paginated inbox with a "Last 24 hours" date filter so retained
   records beyond the first page remain reachable.
-- `npm run check:sdk54` and `npm run release:check` release-gate scripts.
+- `npm run check:sdk56` and `npm run release:check` release-gate scripts.
 - Push-device lifecycle hardening: `DeviceNotRegistered` tickets disable the
   device, token format is validated in the database, and long-disabled
   devices are removed by the hourly cleanup.
@@ -177,7 +183,7 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Complete EAS production environment, Apple/APNs, privacy and
   support URLs, App Store metadata/assets, monitoring owners,
   CI/integration tests, and signed TestFlight verification.
-- Resolve or approve a time-bounded mitigation for outstanding SDK-54
+- Resolve or approve a time-bounded mitigation for outstanding SDK-56
   dependency advisories without forcing an unplanned SDK upgrade.
 
 ## [0.0.4] - 2026-07-26

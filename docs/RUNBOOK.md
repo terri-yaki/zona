@@ -1,7 +1,7 @@
 # Zona production runbook
 
 Scope: private TestFlight notification service using Supabase, Expo Push
-Service, APNs, and an Expo SDK 54 iPhone build.
+Service, APNs/FCM, and an Expo SDK 56 iOS/Android build.
 
 This runbook intentionally contains placeholders for organization-specific
 owners and URLs. A placeholder is a release blocker, not an instruction to use
@@ -28,6 +28,9 @@ in the private operator system. Do not place access tokens in this document.
 - Users can recover an accepted alert through inbox synchronization.
 - Notification rows, attachments, and associated push logs expire after seven days.
 - Rate-limit request rows expire after one day.
+- Safe client presentation rules are cached and may take up to the configured
+  bootstrap refresh interval to appear; server switches and limits apply
+  immediately and independently of the client cache.
 
 ## Minimum production telemetry
 
@@ -72,6 +75,10 @@ cross-tenant security alerts without owner approval.
 7. Prefer the documented rollback/repair path. Record every mutation.
 8. After recovery, verify the synthetic flow and representative real user flow.
 
+For a controlled maintenance window, use the reviewed operations in
+[RUNTIME_CONTROLS.md](RUNTIME_CONTROLS.md). Client feature controls are not an
+incident substitute for server-side service switches.
+
 ## Safe diagnostic checks
 
 Use synthetic credentials only. Keep shell history and CI logs private.
@@ -94,7 +101,7 @@ Read-only cleanup diagnostics from the Supabase SQL editor:
 select now() as checked_at,
        count(*) as expired_notifications,
        min(expires_at) as oldest_expired_at
-from public.notifications
+from public.inbox_notifications
 where expires_at <= now();
 
 select jobname, schedule, active

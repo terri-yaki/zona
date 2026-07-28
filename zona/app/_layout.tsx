@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
+import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
@@ -99,7 +100,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <LocalizationProvider>
           <AuthProvider>
-            <RootNavigator />
+            <RuntimeConfigProvider>
+              <RootNavigator />
+            </RuntimeConfigProvider>
           </AuthProvider>
         </LocalizationProvider>
       </SafeAreaProvider>
@@ -109,11 +112,12 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   return (
     <>
-          <AppUpdateSync />
-          <PushRegistrationSync />
-          <LiveActivitySync />
+          {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
+          {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
+          {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}
           <NotificationNavigation />
           <NavigationBar style="dark" />
           <StatusBar style="dark" />

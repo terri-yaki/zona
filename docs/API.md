@@ -18,6 +18,10 @@ surfaces, not machine-sender APIs. The app may use those endpoints or equivalent
 RLS-protected database functions. A notification sender normally needs only
 `/notify`.
 
+Operator-controlled availability, plan limits, and safe client presentation
+are documented in [RUNTIME_CONTROLS.md](RUNTIME_CONTROLS.md). These controls do
+not let a sender select its source, owner, sound, or delivery settings.
+
 ## Quick start on Windows
 
 1. In Zona on the iPhone, open **API Keys** and create a source for the PC or
@@ -168,11 +172,11 @@ $headers = @{
 }
 $payload = @{
   title = 'Deployment complete'
-  body = 'Version 0.0.5 is online.'
+  body = 'Version 0.0.6 is online.'
   category = 'deploy'
   severity = 'medium'
   data = @{
-    version = '0.0.5'
+    version = '0.0.6'
     environment = 'production'
   }
 } | ConvertTo-Json -Depth 5
@@ -430,7 +434,7 @@ An identical replay returns HTTP `200` and the original identifiers/time:
 | `idempotentReplay` | `true` when this response returned an existing record. |
 | `attachmentAccepted` | Whether the image is stored. It is `false` when no image was sent. |
 | `attachmentError` | `UPLOAD_FAILED` when image storage failed after inbox acceptance; otherwise `null`. |
-| `pushAttempted` | Number of active iPhone push registrations targeted during this request. |
+| `pushAttempted` | Number of active iOS or Android push registrations targeted during this request. |
 | `pushAccepted` | Number of Expo push tickets accepted during this request. This is not APNs display confirmation. |
 
 `202` means the seven-day inbox record exists. It does not guarantee an iOS
@@ -470,8 +474,8 @@ accounts may have higher values.
 | `data` | JSON object, at most 4 KiB serialized UTF-8 |
 | Conservative generated push payload | 3,800 serialized UTF-8 bytes |
 | Rate per source | 60 accepted requests in a rolling minute |
-| Rate per account | 300 accepted requests in a rolling minute across all sources |
-| Active API keys per account | 100 (revoked keys never count) |
+| Rate per account | 20 accepted requests in a rolling minute across all sources |
+| Active API keys per account | 3 (revoked keys never count) |
 | Retention | 7 days |
 
 ## Errors
@@ -489,12 +493,15 @@ Error responses use a small JSON envelope:
 | `400` | `INVALID_PAYLOAD` | Invalid JSON/form data, field type/value, image, metadata size, or generated push size. | Fix the request; do not retry unchanged. |
 | `400` | `INVALID_IDEMPOTENCY_KEY` | Missing or malformed `Idempotency-Key`. | Generate a valid stable event ID. |
 | `401` | `INVALID_TOKEN` | Token is missing, malformed, paused, expired, unknown, or revoked. | Check the source in Zona or create a new token. |
+| `403` | `ATTACHMENTS_DISABLED` | The operator temporarily disabled image attachments. | Send the same logical event without an image, using a new idempotency key. |
+| `403` | `CRITICAL_SEVERITY_DISABLED` | The operator temporarily disabled critical-severity alerts. | Use an allowed severity only if it truthfully represents the event; otherwise wait. |
 | `405` | `METHOD_NOT_ALLOWED` | The endpoint accepts only `POST` (plus CORS preflight). | Use `POST`. |
 | `409` | `IDEMPOTENCY_CONFLICT` | This source reused a key with different content or a different image. | Use the original content, or a new key for a genuinely new event. |
 | `413` | `PAYLOAD_TOO_LARGE` | JSON exceeded 16 KiB or multipart exceeded the configured ceiling. | Reduce the request size. |
 | `429` | `RATE_LIMITED` | This source exceeded 60 accepted requests/minute. | Wait for `Retry-After`, then retry with the same key. |
 | `429` | `ACCOUNT_RATE_LIMITED` | All sources for the account exceeded the configured per-account rate. | Wait for `Retry-After`, then retry with the same key. |
 | `500` | `INTERNAL_ERROR` | The request was not confirmed as accepted. | Retry with backoff, the same key, and identical content. |
+| `503` | `SERVICE_UNAVAILABLE` | Notification ingestion is temporarily paused by a fail-closed service switch. | Honor `Retry-After`, then retry with the same key and identical content. |
 
 Use a short client timeout and exponential backoff with jitter for network
 failures and `5xx`. Do not automatically retry other `4xx` responses except

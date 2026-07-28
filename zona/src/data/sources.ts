@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function listSources({ includeRevoked = true } = {}) {
   let query = supabase
-    .from('source_api_keys')
+    .from('notification_source_overview')
     .select('*')
     .order('created_at', { ascending: false });
   if (!includeRevoked) query = query.is('revoked_at', null);
@@ -20,17 +20,17 @@ export async function listSources({ includeRevoked = true } = {}) {
       last_seen_at: row.last_seen_at,
       revoked_at: row.revoked_at,
       api_key: {
-        id: row.api_key_id,
+        id: row.access_key_id,
         user_id: row.user_id,
         source_id: row.id,
-        name: row.api_key_name,
+        name: row.access_key_name,
         key_prefix: row.key_prefix,
         is_active: row.is_active,
-        created_at: row.key_created_at,
-        updated_at: row.key_updated_at,
-        last_used_at: row.key_last_used_at,
-        expires_at: row.key_expires_at,
-        revoked_at: row.key_revoked_at,
+        created_at: row.access_key_created_at,
+        updated_at: row.access_key_updated_at,
+        last_used_at: row.access_key_last_used_at,
+        expires_at: row.access_key_expires_at,
+        revoked_at: row.access_key_revoked_at,
         sound_name: row.sound_name,
       },
     }))
@@ -44,10 +44,10 @@ export async function listSources({ includeRevoked = true } = {}) {
 }
 
 export async function setApiKeySound(apiKeyId: string, soundName: import('@/types/database').NotificationSound) {
-  const { error } = await supabase
-    .from('api_keys')
-    .update({ sound_name: soundName, updated_at: new Date().toISOString() })
-    .eq('id', apiKeyId);
+  const { error } = await supabase.rpc('update_source_notification_sound', {
+    p_access_key_id: apiKeyId,
+    p_sound_name: soundName,
+  });
   if (error) {
     // 23514 = check_violation — usually the DB migration for new sound names is not applied yet.
     const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code) : '';

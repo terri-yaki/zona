@@ -39,8 +39,8 @@ flowchart LR
   FCM --> NATIVE
   APP -->|"anonymous session"| AUTH
   APP -->|"user JWT"| U
-  APP -->|"RLS reads/updates/deletes"| DB
-  DB --> RT --> APP
+  APP -->|"owner-scoped RPCs + RLS reads"| DB
+  DB -->|"private user/config broadcasts"| RT --> APP
   CRON --> DB
 ```
 
@@ -114,19 +114,34 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 
 ### Database
 
-| Relation | Purpose | Access path |
+| Canonical relation | Purpose | Access path |
 | --- | --- | --- |
-| `public.sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
-| `public.api_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage | Owner RLS read; service-managed writes |
-| `public.app_options` | Push, sound, lock-screen preview, and Live Status (Live Activity) preference; server-controlled premium tier and subscription metadata (client writes to premium columns rejected by trigger) | Owner RLS read/write; premium columns service-only |
-| `public.universal_app_options` | Key/value operator configuration with activation windows. Holds `user_guide_url` and per-tier limits (API keys, retention days, account notify rpm, attachment bytes) as separate rows; `private.effective_limit` resolves the active value for the user's tier. | Authenticated read of active rows; service-only writes |
-| `private.source_credentials` | SHA-256 credential hashes | Service-only |
-| `public.push_devices` | Per-owner installation/token mapping | Service-managed only |
-| `public.notifications` | Durable inbox expiring after the tier-resolved retention window (default seven days), including nullable constrained severity | Owner RLS read/read-state/delete |
-| `private.ingest_requests` | Rolling rate-limit evidence | Service/database function only |
-| `private.account_rate_events` | Hourly account-level rate evidence | Service/database function only |
-| `private.push_delivery_logs` | Expo ticket attempt diagnostics | Service/database function only |
+| `public.notification_sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
+| `public.source_access_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage, and sound | Owner RLS read; owner-checked RPC writes |
+| `public.notification_source_overview` | Joined source/key data for the API Keys screen | Owner RLS read |
+| `public.user_notification_preferences` | Push, sound, lock-screen preview, and Live Status preferences | Owner-checked RPC read/write |
+| `private.account_entitlements` | Server-owned plan and subscription state | Service/database function only |
+| `public.push_registrations` | Per-owner installation/token mapping | Service-managed only |
+| `public.inbox_notifications` | Durable inbox with source-name snapshots, optional severity, and tier-resolved expiry | Owner RLS read; owner-checked RPC mutations |
+| `private.source_api_credentials` | SHA-256 source credential hashes | Service-only |
+| `private.notification_ingest_requests` | Rolling source/account rate evidence | Service/database function only |
+| `private.account_rate_limit_events` | Hourly account operation rate evidence | Service/database function only |
+| `private.push_delivery_attempts` | Expo ticket attempt diagnostics | Service/database function only |
+| `private.app_feature_controls` | Targeted show/hide/disable/read-only rules | Evaluated only by authenticated bootstrap RPC |
+| `private.app_runtime_settings` | Typed, targeted client display values | Evaluated only by authenticated bootstrap RPC |
+| `private.service_switches` | Fail-closed ingestion, source, attachment, severity, and push controls | Service/database function only |
+| `private.service_plan_limits` | Typed standard/premium limits | Service/database function only |
+| `private.client_release_policies` | Per-platform build, update, and maintenance policy | Evaluated only by authenticated bootstrap RPC |
+| `private.app_announcements` | Scheduled localized in-app notices | Evaluated only by authenticated bootstrap RPC |
+| `public.app_release_notes` / `public.app_release_note_items` | Published releases and independently active cards | Authenticated read of active, in-window rows |
 | `storage.objects` (`notification-attachments`) | Evidence images foldered by owner | Owner RLS read/delete; service-only writes |
+
+The v0.0.5 binary still addresses several legacy physical table names. During
+the compatibility window, canonical public/private names are security-invoker
+views and owner writes go through stable RPCs. `app_release_notes` is already a
+physical rename because the legacy `app_changelog` surface is read-only and can
+be preserved safely as a compatibility view. The remaining physical cutover is
+deferred until release policy confirms v0.0.5 is retired.
 
 Service-only security-definer functions implement source creation, atomic
 ingestion, and push-attempt recording. Their `search_path` is fixed and execute
@@ -169,7 +184,8 @@ verify it, and revoke the old source.
    idempotency hash.
 4. A sent image is uploaded to the private `notification-attachments` bucket at
    `{user_id}/{notification_id}` and its metadata is written to the row.
-5. Function reads `app_options` and the originating API key's `sound_name`; it
+5. Function reads the owner's notification preferences and the originating
+   access key's `sound_name`; it
    may skip push, remove sound, choose a bundled per-source sound, or replace
    lock-screen content with a generic private preview before Expo delivery.
 6. Function records tickets/failures and returns HTTP 202.
@@ -228,11 +244,11 @@ only public values.
 
 ## Scaling and reliability limits
 
-- The API rate limit is per source (60/minute) and per account (300/minute
-  aggregate by default), not per IP. The per-account value is
-  operator-configured per tier in `public.universal_app_options` and resolved
-  at ingest time by `private.effective_limit`; platform-level abuse limits
-  remain desirable.
+- The API rate limit is per source (60/minute) and per account (20/minute
+  aggregate for the current standard plan), not per IP. Both are resolved from
+  typed `private.service_plan_limits`; the source value can be lowered during
+  the compatibility window, while the legacy hardened ingest implementation
+  retains a 60/minute ceiling. Platform-level abuse limits remain desirable.
 - The inbox must use cursor pagination; a fixed `.limit(200)` is not a complete
   seven-day inbox at permitted ingestion rates.
 - Expo recommends bounded push message batches. If installation counts grow,
@@ -272,4 +288,6 @@ general remote-control capability. Any future design requires:
 - [Threat model](THREAT_MODEL.md)
 - [Test plan](TEST_PLAN.md)
 - [Runbook](RUNBOOK.md)
+- [Runtime controls](RUNTIME_CONTROLS.md)
 - [ADR 0001](adr/0001-source-token-architecture.md)
+- [ADR 0003](adr/0003-runtime-controls-and-canonical-schema.md)

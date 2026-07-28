@@ -1,6 +1,6 @@
 # Zona threat model
 
-Scope: the Expo SDK 54 iPhone app, Supabase Auth/Postgres/Realtime/Edge
+Scope: the Expo SDK 56 iOS/Android app, Supabase Auth/Postgres/Realtime/Edge
 Functions, source integrations, Expo Push Service, and Apple APNs. Version 1 is
 notification-only and privately distributed through TestFlight.
 
@@ -76,13 +76,16 @@ or future PC-control scope changes.
 | T-19 | Console diagnostics leak content/provider responses | Errors and push tickets are logged/stored | Structured allowlisted fields, response-size bounds, restricted access, seven-day retention |
 | T-20 | Future control feature enables remote shell | Controls excluded from v1 | Separate credentials/protocol/ADR, typed allowlist, consent, expiry, replay defense; prohibit shell strings |
 | T-21 | Malicious or oversized image upload harms the device or storage | 5 MiB cap, magic-byte sniffing (PNG/JPEG/WebP only, never SVG), private bucket, owner-folder RLS, seven-day object cleanup | Contract tests for spoofed/oversize payloads; two-user storage read/delete test |
+| T-22 | Runtime configuration is mistaken for authorization or injects unsafe behavior | Client keys are compiled/allowlisted; raw controls are private; server switches and RLS remain authoritative; no dynamic code/routes/SQL | Bootstrap parser tests, unknown-key rejection, security review for every new key |
+| T-23 | A user subscribes to another account's Realtime invalidations | Private Broadcast topics include the owner UUID and `realtime.messages` policy compares it with `auth.uid()` | Two-user subscribe tests; keep payloads as invalidation-only and content-free |
+| T-24 | A stale or malicious release rule blocks essential privacy/account access | Maintenance/update state renders a bounded banner; Privacy, sign-out, deletion, and source revocation are outside the runtime allowlist | Mobile tests and manual release-policy exercise before activation |
 
 ## Abuse and capacity cases
 
 - Invalid-token spraying: use uniform responses, platform rate controls, and
   alerts without logging credentials.
 - Valid-token alert flood: transactional per-source (60/minute) and per-account
-  (300/minute) limits exist; add infrastructure safeguards if flooding across
+  (currently 20/minute for standard accounts) limits exist; add infrastructure safeguards if flooding across
   accounts is material.
 - Notification duplication: `notify` requires an `Idempotency-Key`; identical
   replays return the stored record and key reuse with a changed payload is
@@ -159,7 +162,7 @@ Any widening of distribution or sensitive-data use requires reapproval.
 - RLS, cross-tenant, gateway-auth, rate-limit concurrency, payload, and
   revocation tests pass.
 - Secrets scan both source and produced iOS bundle.
-- Dependency and lockfile review passes for the SDK 54 constraint.
+- Dependency and lockfile review passes for the SDK 56 constraint.
 - Account deletion and retention are verified.
 - Provider MFA, access list, key rotation, logging, and incident contacts are
   confirmed.

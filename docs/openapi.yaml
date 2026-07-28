@@ -8,8 +8,9 @@ info:
     normally use only `POST /functions/v1/notify`; the other operations are
     invoked by the authenticated iPhone app.
 
-    A 202 response from `notify` means the seven-day inbox record exists. Push
-    delivery is best effort and `pushAccepted` is not APNs delivery proof.
+    A 202 response from `notify` means the durable, retention-bounded inbox
+    record exists. Push delivery is best effort and `pushAccepted` is not
+    APNs/FCM display proof.
 
     Every JSON request has a 16 KiB transport limit. `notify.data` has an
     additional 4 KiB UTF-8 serialized limit. These byte limits are normative
@@ -109,6 +110,19 @@ paths:
           $ref: '#/components/responses/InvalidPayload'
         '401':
           $ref: '#/components/responses/InvalidSourceToken'
+        '403':
+          description: A server control currently rejects this optional capability.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                attachmentsDisabled:
+                  value:
+                    error: ATTACHMENTS_DISABLED
+                criticalSeverityDisabled:
+                  value:
+                    error: CRITICAL_SEVERITY_DISABLED
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
@@ -122,7 +136,7 @@ paths:
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
         '429':
-          description: Rate limit exceeded; 60 accepted requests per source or 300 per account in the rolling minute.
+          description: Rate limit exceeded; currently 60 accepted requests per source or 20 per standard account in the rolling minute. Operator-configured plan limits may be lower or higher where documented.
           headers:
             Retry-After:
               description: Minimum retry delay in seconds.
@@ -143,6 +157,8 @@ paths:
                     error: ACCOUNT_RATE_LIMITED
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /functions/v1/create-source:
     post:
@@ -186,7 +202,7 @@ paths:
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
-          description: The account already has 100 active sources.
+          description: The account reached its active source-key plan limit (currently 3 for the standard plan).
           content:
             application/json:
               schema:
@@ -212,6 +228,8 @@ paths:
                 error: CREATE_RATE_LIMITED
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /functions/v1/manage-source:
     post:
@@ -305,8 +323,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         '500':
           $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /functions/v1/register-push-token:
     post:
@@ -781,3 +803,18 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             error: INTERNAL_ERROR
+    ServiceUnavailable:
+      description: A fail-closed operator switch temporarily paused this operation.
+      headers:
+        Retry-After:
+          description: Minimum retry delay in seconds.
+          schema:
+            type: integer
+            minimum: 1
+          example: 60
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: SERVICE_UNAVAILABLE

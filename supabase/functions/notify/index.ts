@@ -2,7 +2,7 @@ import { sha256, sha256Bytes } from '../_shared/crypto.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
 import { sniffImageMime } from '../_shared/image.ts';
-import { resolveSenderLimits, type SenderLimits, type UniversalAppOptionRow } from '../_shared/limits.ts';
+import { FALLBACK_ATTACHMENT_MAX_BYTES, MULTIPART_OVERHEAD_BYTES, type SenderLimits } from '../_shared/limits.ts';
 import {
   assertPushPayloadFits,
   byteLength,
@@ -50,26 +50,41 @@ type NotifyPayload = {
 
 const expoEndpoint = 'https://exp.host/--/api/v2/push/send';
 const expoTimeoutMs = 5_000;
-const maximumPushDevices = 10;
+type IngestPolicy = SenderLimits & {
+  acceptNotifications: boolean;
+  allowAttachments: boolean;
+  allowCriticalSeverity: boolean;
+  deliverPush: boolean;
+  maxPushDevices: number;
+};
 
 // The attachment cap is operator-configured per tier, so it must be resolved
-// before the request body is parsed. Any lookup failure falls back to the
-// pre-configurable constants; Postgres re-checks the same limit at attach
-// time, so this pre-check can never widen the real boundary.
-async function resolveLimits(tokenHash: string): Promise<SenderLimits> {
-  const [configResult, premiumResult] = await Promise.all([
-    service
-      .from('universal_app_options')
-      .select('option_name, value')
-      .in('option_name', ['attachment_max_bytes_standard', 'attachment_max_bytes_premium']),
-    service.rpc('sender_is_premium', { p_token_hash: tokenHash }),
-  ]);
-  if (configResult.error) console.error('universal options lookup', configResult.error);
-  if (premiumResult.error) console.error('sender tier lookup', premiumResult.error);
-  return resolveSenderLimits(
-    (configResult.data as UniversalAppOptionRow[] | null) ?? null,
-    premiumResult.data === true,
-  );
+// before the request body is parsed. A lookup failure stops ingestion rather
+// than guessing at a security limit. Postgres re-checks the same limit at
+// attach time, so this pre-check can never widen the real boundary.
+async function resolvePolicy(tokenHash: string): Promise<IngestPolicy> {
+  const { data, error } = await service.rpc('notification_ingest_policy_internal', {
+    p_token_hash: tokenHash,
+  });
+  if (error || !data || typeof data !== 'object' || Array.isArray(data)) {
+    console.error('notification ingest policy lookup', error);
+    throw new Error('SERVICE_UNAVAILABLE');
+  }
+  const policy = data as Record<string, unknown>;
+  const configuredBytes = typeof policy.attachmentMaxBytes === 'number'
+    ? Math.trunc(policy.attachmentMaxBytes)
+    : FALLBACK_ATTACHMENT_MAX_BYTES;
+  const attachmentMaxBytes = configuredBytes >= 1024 && configuredBytes <= 52_428_800 ? configuredBytes : FALLBACK_ATTACHMENT_MAX_BYTES;
+  const configuredDevices = typeof policy.maxPushDevices === 'number' ? Math.trunc(policy.maxPushDevices) : 10;
+  return {
+    acceptNotifications: policy.acceptNotifications === true,
+    allowAttachments: policy.allowAttachments === true,
+    allowCriticalSeverity: policy.allowCriticalSeverity === true,
+    deliverPush: policy.deliverPush === true,
+    maxPushDevices: Math.min(1000, Math.max(1, configuredDevices)),
+    attachmentMaxBytes,
+    multipartMaxBytes: attachmentMaxBytes + MULTIPART_OVERHEAD_BYTES,
+  };
 }
 
 function sourceToken(req: Request): string {
@@ -116,7 +131,7 @@ async function recordDelivery(
 async function disableUnregisteredDevice(deviceId: string, ownerUserId: string): Promise<void> {
   try {
     const { error } = await service
-      .from('push_devices')
+      .from('push_registrations')
       .update({ disabled_at: new Date().toISOString() })
       .eq('id', deviceId)
       .eq('user_id', ownerUserId);
@@ -133,7 +148,7 @@ function metadataOrThrow(value: unknown): Record<string, unknown> {
   return metadata as Record<string, unknown>;
 }
 
-async function readNotifyPayload(req: Request, limits: SenderLimits): Promise<NotifyPayload> {
+async function readNotifyPayload(req: Request, limits: IngestPolicy): Promise<NotifyPayload> {
   const type = req.headers.get('content-type') ?? '';
   if (type.toLowerCase().includes('multipart/form-data')) return readMultipartPayload(req, limits);
 
@@ -147,7 +162,7 @@ async function readNotifyPayload(req: Request, limits: SenderLimits): Promise<No
   return { title, body: messageBody, category, severity, metadata, attachment: null };
 }
 
-async function readMultipartPayload(req: Request, limits: SenderLimits): Promise<NotifyPayload> {
+async function readMultipartPayload(req: Request, limits: IngestPolicy): Promise<NotifyPayload> {
   const declaredLength = Number(req.headers.get('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > limits.multipartMaxBytes) throw new Error('PAYLOAD_TOO_LARGE');
 
@@ -178,6 +193,7 @@ async function readMultipartPayload(req: Request, limits: SenderLimits): Promise
   const file = form.get('attachment');
   let attachment: NotifyPayload['attachment'] = null;
   if (file !== null) {
+    if (!limits.allowAttachments) throw new Error('ATTACHMENTS_DISABLED');
     if (typeof file === 'string') throw new Error('INVALID_PAYLOAD');
     const bytes = new Uint8Array(await file.arrayBuffer());
     const mime = bytes.byteLength > 0 && bytes.byteLength <= limits.attachmentMaxBytes ? sniffImageMime(bytes) : null;
@@ -196,8 +212,12 @@ Deno.serve(async (req) => {
   try {
     const tokenHash = await sha256(sourceToken(req));
     const requestKey = idempotencyKey(req.headers.get('idempotency-key'));
-    const limits = await resolveLimits(tokenHash);
-    const payload = await readNotifyPayload(req, limits);
+    const policy = await resolvePolicy(tokenHash);
+    if (!policy.acceptNotifications) throw new Error('SERVICE_UNAVAILABLE');
+    const payload = await readNotifyPayload(req, policy);
+    if (payload.severity === 'critical' && !policy.allowCriticalSeverity) {
+      throw new Error('CRITICAL_SEVERITY_DISABLED');
+    }
     const attachmentHash = payload.attachment ? await sha256Bytes(payload.attachment.bytes) : null;
 
     const { data, error } = await service.rpc('ingest_notification_internal', {
@@ -216,6 +236,8 @@ Deno.serve(async (req) => {
       if (error.message.includes('INVALID_IDEMPOTENCY_KEY')) throw new Error('INVALID_IDEMPOTENCY_KEY');
       if (error.message.includes('ACCOUNT_RATE_LIMITED')) throw new Error('ACCOUNT_RATE_LIMITED');
       if (error.message.includes('RATE_LIMITED')) throw new Error('RATE_LIMITED');
+      if (error.message.includes('NOTIFICATION_INGESTION_DISABLED')) throw new Error('SERVICE_UNAVAILABLE');
+      if (error.message.includes('CRITICAL_SEVERITY_DISABLED')) throw new Error('CRITICAL_SEVERITY_DISABLED');
       if (error.message.includes('INVALID_PAYLOAD')) throw new Error('INVALID_PAYLOAD');
       throw error;
     }
@@ -245,11 +267,13 @@ Deno.serve(async (req) => {
     let attachmentError: string | null = null;
     if (payload.attachment) {
       const attachmentPath = `${accepted.owner_user_id}/${accepted.notification_id}`;
+      let uploaded = false;
       try {
         const { error: uploadError } = await service.storage
           .from('notification-attachments')
           .upload(attachmentPath, payload.attachment.bytes, { contentType: payload.attachment.mime, upsert: false });
         if (uploadError) throw uploadError;
+        uploaded = true;
         const { error: attachError } = await service.rpc('attach_notification_image_internal', {
           p_notification_id: accepted.notification_id,
           p_path: attachmentPath,
@@ -262,18 +286,24 @@ Deno.serve(async (req) => {
         // Like push, attachment storage is best-effort: the durable inbox row
         // must never turn into an ambiguous 5xx because Storage failed.
         console.error('attachment upload failed', uploadFailure);
+        if (uploaded) {
+          const { error: removeError } = await service.storage
+            .from('notification-attachments')
+            .remove([attachmentPath]);
+          if (removeError) console.error('orphan attachment cleanup failed', removeError);
+        }
         attachmentError = 'UPLOAD_FAILED';
       }
     }
 
     const [optionsResult, sourceOptionsResult] = await Promise.all([
       service
-        .from('app_options')
+        .from('user_notification_preferences')
         .select('push_enabled, play_sound, show_preview')
         .eq('user_id', accepted.owner_user_id)
         .maybeSingle(),
       service
-        .from('api_keys')
+        .from('source_access_keys')
         .select('sound_name')
         .eq('user_id', accepted.owner_user_id)
         .eq('source_id', accepted.source_id)
@@ -298,14 +328,14 @@ Deno.serve(async (req) => {
       resolved: soundName,
     });
 
-    const { data: pushDevices, error: devicesError } = appOptions.push_enabled
+    const { data: pushDevices, error: devicesError } = appOptions.push_enabled && policy.deliverPush
       ? await service
-        .from('push_devices')
+        .from('push_registrations')
         .select('id, expo_push_token, platform')
         .eq('user_id', accepted.owner_user_id)
         .is('disabled_at', null)
         .order('updated_at', { ascending: false })
-        .limit(maximumPushDevices)
+        .limit(policy.maxPushDevices)
       : { data: [], error: null };
 
     if (devicesError) {
@@ -424,6 +454,10 @@ Deno.serve(async (req) => {
       return json({ error: code }, 429, { 'Retry-After': '60' });
     }
     if (code === 'PAYLOAD_TOO_LARGE') return json({ error: code }, 413);
+    if (code === 'SERVICE_UNAVAILABLE') return json({ error: code }, 503, { 'Retry-After': '60' });
+    if (['ATTACHMENTS_DISABLED', 'CRITICAL_SEVERITY_DISABLED'].includes(code)) {
+      return json({ error: code }, 403);
+    }
     if (['INVALID_PAYLOAD', 'INVALID_IDEMPOTENCY_KEY', 'CONTENT_TYPE', 'INVALID_JSON'].includes(code)) {
       return json({ error: code === 'INVALID_IDEMPOTENCY_KEY' ? code : 'INVALID_PAYLOAD' }, 400);
     }

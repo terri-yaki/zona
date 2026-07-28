@@ -73,7 +73,7 @@ must still target the correct project and rely on tested RLS—not key obscurity
   produced-bundle scans for every release.
 - No critical/high finding may ship. A moderate exception needs documented
   impact, mitigation, owner, approval, and expiry.
-- Do not use a forced dependency fix that silently upgrades beyond Expo SDK 54.
+- Do not use a forced dependency fix that silently upgrades beyond Expo SDK 56.
   Resolve or explicitly assess transitive advisories against the supported SDK.
 - Authentication, RLS/grants, secret access, security-definer functions,
   retention, and push payload changes require security-owner review.

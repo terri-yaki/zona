@@ -68,6 +68,18 @@ describe('parseChangelogRows', () => {
     expect(rows[0].items[0].icon).toBe('sparkles');
   });
 
+  it('filters individually inactive release-note items', () => {
+    const rows = parseChangelogRows([{
+      ...validRow,
+      items: [
+        { icon: 'eye', title_en: 'Published', is_active: true },
+        { icon: 'eye.slash', title_en: 'Hidden', is_active: false },
+        { icon: 'sparkles', title_en: 'Compatible default' },
+      ],
+    }]);
+    expect(rows[0].items.map((item) => item.title.en)).toEqual(['Published', 'Compatible default']);
+  });
+
   it('returns an empty list for non-array input', () => {
     expect(parseChangelogRows(null)).toEqual([]);
     expect(parseChangelogRows(undefined)).toEqual([]);

@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
     if (error) {
       if (error.message.includes('SOURCE_LIMIT_REACHED')) throw new Error('SOURCE_LIMIT_REACHED');
       if (error.message.includes('CREATE_RATE_LIMITED')) throw new Error('CREATE_RATE_LIMITED');
+      if (error.message.includes('SOURCE_CREATION_DISABLED')) throw new Error('SERVICE_UNAVAILABLE');
       if (error.message.includes('INVALID_SOURCE')) throw new Error('INVALID_SOURCE');
       throw error;
     }
@@ -47,6 +48,7 @@ Deno.serve(async (req) => {
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);
     if (code === 'SOURCE_LIMIT_REACHED') return json({ error: code }, 409);
     if (code === 'CREATE_RATE_LIMITED') return json({ error: code }, 429, { 'Retry-After': '3600' });
+    if (code === 'SERVICE_UNAVAILABLE') return json({ error: code }, 503, { 'Retry-After': '60' });
     if (code === 'PAYLOAD_TOO_LARGE') return json({ error: code }, 413);
     if (['INVALID_SOURCE', 'CONTENT_TYPE', 'INVALID_JSON'].includes(code)) return json({ error: 'INVALID_SOURCE' }, 400);
     console.error('create-source', error);

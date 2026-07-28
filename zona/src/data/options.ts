@@ -3,19 +3,10 @@ import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import type { AppOptions } from '@/types';
 
-export async function getAppOptions(userId: string): Promise<AppOptions> {
-  const { error: createError } = await supabase
-    .from('app_options')
-    .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true });
-  if (createError) throw dataError(createError, translate('settings.optionsLoadError'));
-
-  const { data, error } = await supabase
-    .from('app_options')
-    .select('*')
-    .eq('user_id', userId)
-    .single();
+export async function getAppOptions(_userId: string): Promise<AppOptions> {
+  const { data, error } = await supabase.rpc('get_user_notification_preferences');
   if (error) throw dataError(error, translate('settings.optionsLoadError'));
-  return data;
+  return data as unknown as AppOptions;
 }
 
 export type AppOptionFlags = Pick<
@@ -24,15 +15,15 @@ export type AppOptionFlags = Pick<
 >;
 
 export async function updateAppOptions(
-  userId: string,
+  _userId: string,
   changes: Partial<AppOptionFlags>,
 ): Promise<AppOptions> {
-  const { data, error } = await supabase
-    .from('app_options')
-    .update({ ...changes, updated_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .select('*')
-    .single();
+  const { data, error } = await supabase.rpc('update_user_notification_preferences', {
+    p_push_enabled: changes.push_enabled ?? null,
+    p_play_sound: changes.play_sound ?? null,
+    p_show_preview: changes.show_preview ?? null,
+    p_live_activity_enabled: changes.live_activity_enabled ?? null,
+  });
   if (error) throw dataError(error, translate('settings.optionSaveError'));
-  return data;
+  return data as unknown as AppOptions;
 }

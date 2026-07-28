@@ -37,10 +37,12 @@ import {
   soundLabelKeys,
 } from '@/lib/notification-sound-map';
 import { previewNotificationSound } from '@/lib/notification-sounds';
+import { runtimeNumber } from '@/lib/runtime-controls';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
 import type { ApiKey, Source } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import type { SFSymbol } from 'expo-symbols';
 
 type SoundName = ApiKey['sound_name'];
@@ -59,14 +61,15 @@ function soundGlyph(choice: SoundName): SoundGlyph {
   return isIosToneFile(choice) ? iosToneGlyph : { name: 'speaker.wave.2.fill', fallback: '♪' };
 }
 
-function recentlyActive(lastSeenAt: string | null) {
+function recentlyActive(lastSeenAt: string | null, windowMilliseconds: number) {
   if (!lastSeenAt) return false;
-  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60 * 1_000;
+  return Date.now() - new Date(lastSeenAt).getTime() < windowMilliseconds;
 }
 
 export default function SourcesScreen() {
   const router = useRouter();
   const { t } = useI18n();
+  const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const { error, load, loading, patchSource, refresh, refreshing, sources } = useSources(true);
   const bottomPad = useTabBarContentPadding();
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
@@ -74,6 +77,7 @@ export default function SourcesScreen() {
   const [renameValue, setRenameValue] = useState('');
   const [renameValidationError, setRenameValidationError] = useState<string | null>(null);
   const [soundPickerSource, setSoundPickerSource] = useState<Source | null>(null);
+  const onlineWindowMilliseconds = runtimeNumber(snapshot, 'sources.online_window_minutes', 5, 1, 1440) * 60 * 1_000;
 
   function askRename(source: Source) {
     if (busySourceId) return;
@@ -227,18 +231,20 @@ export default function SourcesScreen() {
           <Text style={styles.title}>{t('sources.title')}</Text>
           <Text style={styles.subtitle}>{t('sources.subtitle')}</Text>
         </View>
-        <Pressable
+        {isVisible('sources.create') ? <Pressable
           accessibilityLabel={t('sources.addA11y')}
           accessibilityRole="button"
+          accessibilityState={{ disabled: !isEnabled('sources.create') }}
+          disabled={!isEnabled('sources.create')}
           hitSlop={4}
           onPress={() => router.push('/source/new')}
-          style={({ pressed }) => [styles.addButtonHit, pressed && styles.addButtonPressed]}
+          style={({ pressed }) => [styles.addButtonHit, !isEnabled('sources.create') && styles.actionDisabled, pressed && styles.addButtonPressed]}
         >
           {/* Background lives on an inner View — Link asChild / Pressable style can drop fills. */}
           <View style={styles.addButton}>
             <AppIcon color={colors.white} fallback="+" name="plus" size={22} />
           </View>
-        </Pressable>
+        </Pressable> : null}
       </View>
 
       {error && sources.length > 0 ? <ErrorState compact error={error} onRetry={() => void load()} /> : null}
@@ -264,7 +270,7 @@ export default function SourcesScreen() {
         )}
         renderItem={({ item }) => {
           const busy = busySourceId === item.id;
-          const online = !item.revoked_at && recentlyActive(item.last_seen_at);
+          const online = !item.revoked_at && recentlyActive(item.last_seen_at, onlineWindowMilliseconds);
           const keyActive = Boolean(item.api_key?.is_active && !item.revoked_at);
           return (
             <View style={[styles.card, item.revoked_at && styles.revoked]}>
@@ -278,12 +284,12 @@ export default function SourcesScreen() {
                   {item.revoked_at ? <Text style={styles.revokedLabel}>{t('sources.revoked')}</Text> : null}
                   {!item.revoked_at && !keyActive ? <Text style={styles.pausedLabel}>{t('sources.paused')}</Text> : null}
                   {busy ? <ActivityIndicator accessibilityLabel={t('settings.checking')} color={colors.primary} size="small" /> : null}
-                  {!item.revoked_at ? (
+                  {!item.revoked_at && isVisible('sources.rename') ? (
                     <Pressable
                       accessibilityLabel={`${t('sources.rename')} ${item.display_name}`}
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: Boolean(busySourceId) }}
-                      disabled={Boolean(busySourceId)}
+                      accessibilityState={{ disabled: Boolean(busySourceId) || !isEnabled('sources.rename') }}
+                      disabled={Boolean(busySourceId) || !isEnabled('sources.rename')}
                       hitSlop={6}
                       onPress={() => askRename(item)}
                       style={({ pressed }) => [styles.renameIconButton, pressed && styles.actionPressed]}
@@ -304,33 +310,33 @@ export default function SourcesScreen() {
                     <Text style={styles.keyLabel}>{t('sources.apiKey')}</Text>
                     <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : t('sources.protectedKey')}</Text>
                   </View>
-                  <Switch
+                  {isVisible('sources.pause') ? <Switch
                     accessibilityLabel={`${t('sources.apiKey')} ${item.display_name}`}
-                    disabled={Boolean(busySourceId) || Boolean(item.revoked_at)}
+                    disabled={Boolean(busySourceId) || Boolean(item.revoked_at) || !isEnabled('sources.pause')}
                     onValueChange={(value) => void toggleActive(item, value)}
                     trackColor={{ false: colors.border, true: colors.primarySoft }}
                     thumbColor={keyActive ? colors.primary : colors.mutedLight}
                     value={keyActive}
-                  />
+                  /> : null}
                 </View>
                 {!item.revoked_at ? (
                   <View style={styles.actions}>
-                    <Pressable
+                    {isVisible('sources.test') ? <Pressable
                       accessibilityLabel={`${t('sources.test')} ${item.display_name}`}
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: Boolean(busySourceId) || !keyActive }}
-                      disabled={Boolean(busySourceId) || !keyActive}
+                      accessibilityState={{ disabled: Boolean(busySourceId) || !keyActive || !isEnabled('sources.test') }}
+                      disabled={Boolean(busySourceId) || !keyActive || !isEnabled('sources.test')}
                       onPress={() => void sendTest(item)}
-                      style={({ pressed }) => [styles.actionButton, styles.actionPrimary, pressed && styles.actionPressed, !keyActive && styles.actionDisabled]}
+                      style={({ pressed }) => [styles.actionButton, styles.actionPrimary, pressed && styles.actionPressed, (!keyActive || !isEnabled('sources.test')) && styles.actionDisabled]}
                     >
                       <AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={12} />
                       <Text style={[styles.action, styles.testAction]}>{t('sources.test')}</Text>
-                    </Pressable>
-                    <Pressable
+                    </Pressable> : null}
+                    {isVisible('sources.sound') ? <Pressable
                       accessibilityLabel={`${t('sources.soundTitle')} ${item.display_name}`}
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: Boolean(busySourceId) }}
-                      disabled={Boolean(busySourceId)}
+                      accessibilityState={{ disabled: Boolean(busySourceId) || !isEnabled('sources.sound') }}
+                      disabled={Boolean(busySourceId) || !isEnabled('sources.sound')}
                       onPress={() => askSound(item)}
                       style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed]}
                     >
@@ -338,7 +344,7 @@ export default function SourcesScreen() {
                       <Text numberOfLines={1} style={styles.action}>
                         {Platform.OS === 'android' ? t('sources.soundAndroid') : t(soundLabelKeyFor(item.api_key?.sound_name))}
                       </Text>
-                    </Pressable>
+                    </Pressable> : null}
                     <Pressable
                       accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
                       accessibilityRole="button"

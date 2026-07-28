@@ -3,14 +3,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppIcon } from '@/components/AppIcon';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { severityAppearance } from '@/lib/notification-severity';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
 
 export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
   const { t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   const unread = !item.read_at;
-  const severity = severityAppearance(item.severity);
+  const showSeverity = isVisible('notification.severity') && isEnabled('notification.severity');
+  const severity = severityAppearance(showSeverity ? item.severity : null);
   return (
     <Pressable
       onPress={onPress}

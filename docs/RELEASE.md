@@ -1,7 +1,7 @@
 # Zona release procedure
 
 This is the required procedure for a private TestFlight release. Zona version 1
-is pinned to Expo SDK 54. A release is not complete when a local bundle compiles;
+is pinned to Expo SDK 56. A release is not complete when a local bundle compiles;
 it is complete only after the signed build and hosted backend pass the recorded
 acceptance matrix.
 
@@ -23,7 +23,7 @@ Assign before starting:
 - App semantic version is `major.minor.patch` in Expo configuration.
 - EAS remote build number auto-increments for store submissions.
 - Native dependency or app-configuration changes require a new binary.
-- Expo SDK stays on major 54 for version 1. An SDK upgrade requires an ADR,
+- Expo SDK stays on major 56 for version 1. An SDK upgrade requires an ADR,
   compatible package plan, fresh native build, and full TestFlight matrix.
 - Preview channel OTA (`eas update --channel preview`) is configured for
   internal iteration; see [PREVIEW_UPDATES.md](PREVIEW_UPDATES.md). Production
@@ -73,7 +73,7 @@ release ticket.
 Required outcomes:
 
 - typecheck, lint, mobile tests, Deno checks/tests, database/RLS/contract tests;
-- Expo dependency check and Expo Doctor on SDK 54;
+- Expo dependency check and Expo Doctor on SDK 56;
 - iOS production export;
 - dependency, static, and secret scans, including produced bundle;
 - migration reset from zero and upgrade from previous production schema;
@@ -114,7 +114,7 @@ npx eas-cli build --platform ios --profile production
 
 Verify in the EAS artifact/build details:
 
-- correct owner/project, Git revision, SDK 54, app version, and incremented build;
+- correct owner/project, Git revision, SDK 56, app version, and incremented build;
 - production bundle identifier and environment target;
 - no placeholder identifiers or secret/service-role material;
 - notification, secure-store, router, and signing configuration;

@@ -6,7 +6,7 @@ so a mistake on `main` is a mistake in production within a minute.
 
 Migrations only change the **database**. They never bump the app version —
 `zona/app.json`'s `version` is edited separately (or via
-`eas build:version:set`); the `version` column in `app_changelog` is a
+`eas build:version:set`); the `version` column in `app_release_notes` is a
 release-notes label, not the binary version. A release usually needs both:
 app.json bump **and** a changelog migration with the matching label.
 
@@ -29,8 +29,9 @@ app.json bump **and** a changelog migration with the matching label.
       as narrow as the feature needs; no insert/update/delete policies unless
       clients must write (writes are service-only by default here).
 - [ ] **Security-definer functions**: fixed `search_path = ''`, bodies qualify
-      real functions as `pg_catalog.*`, `revoke all ... from public, anon,
-      authenticated`, `grant execute ... to service_role` only.
+      real functions as `pg_catalog.*`, and execute grants are explicit.
+      Service internals grant only `service_role`; authenticated owner RPCs
+      derive the owner from `auth.uid()` and must test cross-account denial.
 - [ ] **SQL gotchas that have bitten this repo**: `coalesce`, `greatest`,
       `least`, `nullif` are keywords/constructs — **never** schema-qualify
       them (`pg_catalog.coalesce(...)` fails with 42883). `now()`, `count`,
@@ -39,8 +40,13 @@ app.json bump **and** a changelog migration with the matching label.
       contract says so (title 120, body 2000, category 80, metadata ≤ 4 KiB).
 - [ ] **No secrets**: no tokens, passwords, service keys, or user data in
       migrations. Seed content only (e.g. changelog rows) — bilingual
-      (`*_en` + `*_zh_hant`), valid `items` JSON per `docs/APP_CHANGELOG.md`,
-      and `released_at` chosen deliberately (it controls the LATEST badge).
+      (`*_en` + `*_zh_hant`), normalized items per `docs/APP_CHANGELOG.md`, and
+      `released_at` chosen deliberately (it controls the LATEST badge).
+- [ ] **Compatibility renames**: do not replace a client-writable table or a
+      Realtime table subscription with a view while an installed binary still
+      depends on it. Introduce a canonical security-invoker view, owner RPCs,
+      and Broadcast topics first; physically rename after the minimum-build
+      cutover. Read-only surfaces may be renamed with a compatibility view.
 
 ## 3. Before pushing
 

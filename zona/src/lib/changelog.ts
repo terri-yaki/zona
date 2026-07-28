@@ -5,7 +5,7 @@ import { translate, type SupportedLanguage } from '../i18n';
 
 /**
  * Pure What's New content pipeline: validates server-driven changelog rows
- * from `public.app_changelog`, maps them to the screen's view model for a
+ * from the normalized release-note tables, maps them to the screen's view model for a
  * language, and produces the bundled fallback copy. No RN/Supabase imports.
  */
 
@@ -17,7 +17,7 @@ export type ChangelogRowItem = {
   body: ChangelogText;
 };
 
-/** A validated `app_changelog` row (locale-agnostic). */
+/** A validated `app_release_notes` row (locale-agnostic). */
 export type ChangelogRow = {
   id: string;
   version: string;
@@ -62,7 +62,7 @@ function localizedText(en: unknown, zhHant: unknown): ChangelogText | null {
 
 function parseItem(value: unknown): ChangelogRowItem | null {
   const record = asRecord(value);
-  if (!record) return null;
+  if (!record || record.is_active === false) return null;
   const title = localizedText(record.title_en, record.title_zh_hant);
   if (!title) return null;
   const body = localizedText(record.body_en, record.body_zh_hant) ?? { en: '', zhHant: '' };
@@ -136,7 +136,7 @@ export function toChangelogReleases(
   return rows.map((row, index) => ({ ...toChangelogRelease(row, language, localeTag), latest: index === 0 }));
 }
 
-/** Bundled copy used when the server table is unreachable or empty. */
+/** Bundled copy used only when the server content is unreachable. */
 export function bundledChangelog(language: SupportedLanguage): ChangelogRelease[] {
   return whatsNewReleases.map((release) => ({
     id: release.id,

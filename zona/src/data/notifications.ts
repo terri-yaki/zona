@@ -5,7 +5,7 @@ import type { InboxNotification } from '@/types';
 import type { Json } from '@/types/database';
 
 const notificationColumns = 'id,user_id,source_id,source_name_snapshot,title,body,category,severity,data,created_at,read_at,expires_at,attachment_path,attachment_mime,attachment_bytes';
-export const inboxPageSize = 50;
+export const inboxPageSize = 30;
 
 export type InboxCursor = { createdAt: string; id: string };
 export type InboxFilters = {
@@ -37,13 +37,17 @@ function rowToNotification(row: {
   return { ...row, data };
 }
 
-export async function listNotifications(filters: InboxFilters, cursor: InboxCursor | null = null) {
+export async function listNotifications(
+  filters: InboxFilters,
+  cursor: InboxCursor | null = null,
+  pageSize = inboxPageSize,
+) {
   let query = supabase
-    .from('notifications')
+    .from('inbox_notifications')
     .select(notificationColumns)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
-    .limit(inboxPageSize + 1);
+    .limit(pageSize + 1);
 
   if (filters.sourceId) query = query.eq('source_id', filters.sourceId);
   if (filters.unreadOnly) query = query.is('read_at', null);
@@ -55,8 +59,8 @@ export async function listNotifications(filters: InboxFilters, cursor: InboxCurs
   const { data, error } = await query;
   if (error) throw dataError(error, translate('error.loadTitle'));
   const rows = data ?? [];
-  const hasMore = rows.length > inboxPageSize;
-  const items = rows.slice(0, inboxPageSize).map(rowToNotification);
+  const hasMore = rows.length > pageSize;
+  const items = rows.slice(0, pageSize).map(rowToNotification);
   const last = items.at(-1);
   return {
     cursor: hasMore && last ? { createdAt: last.created_at, id: last.id } : null,
@@ -67,7 +71,7 @@ export async function listNotifications(filters: InboxFilters, cursor: InboxCurs
 
 export async function unreadNotificationCount() {
   const { count, error } = await supabase
-    .from('notifications')
+    .from('inbox_notifications')
     .select('id', { count: 'exact', head: true })
     .is('read_at', null);
   if (error) throw dataError(error, translate('error.loadTitle'));
@@ -76,7 +80,7 @@ export async function unreadNotificationCount() {
 
 export async function getNotification(id: string) {
   const { data, error } = await supabase
-    .from('notifications')
+    .from('inbox_notifications')
     .select(notificationColumns)
     .eq('id', id)
     .maybeSingle();
@@ -85,21 +89,18 @@ export async function getNotification(id: string) {
 }
 
 export async function markNotificationRead(id: string, readAt: string) {
-  const { data, error } = await supabase
-    .from('notifications')
-    .update({ read_at: readAt })
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('mark_inbox_notification_read', {
+    p_notification_id: id,
+    p_read_at: readAt,
+  });
   if (error) throw dataError(error, translate('notification.readError'));
-  if (!data) throw dataError(null, translate('notification.missing'));
+  if (data !== true) throw dataError(null, translate('notification.missing'));
 }
 
 export async function markAllNotificationsRead(readAt = new Date().toISOString()) {
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: readAt })
-    .is('read_at', null);
+  const { error } = await supabase.rpc('mark_all_inbox_notifications_read', {
+    p_read_at: readAt,
+  });
   if (error) throw dataError(error, translate('inbox.markReadError'));
 }
 
@@ -112,12 +113,9 @@ export async function deleteNotification(id: string, attachmentPath: string | nu
       .remove([attachmentPath]);
     if (storageError) throw dataError(storageError, translate('notification.deleteError'));
   }
-  const { data, error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('id', id)
-    .select('id')
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('delete_inbox_notification', {
+    p_notification_id: id,
+  });
   if (error) throw dataError(error, translate('notification.deleteError'));
-  if (!data) throw dataError(null, translate('notification.missing'));
+  if (data !== true) throw dataError(null, translate('notification.missing'));
 }

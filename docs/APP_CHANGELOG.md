@@ -1,93 +1,138 @@
 # App changelog ("What's New") content guide
 
-How release notes for the in-app **What's New** screen are authored, stored,
-and published. Read this before adding an entry.
+Zona v0.0.6 stores release headings and feature cards separately so every
+item can be published, hidden, ordered, scheduled, and platform-targeted
+without rewriting a JSON array.
 
-## The pipeline
+## Tables
 
-1. Author a forward-only SQL migration that inserts one row into
-   `public.app_changelog` (template below).
-2. Merge it to `main`. The **Deploy DB** GitHub Actions workflow applies it to
-   the live project automatically (`supabase db push`).
-3. Every install picks the entry up the next time **Settings → What's New**
-   opens. No app build, no OTA update, no App Store review.
-4. If the fetch fails (offline, unmigrated backend), the screen silently falls
-   back to the bundled copy in `zona/src/content/whats-new.ts`.
-
-Rows are rendered newest-first by `released_at`; the newest row gets the
-**LATEST** badge. Entries can be edited or deleted anytime from the Supabase
-Dashboard table editor (`app_changelog`) — the screen reflects changes on the
-next open.
-
-## Row format
+`public.app_release_notes` contains one row per version:
 
 | Column | Rules |
 | --- | --- |
-| `version` | unique, e.g. `'0.0.3'`. Shown as `v0.0.3`. Use a clearly fake value (e.g. `'0.0.0-test'`) for test entries. |
-| `released_at` | timestamptz. Drives ordering and the LATEST badge. Date the entry when you want it to sort. |
-| `title_en` / `title_zh_hant` | required, ≤ 200 chars each. Release title in both languages. |
-| `summary_en` / `summary_zh_hant` | optional (default `''`), ≤ 500 chars. One-line summary. |
-| `items` | JSONB array of feature cards (see below). May be empty. |
+| `version` | Unique display version such as `0.0.6` |
+| `released_at` | Controls newest-first order and the Latest badge |
+| `title_en`, `title_zh_hant` | Required localized release title |
+| `summary_en`, `summary_zh_hant` | Localized summary |
+| `is_active` | Master publish switch for the release |
+| `starts_at`, `expires_at` | Optional publish window |
 
-Each item:
+`public.app_release_note_items` contains the cards:
 
-```json
-{
-  "icon": "bell.fill",
-  "title_en": "Every iPhone ringtone",
-  "title_zh_hant": "全部 iPhone 鈴聲",
-  "body_en": "Choose from all 66 classic iPhone tones for each source.",
-  "body_zh_hant": "66 款經典 iPhone 鈴聲，每個來源任選。"
-}
-```
+| Column | Rules |
+| --- | --- |
+| `release_id` | Parent release UUID, cascade delete |
+| `item_key` | Stable unique key within the release |
+| `icon_name` | SF Symbol name; unknown names degrade gracefully |
+| `title_en`, `title_zh_hant` | Localized card title; English is required |
+| `body_en`, `body_zh_hant` | Localized card body |
+| `position` | Zero-based order within the release |
+| `is_active` | Independent item publish switch |
+| `platform` | Optional `ios`, `android`, or `web` target |
+| `starts_at`, `expires_at` | Optional item publish window |
 
-- `icon` — any SF Symbol name (e.g. `bell.fill`, `sparkles`, `hand.raised.fill`).
-  Unknown names degrade to a dot fallback.
-- `title_en` — required per item; items without it are dropped client-side.
-- Missing/empty `*_zh_hant` strings fall back to the English text automatically.
-- Malformed rows (bad date, blank English title) are dropped client-side, so a
-  bad entry degrades gracefully instead of breaking the screen.
+RLS exposes only active, currently scheduled rows and items to authenticated
+installs. The app also filters defensively. A successful empty result is
+authoritative; bundled content is used only after a real fetch failure, so
+turning everything off does not make old notes reappear.
 
-## Entry template
+## Publishing a release
+
+Create a forward-only migration with a release row followed by its items:
 
 ```sql
--- Release notes for vX.Y.Z. Newest released_at makes it the LATEST row.
-
-insert into public.app_changelog (version, released_at, title_en, title_zh_hant, summary_en, summary_zh_hant, items) values
-  (
+with release as (
+  insert into public.app_release_notes (
+    version, released_at,
+    title_en, title_zh_hant,
+    summary_en, summary_zh_hant,
+    legacy_items, is_active
+  ) values (
     'X.Y.Z',
-    '2026-MM-DDT00:00:00+00:00',
-    'English release title',
-    '繁體中文標題',
-    'One-line English summary.',
-    '一行中文摘要。',
-    '[
-      {"icon":"sparkles","title_en":"Feature name","title_zh_hant":"功能名稱","body_en":"What it does for the user.","body_zh_hant":"為使用者帶來甚麼。"}
-    ]'::jsonb
-  );
+    '2026-MM-DDT00:00:00Z',
+    'A human release title', '自然的繁體中文標題',
+    'One friendly sentence.', '一句自然、友善的繁體中文摘要。',
+    '[]'::jsonb,
+    true
+  )
+  on conflict (version) do update set
+    released_at = excluded.released_at,
+    title_en = excluded.title_en,
+    title_zh_hant = excluded.title_zh_hant,
+    summary_en = excluded.summary_en,
+    summary_zh_hant = excluded.summary_zh_hant,
+    is_active = excluded.is_active,
+    updated_at = now()
+  returning id
+)
+insert into public.app_release_note_items (
+  release_id, item_key, icon_name,
+  title_en, title_zh_hant,
+  body_en, body_zh_hant,
+  position, is_active
+)
+select
+  release.id, 'feature-key', 'sparkles',
+  'Feature name', '功能名稱',
+  'What this does for the user.', '這項功能為使用者帶來甚麼。',
+  0, true
+from release
+on conflict (release_id, item_key) do update set
+  icon_name = excluded.icon_name,
+  title_en = excluded.title_en,
+  title_zh_hant = excluded.title_zh_hant,
+  body_en = excluded.body_en,
+  body_zh_hant = excluded.body_zh_hant,
+  position = excluded.position,
+  is_active = excluded.is_active,
+  updated_at = now();
 ```
 
-Name the file `YYYYMMDDHHNNN_<slug>.sql` under `supabase/migrations/` (next
-sequence after the latest migration), commit, and merge to `main`.
+Use `npx supabase migration new <slug>` to create the migration. Merge to
+`main` only after the DB checklist passes; the Deploy DB workflow publishes
+it, and the app sees it on the next What's New open.
 
-## Authoring rules
+## Common edits
 
-- Write for the user, not the commit log: 1–5 items, each one benefit, short
-  bodies. Match the sober, friendly tone of the existing entries.
-- Both languages, always — the catalogs test en/zh-Hant parity elsewhere, and
-  the screen renders whichever language the user picked.
-- Mind Traditional Chinese punctuation: full-width `，` and `。`, no mid-sentence
-  `。` (the app reuses catalog conventions).
-- Escape single quotes in SQL by doubling them (`What''s New`).
-- Migrations are forward-only: to fix a published entry, either edit the row in
-  the Dashboard (content fix) or ship a new migration that `update`s the row
-  (keeps fresh databases consistent).
-- The migration ledger records the insert; deleting a row in the Dashboard
-  removes the content but not the ledger entry.
+Hide one card without hiding the release:
 
-## Reference examples
+```sql
+update public.app_release_note_items
+set is_active = false
+where release_id = (
+  select id from public.app_release_notes where version = '0.0.6'
+)
+and item_key = 'feature-key';
+```
 
-- Table definition + first seeds: `supabase/migrations/202607250004_app_changelog.sql`
-- A real entry: `supabase/migrations/202607260003_changelog_0_0_3.sql`
-- Client validation/mapping (source of truth for what renders):
-  `zona/src/lib/changelog.ts` (`parseChangelogRows`)
+Hide a whole release:
+
+```sql
+update public.app_release_notes
+set is_active = false
+where version = '0.0.6';
+```
+
+Prefer deactivation to deletion. The migration ledger records that a seed ran;
+deleting content does not make that migration run again. A later idempotent
+upsert is required to restore a manually deleted row.
+
+## Writing rules
+
+- Write for people, not the commit log: one benefit per card, usually 1–5
+  cards per release.
+- Keep English and Traditional Chinese together. Empty Traditional Chinese
+  text falls back to English, but published notes should translate both.
+- Use full-width Traditional Chinese punctuation: `，` and `。`. Do not place
+  a full stop in the middle of one continuing Chinese sentence.
+- Escape SQL apostrophes by doubling them (`What''s New`).
+- Use stable `item_key` values so future migrations update instead of duplicate.
+- Do not create platform-scoped items until the v0.0.5 compatibility view is
+  retired; an old client cannot supply platform context to that view.
+
+## Compatibility
+
+`public.app_changelog` is now a read-only security-invoker compatibility view
+that rebuilds the old `items` JSON from active normalized cards. This keeps
+v0.0.5 readable while v0.0.6 queries `app_release_notes` and
+`app_release_note_items` directly.

@@ -11,6 +11,7 @@ import { ensureAndroidSourceNotificationChannel } from '@/lib/android-source-not
 import { normalizeOptional, validateSourceInput } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
 import type { CreatedSource } from '@/types';
 
@@ -18,6 +19,7 @@ export default function NewSourceScreen() {
   const router = useRouter();
   const { session, loading } = useAuth();
   const { t } = useI18n();
+  const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const bottomPadding = useBottomSafePadding(22);
   const [displayName, setDisplayName] = useState('');
   const [hostname, setHostname] = useState('');
@@ -34,6 +36,18 @@ export default function NewSourceScreen() {
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
+  if (!created && (!isVisible('sources.create') || !isEnabled('sources.create'))) {
+    return (
+      <View style={styles.unavailable}>
+        <AppIcon color={colors.muted} fallback="×" name="lock.fill" size={27} />
+        <Text style={styles.title}>{t('common.unavailable')}</Text>
+        <Text style={styles.unavailableBody}>{snapshot.features['sources.create'].reason || t('common.tryAgain')}</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}>
+          <Text style={styles.secondaryText}>{t('common.close')}</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   async function copy(value: string, kind: 'token' | 'example') {
     try {
@@ -104,9 +118,9 @@ export default function NewSourceScreen() {
         <View style={styles.tokenBox}><Text selectable style={styles.token}>{created.token}</Text></View>
         <Pressable accessibilityRole="button" onPress={() => void copy(created.token, 'token')} style={styles.primary}><AppIcon color={colors.white} fallback="□" name="doc.on.doc" size={16} /><Text style={styles.primaryText}>{tokenCopied ? t('sourceNew.tokenCopied') : t('sourceNew.copyToken')}</Text></Pressable>
         {copyMessage ? <Text accessibilityLiveRegion="polite" style={styles.copyMessage}>{copyMessage}</Text> : null}
-        <Pressable accessibilityRole="button" disabled={testing} onPress={() => void sendTestNotification(created)} style={[styles.testButton, testing && styles.disabled]}>
+        {isVisible('sources.test') ? <Pressable accessibilityRole="button" disabled={testing || !isEnabled('sources.test')} onPress={() => void sendTestNotification(created)} style={[styles.testButton, (testing || !isEnabled('sources.test')) && styles.disabled]}>
           {testing ? <ActivityIndicator color={colors.accent} /> : <><AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={16} /><Text style={styles.testButtonText}>{t('sourceNew.sendTest')}</Text></>}
-        </Pressable>
+        </Pressable> : null}
         {testMessage ? <Text accessibilityLiveRegion="polite" style={styles.testMessage}>{testMessage}</Text> : null}
         <Text style={styles.label}>{t('sourceNew.exampleRequest')}</Text>
         <View style={styles.codeBox}><Text selectable style={styles.code}>{curl}</Text></View>
@@ -158,4 +172,6 @@ const styles = StyleSheet.create({
   doneText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   copyMessage: { color: colors.success, fontSize: 12, fontWeight: '600', lineHeight: 18, marginTop: 10, textAlign: 'center' },
   disabled: { opacity: 0.5 },
+  unavailable: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 28 },
+  unavailableBody: { color: colors.muted, fontSize: 14, lineHeight: 21, maxWidth: 360, textAlign: 'center' },
 });

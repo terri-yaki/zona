@@ -51,7 +51,7 @@ change, so it ships with the next IPA, not OTA. Design board:
 
 | Piece | Role |
 | --- | --- |
-| `expo-live-activity` | Config plugin + ActivityKit bridge (SDK 54 path; package archived upstream in favor of newer `expo-widgets` on later SDKs). Listed as unmaintained in RN Directory; excluded in `package.json` `expo.doctor.reactNativeDirectoryCheck` until an SDK upgrade. |
+| `expo-live-activity` | Config plugin + ActivityKit bridge used by the current SDK 56 build; guarded at runtime because the native module is optional and the package is archived upstream in favor of `expo-widgets`. Listed as unmaintained in RN Directory and excluded in `package.json` `expo.doctor.reactNativeDirectoryCheck`. |
 | `zona/src/lib/live-activity.ts` | Preference storage, start/update/stop, soft failures. |
 | `zona/src/lib/live-activity-presentation.ts` | Pure, unit-tested state/config builders (count-led title, recency subtitle, brand palette). No RN imports. |
 | `zona/src/components/LiveActivitySync.tsx` | Mirrors unread + latest notification into the activity. |

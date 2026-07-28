@@ -1,16 +1,16 @@
 # Zona product requirements
 
 Status: Draft; release gates in this document are not yet satisfied.  
-Product scope: private TestFlight distribution for iPhone.  
-Native baseline: Expo SDK 54.
+Product scope: private iOS TestFlight and Android preview distribution.
+Native baseline: Expo SDK 56.
 
 ## Product statement
 
 Zona is a private, multi-source alert inbox. A signed-in user creates an
 independent source for each trusted PC or local application. That sender uses
 the one-time source credential to submit an alert to a Supabase Edge Function.
-Zona stores the alert in a seven-day inbox and then attempts one best-effort
-Expo/APNs push to each registered iPhone installation.
+Zona stores the alert in a retention-bounded inbox and then attempts one
+best-effort Expo/APNs-or-FCM push to each registered installation.
 
 The database record is the source of truth. A successful API response means
 the inbox item was accepted; it does not guarantee that iOS displayed a push.
@@ -41,7 +41,7 @@ updated acceptance tests.
 ## Users and primary jobs
 
 The initial user is a technically capable owner operating one private account,
-one iPhone, and multiple trusted PCs or local applications.
+one or more mobile installations, and multiple trusted PCs or local applications.
 
 The user must be able to:
 
@@ -55,7 +55,7 @@ The user must be able to:
 6. filter inbox items by source, unread state, and date.
 7. rename or independently revoke a source while retaining historical labels.
 8. mark alerts read, delete individual alerts, and synchronize accepted alerts.
-9. manage the current iPhone push registration, sign out, and delete the
+9. manage the current phone's push registration, sign out, and delete the
    account and associated data.
 
 ## Functional requirements
@@ -105,20 +105,21 @@ The user must be able to:
   unread state, and date. A UI cap must not make retained records unreachable.
 - **NOTI-07** Notification detail navigation must work from foreground,
   background, and terminated-app push interactions.
-- **NOTI-08** Notifications expire after seven days. Cleanup health must be
-  monitored.
+- **NOTI-08** Notifications expire after the server-resolved plan retention
+  window (seven days for the standard plan). Cleanup health must be monitored.
 - **NOTI-09** A notification may carry one evidence image (PNG/JPEG/WebP, at
-  most 5 MiB, verified by magic bytes). The image is stored in a private
+  most the server-resolved plan limit—5 MiB standard—and verified by magic
+  bytes). The image is stored in a private
   bucket readable only by its owner, participates in idempotency, is
   best-effort like push, and shares the seven-day retention.
 - **NOTI-10** Severity participates in idempotency and changes presentation,
   not delivery priority. Null severity uses a neutral white inbox card.
 
-### iPhone push registration
+### Mobile push registration
 
 - **PUSH-01** Permission is requested only after explanatory onboarding and is
   not required to use the synchronized inbox.
-- **PUSH-02** Each physical iPhone installation has a stable installation ID
+- **PUSH-02** Each physical iOS or Android installation has a stable installation ID
   and an Expo push token associated with the authenticated owner.
 - **PUSH-03** Token refreshes must update the registration; cross-account token
   conflicts must fail closed.
@@ -127,9 +128,9 @@ The user must be able to:
 - **PUSH-05** Per-account options control whether push is attempted, whether it
   plays sound, and whether lock-screen content contains the alert preview.
   Disabling push never prevents the durable inbox record.
-- **PUSH-06** Every active source can select default, silent, soft, bright, or
-  urgent notification sound independently. The global sound switch overrides
-  per-source choices.
+- **PUSH-06** Every active source can select an iOS bundled ringtone or use its
+  native Android notification channel independently. The global sound switch
+  overrides per-source choices.
 
 ### Source API
 
@@ -155,12 +156,12 @@ The user must be able to:
 - **NFR-03 Security:** secret/service-role keys never enter the Expo bundle,
   sender configuration, logs, or notification metadata.
 - **NFR-04 Privacy:** the product documents all data sent through Supabase,
-  Expo, and APNs; notification content may appear on a lock screen.
+  Expo, APNs, and FCM; notification content may appear on a lock screen.
 - **NFR-05 Accessibility:** primary flows support VoiceOver labels, Dynamic
   Type, sufficient contrast, and non-color-only state indicators.
 - **NFR-06 Operability:** production has structured logs, correlation IDs,
   dashboards, alerts, a synthetic check, and an owned runbook.
-- **NFR-07 Compatibility:** version 1 remains on Expo SDK 54 until an explicit,
+- **NFR-07 Compatibility:** version 1 remains on Expo SDK 56 until an explicit,
   tested upgrade decision. Expo Doctor and dependency compatibility checks are
   release gates.
 - **NFR-08 Performance:** the inbox must remain navigable throughout its
