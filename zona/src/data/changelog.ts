@@ -10,6 +10,7 @@ export async function fetchChangelogRows(): Promise<ChangelogRow[] | null> {
   const { data, error } = await supabase
     .from('app_changelog')
     .select('id, version, released_at, title_en, title_zh_hant, summary_en, summary_zh_hant, items')
+    .eq('is_active', true)
     .order('released_at', { ascending: false });
   if (error) {
     console.warn('Could not load the server changelog; using the bundled copy.', error);

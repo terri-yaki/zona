@@ -80,6 +80,7 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
+          is_active: boolean;
           items: Json;
           released_at: string;
           summary_en: string;
@@ -92,6 +93,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
+          is_active?: boolean;
           items: Json;
           released_at: string;
           summary_en: string;
@@ -102,6 +104,7 @@ export type Database = {
           version: string;
         };
         Update: {
+          is_active?: boolean;
           items?: Json;
           released_at?: string;
           summary_en?: string;
