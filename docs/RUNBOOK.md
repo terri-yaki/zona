@@ -34,6 +34,12 @@ in the private operator system. Do not place access tokens in this document.
 
 ## Minimum production telemetry
 
+The v0.0.7 implementation and daily report setup are documented in
+[OBSERVABILITY.md](OBSERVABILITY.md). Run
+`scripts/configure-daily-report.ps1` after deploying its migration and Edge
+Function; it provisions the scheduler credential without printing the Zona
+source token.
+
 Before release, configure structured, redacted events and dashboards for:
 
 - Edge Function requests by function, status, latency, and request ID;

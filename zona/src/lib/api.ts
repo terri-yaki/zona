@@ -7,16 +7,24 @@ import { supabase } from './supabase';
 import { isDeleteAccountResult } from './validation';
 import type { NativePushPlatform } from './push-platform';
 import { translate } from '@/i18n';
+import { recordClientErrorOnce, recordClientEvent } from './client-telemetry';
 
 function object(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 async function invoke<T>(name: string, body: Record<string, unknown>, validate: (value: unknown) => value is T): Promise<T> {
-  const { data, error } = await supabase.functions.invoke<T>(name, { body });
-  if (error) throw await functionError(error, translate('error.default'));
-  if (!validate(data)) throw new Error(translate('error.default'));
-  return data;
+  const startedAt = Date.now();
+  try {
+    const { data, error } = await supabase.functions.invoke<T>(name, { body });
+    if (error) throw await functionError(error, translate('error.default'));
+    if (!validate(data)) throw new Error(translate('error.default'));
+    recordClientEvent('api.request_succeeded', 'info', { function: name, durationMs: Date.now() - startedAt });
+    return data;
+  } catch (error) {
+    recordClientErrorOnce('api.request_failed', error, { function: name, durationMs: Date.now() - startedAt });
+    throw error;
+  }
 }
 
 export async function createSource(displayName: string, hostname: string | null): Promise<CreatedSource> {

@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import * as Crypto from 'expo-crypto';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -9,8 +8,8 @@ import { registerPushToken, unregisterPushDevice } from './api';
 import { ensureNotificationSoundChannels } from './notification-sounds';
 import { isAndroidPushConfigurationError, nativePushPlatform } from './push-platform';
 import { translate } from '@/i18n';
+import { getInstallationId } from './installation';
 
-const installationKey = 'zona.installation-id';
 const onboardingPrefix = 'zona.push-onboarding-complete';
 const healthPrefix = 'zona.push-health';
 
@@ -34,13 +33,7 @@ if (Platform.OS !== 'web') {
   });
 }
 
-export async function getInstallationId(): Promise<string> {
-  const existing = await AsyncStorage.getItem(installationKey);
-  if (existing) return existing;
-  const next = Crypto.randomUUID();
-  await AsyncStorage.setItem(installationKey, next);
-  return next;
-}
+export { getInstallationId } from './installation';
 
 function onboardingKey(userId: string) {
   return `${onboardingPrefix}.${userId}`;

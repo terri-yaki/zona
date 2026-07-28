@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
 
-import { getInstallationId } from '@/lib/push';
+import { getInstallationId } from '@/lib/installation';
 import { parseRuntimeSnapshot, type RuntimeSnapshot } from '@/lib/runtime-controls';
 import { supabase } from '@/lib/supabase';
 import type { SupportedLanguage } from '@/i18n';

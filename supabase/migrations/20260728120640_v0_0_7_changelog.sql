@@ -35,7 +35,8 @@ insert into public.app_release_notes (
     {"key":"open-and-go","icon":"bolt.fill","is_active":true,"title_en":"Open Zona and get moving","title_zh_hant":"打開Zona，立即掌握","body_en":"Your recent inbox appears right away, so checking an alert feels effortless.","body_zh_hant":"最近的通知立即出現，查看提醒更輕鬆。"},
     {"key":"between-connections","icon":"tray.full.fill","is_active":true,"title_en":"Useful even between connections","title_zh_hant":"網絡不穩，仍然有用","body_en":"Keep browsing recent alerts while offline, and Zona catches up when you reconnect.","body_zh_hant":"離線時仍可瀏覽最近通知，重新連線後Zona會自動追上進度。"},
     {"key":"account-private","icon":"person.crop.circle.fill","is_active":true,"title_en":"Saved for you, and only you","title_zh_hant":"只為你儲存","body_en":"Each account stays separate, and its saved content leaves the phone when you sign out.","body_zh_hant":"每個帳戶各自分開，登出時其儲存內容亦會離開手機。"},
-    {"key":"cache-control","icon":"internaldrive","is_active":true,"title_en":"You stay in control","title_zh_hant":"由你掌控","body_en":"See how much Zona has saved and clear it any time from Settings.","body_zh_hant":"在設定中查看Zona儲存了多少內容，亦可隨時清除。"}
+    {"key":"cache-control","icon":"internaldrive","is_active":true,"title_en":"You stay in control","title_zh_hant":"由你掌控","body_en":"See how much Zona has saved and clear it any time from Settings.","body_zh_hant":"在設定中查看Zona儲存了多少內容，亦可隨時清除。"},
+    {"key":"daily-pulse","icon":"chart.bar.fill","is_active":true,"title_en":"The whole day in one glance","title_zh_hant":"一眼看清整天狀況","body_en":"A private daily pulse brings delivery health and a seven-day trend straight to Zona.","body_zh_hant":"每日私人摘要把傳送狀況和七天趨勢直接送到Zona。"}
   ]'::jsonb,
   true
 )
@@ -63,7 +64,8 @@ with item_data(version, item_key, icon_name, title_en, title_zh_hant, body_en, b
     ('0.0.7', 'open-and-go', 'bolt.fill', 'Open Zona and get moving', '打開Zona，立即掌握', 'Your recent inbox appears right away, so checking an alert feels effortless.', '最近的通知立即出現，查看提醒更輕鬆。', 0),
     ('0.0.7', 'between-connections', 'tray.full.fill', 'Useful even between connections', '網絡不穩，仍然有用', 'Keep browsing recent alerts while offline, and Zona catches up when you reconnect.', '離線時仍可瀏覽最近通知，重新連線後Zona會自動追上進度。', 1),
     ('0.0.7', 'account-private', 'person.crop.circle.fill', 'Saved for you, and only you', '只為你儲存', 'Each account stays separate, and its saved content leaves the phone when you sign out.', '每個帳戶各自分開，登出時其儲存內容亦會離開手機。', 2),
-    ('0.0.7', 'cache-control', 'internaldrive', 'You stay in control', '由你掌控', 'See how much Zona has saved and clear it any time from Settings.', '在設定中查看Zona儲存了多少內容，亦可隨時清除。', 3)
+    ('0.0.7', 'cache-control', 'internaldrive', 'You stay in control', '由你掌控', 'See how much Zona has saved and clear it any time from Settings.', '在設定中查看Zona儲存了多少內容，亦可隨時清除。', 3),
+    ('0.0.7', 'daily-pulse', 'chart.bar.fill', 'The whole day in one glance', '一眼看清整天狀況', 'A private daily pulse brings delivery health and a seven-day trend straight to Zona.', '每日私人摘要把傳送狀況和七天趨勢直接送到Zona。', 4)
 )
 insert into public.app_release_note_items (
   release_id,

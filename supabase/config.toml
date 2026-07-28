@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.test-source]
 verify_jwt = false
+
+[functions.daily-stats-report]
+verify_jwt = false

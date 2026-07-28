@@ -18,6 +18,7 @@ import {
 import { service } from '../_shared/supabase.ts';
 import { type NotificationSeverity, parseSeverity, severityColor } from '../_shared/severity.ts';
 import { idempotencyKey, optionalString, requiredString } from '../_shared/validation.ts';
+import { elapsedMs, recordServerEvent } from '../_shared/server-telemetry.ts';
 
 type IngestResult = {
   notification_id: string;
@@ -206,6 +207,11 @@ async function readMultipartPayload(req: Request, limits: IngestPolicy): Promise
 }
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const startedAt = performance.now();
+  let ownerUserId: string | null = null;
+  let sourceId: string | null = null;
+  let notificationId: string | null = null;
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
 
@@ -244,8 +250,21 @@ Deno.serve(async (req) => {
 
     const accepted = (data as IngestResult[] | null)?.[0];
     if (!accepted) throw new Error('INGEST_FAILED');
+    ownerUserId = accepted.owner_user_id;
+    sourceId = accepted.source_id;
+    notificationId = accepted.notification_id;
 
     if (accepted.idempotent_replay) {
+      await recordServerEvent({
+        requestId,
+        component: 'notify',
+        eventName: 'notification.replayed',
+        userId: ownerUserId,
+        sourceId,
+        notificationId,
+        statusCode: 200,
+        durationMs: elapsedMs(startedAt),
+      });
       return json(
         {
           notificationId: accepted.notification_id,
@@ -431,6 +450,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    await recordServerEvent({
+      requestId,
+      component: 'notify',
+      eventName: 'notification.accepted',
+      userId: ownerUserId,
+      sourceId,
+      notificationId,
+      statusCode: 202,
+      durationMs: elapsedMs(startedAt),
+      context: {
+        attachmentAccepted,
+        attachmentRequested: payload.attachment !== null,
+        pushAccepted,
+        pushAttempted: devices.length,
+        severity: payload.severity,
+      },
+    });
     return json(
       {
         notificationId: accepted.notification_id,
@@ -448,6 +484,33 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const code = error instanceof Error ? error.message : 'UNKNOWN';
+    const statusCode = code === 'INVALID_TOKEN'
+      ? 401
+      : code === 'IDEMPOTENCY_CONFLICT'
+      ? 409
+      : ['RATE_LIMITED', 'ACCOUNT_RATE_LIMITED'].includes(code)
+      ? 429
+      : code === 'PAYLOAD_TOO_LARGE'
+      ? 413
+      : code === 'SERVICE_UNAVAILABLE'
+      ? 503
+      : ['ATTACHMENTS_DISABLED', 'CRITICAL_SEVERITY_DISABLED'].includes(code)
+      ? 403
+      : ['INVALID_PAYLOAD', 'INVALID_IDEMPOTENCY_KEY', 'CONTENT_TYPE', 'INVALID_JSON'].includes(code)
+      ? 400
+      : 500;
+    await recordServerEvent({
+      requestId,
+      component: 'notify',
+      eventName: 'notification.rejected',
+      level: statusCode >= 500 ? 'error' : 'warning',
+      userId: ownerUserId,
+      sourceId,
+      notificationId,
+      statusCode,
+      durationMs: elapsedMs(startedAt),
+      message: code,
+    });
     if (code === 'INVALID_TOKEN') return json({ error: code }, 401);
     if (code === 'IDEMPOTENCY_CONFLICT') return json({ error: code }, 409);
     if (['RATE_LIMITED', 'ACCOUNT_RATE_LIMITED'].includes(code)) {

@@ -32,6 +32,7 @@ export const whatsNewReleases: WhatsNewRelease[] = [
       { icon: 'tray.full.fill', titleKey: 'whatsNew.cacheOffline.title', bodyKey: 'whatsNew.cacheOffline.body' },
       { icon: 'person.crop.circle.fill', titleKey: 'whatsNew.cachePrivate.title', bodyKey: 'whatsNew.cachePrivate.body' },
       { icon: 'internaldrive', titleKey: 'whatsNew.cacheControl.title', bodyKey: 'whatsNew.cacheControl.body' },
+      { icon: 'chart.bar.fill', titleKey: 'whatsNew.dailyPulse.title', bodyKey: 'whatsNew.dailyPulse.body' },
     ],
   },
   {

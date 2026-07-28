@@ -8,6 +8,12 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- Zona can now send a private daily pulse showing how many alerts moved through
+  the service, how reliably phone delivery responded, and where attention may
+  be needed. A seven-day color graph makes the trend clear at a glance.
+- Privacy-conscious diagnostics make problems easier to understand without
+  copying alert messages, attachments, account secrets, or API keys into logs.
+
 - v0.0.7 adds a bounded, account-scoped on-device cache for the inbox, unread
   count, sources, preferences, changelog, and evaluated runtime configuration.
   Fresh content opens locally and stale content revalidates without blanking

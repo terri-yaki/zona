@@ -12,9 +12,11 @@ import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider'
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { CacheLifecycleSync } from '@/components/CacheLifecycleSync';
+import { ClientTelemetrySync } from '@/components/ClientTelemetrySync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
+import { recordClientErrorOnce } from '@/lib/client-telemetry';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
 import { isUuid } from '@/lib/validation';
 import { translate } from '@/i18n';
@@ -72,6 +74,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
   if (__DEV__ && error) console.error('[Zona ErrorBoundary]', error);
+  if (error) recordClientErrorOnce('ui.error_boundary', error);
 
   return (
     <View style={styles.errorPage}>
@@ -117,6 +120,7 @@ function RootNavigator() {
   return (
     <>
       <CacheLifecycleSync />
+          <ClientTelemetrySync />
           {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}

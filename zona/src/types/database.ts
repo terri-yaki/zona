@@ -549,6 +549,19 @@ export type Database = {
       };
     };
     Functions: {
+      record_client_event: {
+        Args: {
+          p_app_version: string;
+          p_build_number: number;
+          p_context?: Json;
+          p_event_name: string;
+          p_installation_id: string;
+          p_level: string;
+          p_message: string | null;
+          p_platform: string;
+        };
+        Returns: undefined;
+      };
       create_source: {
         Args: {
           p_display_name: string;

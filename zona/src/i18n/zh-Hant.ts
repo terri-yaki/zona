@@ -307,6 +307,8 @@ export const zhHant = {
   'whatsNew.cachePrivate.body': '每個帳戶各自分開，登出時其儲存內容亦會離開手機。',
   'whatsNew.cacheControl.title': '由你掌控',
   'whatsNew.cacheControl.body': '在設定中查看Zona儲存了多少內容，亦可隨時清除。',
+  'whatsNew.dailyPulse.title': '一眼看清整天狀況',
+  'whatsNew.dailyPulse.body': '每日私人摘要把傳送狀況和七天趨勢直接送到Zona。',
   'whatsNew.releaseAdaptive.date': '2026 年 7 月',
   'whatsNew.releaseAdaptive.title': 'Zona更配合你的使用方式',
   'whatsNew.releaseAdaptive.summary': '重要提示在合適時間出現，常用控制則繼續放在順手的位置。',

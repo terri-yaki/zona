@@ -135,6 +135,10 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | `private.notification_ingest_requests` | Rolling source/account rate evidence | Service/database function only |
 | `private.account_rate_limit_events` | Hourly account operation rate evidence | Service/database function only |
 | `private.push_delivery_attempts` | Expo ticket attempt diagnostics | Service/database function only |
+| `private.client_event_logs` | Redacted mobile lifecycle and failure diagnostics | Authenticated write RPC; private reads |
+| `private.server_event_logs` | Redacted relay/database outcomes with latency and request IDs | Service/database function only |
+| `private.daily_usage_stats` | UTC service and per-user operational aggregates | Service/database function only |
+| `private.daily_report_runs` | Idempotent daily-pulse delivery ledger | Service/database function only |
 | `private.app_feature_controls` | Targeted show/hide/disable/read-only rules | Evaluated only by authenticated bootstrap RPC |
 | `private.app_runtime_settings` | Typed, targeted client display values | Evaluated only by authenticated bootstrap RPC |
 | `private.service_switches` | Fail-closed ingestion, source, attachment, severity, and push controls | Service/database function only |
@@ -157,8 +161,14 @@ permission is revoked from public, anonymous, and authenticated roles.
 
 ### Scheduled cleanup
 
-An hourly `pg_cron` job deletes expired notification rows and rate-limit rows
-older than one day. Delivery log rows cascade when their notification expires.
+An hourly `pg_cron` job deletes expired notification rows and rate-limit rows.
+The v0.0.7 observability job retains redacted raw events for 30 days and daily
+aggregates for 400 days. A separate 00:05 UTC job invokes the daily-report Edge
+Function, which renders a seven-day PNG locally and sends the previous day's
+service pulse through an operator-owned Zona source. See
+[OBSERVABILITY.md](OBSERVABILITY.md).
+Rate-limit evidence older than one day is removed. Delivery log rows cascade
+when their notification expires.
 Source, credential, push-device, and Auth records remain until their lifecycle
 event or account deletion.
 
