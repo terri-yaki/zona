@@ -1,0 +1,18 @@
+{
+  "version": "0.0.7",
+  "title": {
+    "en": "Your inbox is ready when you are",
+    "zhHant": "信箱準備好，你一打開就能看"
+  },
+  "summary": {
+    "en": "Recent alerts, sources, and settings open from your phone first, then quietly catch up.",
+    "zhHant": "最近的通知、來源及設定先從手機開啟，然後在背景悄悄追上最新狀態。"
+  },
+  "items": [
+    { "key": "open-and-go", "icon": "bolt.fill", "titleEn": "Open Zona and get moving", "titleZhHant": "打開Zona，立即掌握" },
+    { "key": "between-connections", "icon": "tray.full.fill", "titleEn": "Useful even between connections", "titleZhHant": "網絡不穩，仍然有用" },
+    { "key": "account-private", "icon": "person.crop.circle.fill", "titleEn": "Saved for you, and only you", "titleZhHant": "只為你儲存" },
+    { "key": "cache-control", "icon": "internaldrive", "titleEn": "You stay in control", "titleZhHant": "由你掌控" },
+    { "key": "daily-pulse", "icon": "chart.bar.fill", "titleEn": "The whole day in one glance", "titleZhHant": "一眼看清整天狀況" }
+  ]
+}

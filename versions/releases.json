@@ -46,5 +46,13 @@
     "boundaryConfidence": "strong",
     "previousVersion": "0.0.5",
     "path": "v0.0.6"
+  },
+  {
+    "version": "0.0.7",
+    "sourceCommit": "c60c957f01e1a52782597564a547e5b89c253fa1",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.6",
+    "path": "v0.0.7"
   }
 ]

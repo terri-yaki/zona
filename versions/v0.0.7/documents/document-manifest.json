@@ -1,0 +1,130 @@
+[
+  {
+    "file": "release-notes.en.md",
+    "sha256": "e5228cb840394b99ca34c0a6bbdf30124fe36c9521939a448c6ac2d1256daf2c"
+  },
+  {
+    "file": "release-notes.zh-Hant.md",
+    "sha256": "613320a861b7f6e168a8b0439e959c454522f042b65fce080bf823b2b5514e18"
+  },
+  {
+    "file": "snapshot/CHANGELOG.md",
+    "sha256": "75485dd0ad6b18fea202d81c00064a3873f05abb26eb74795484ce55d65fe397"
+  },
+  {
+    "file": "snapshot/docs/adr/0001-source-token-architecture.md",
+    "sha256": "2228483258a4a3edec8ac7594a0926de857e2bdffff9f82974873d8de05338f0"
+  },
+  {
+    "file": "snapshot/docs/adr/0002-anonymous-sign-in.md",
+    "sha256": "ea29cdb4016fc4bb590418154a833b4f9e80189c864cd51d2c3d3d2131ce1d37"
+  },
+  {
+    "file": "snapshot/docs/adr/0003-runtime-controls-and-canonical-schema.md",
+    "sha256": "c8440b9b9e11f3dd0e38169982fa2ef33d73074bb58d3f47cf64998b49b99106"
+  },
+  {
+    "file": "snapshot/docs/ANDROID_PUSH.md",
+    "sha256": "3696dfef97cd3938087be1d896f1aa9de5bb293b3ded37da766f278b1e579b53"
+  },
+  {
+    "file": "snapshot/docs/API.md",
+    "sha256": "2aa6c8967be1ec94f6a27aaec2aa53edd371e29cfc375a826eef0e555e16bca0"
+  },
+  {
+    "file": "snapshot/docs/APP_CHANGELOG.md",
+    "sha256": "50027116e3d0d5bda5c14ef9c375585518b103095a6daa0faa2956965a794273"
+  },
+  {
+    "file": "snapshot/docs/ARCHITECTURE.md",
+    "sha256": "3c9529787720e78d13f0a10dab772ca93f39105ea3c8dac959367cc73c8c10a9"
+  },
+  {
+    "file": "snapshot/docs/BRANDING.md",
+    "sha256": "d8d4c5db2476c13546a354c491ef6cbd61fbf8a7cf3718aae2b56261a33955fd"
+  },
+  {
+    "file": "snapshot/docs/CHANGELOG_WRITING.md",
+    "sha256": "a406a22c7e0e889c019a02cf9d284042ede89319191c0750268476a6663138d1"
+  },
+  {
+    "file": "snapshot/docs/DB_MIGRATIONS.md",
+    "sha256": "6e39cffeef0ef1d95cb67c18a5986679fecf69620afd98c703daa3b06279a4b4"
+  },
+  {
+    "file": "snapshot/docs/LIVE_ACTIVITY.md",
+    "sha256": "9e73680cebaf05f94ec920120fb53fbed6e93252d65542752afaed3389307b66"
+  },
+  {
+    "file": "snapshot/docs/live-activity-redesign.png",
+    "sha256": "ab9feafedbad82019473427f1de11598c51b3235c4a7e5edee3b2eece5f5f917"
+  },
+  {
+    "file": "snapshot/docs/OBSERVABILITY.md",
+    "sha256": "6d536954a538453df4cc0f67af115a411a96e18aa6741213715e28ffa4d31b28"
+  },
+  {
+    "file": "snapshot/docs/openapi.yaml",
+    "sha256": "d9e721faf101b7f5a108fb879be2d7c02b642ade2a5ae93d45fa8dbc5325e8da"
+  },
+  {
+    "file": "snapshot/docs/PRD.md",
+    "sha256": "e20ae4196cb4a4eb20ab8d71aec140425f60bfa383199731295d4efcf56a3ae3"
+  },
+  {
+    "file": "snapshot/docs/PREVIEW_UPDATES.md",
+    "sha256": "12e34876f33e804fb11ca8f0e3047dd19591c54d9466ed60f6a6a8ca55f1ea60"
+  },
+  {
+    "file": "snapshot/docs/PUBLIC_LAUNCH_PLAN.md",
+    "sha256": "7e21cd481e92578481158beab4a50a5cf76047c80f654c891bf0dab92c938d65"
+  },
+  {
+    "file": "snapshot/docs/RELEASE.md",
+    "sha256": "f240f55d91ad637c50a64ce2452f7b02da8eeddf1d73c71d6e3e4ae0cb3b5a27"
+  },
+  {
+    "file": "snapshot/docs/ROADMAP.md",
+    "sha256": "0f9e75dfc948c78a69163301aa4402b4c316edad9ad37511998ce96081984b03"
+  },
+  {
+    "file": "snapshot/docs/RUNBOOK.md",
+    "sha256": "aba38952be25f5e6f3a66918b88c5f7ce385dbf278a1fbee98bec8519607059f"
+  },
+  {
+    "file": "snapshot/docs/RUNTIME_CONTROLS.md",
+    "sha256": "d9c91bf098c99719c1203d0fecbc3f0b56821cfa7f97724fbc3b8e36e82b32d0"
+  },
+  {
+    "file": "snapshot/docs/TEST_PLAN.md",
+    "sha256": "fa7fb64ec98d02444a2976601bf9417b12b6966ca189f0ba8c0af1de79a9e13f"
+  },
+  {
+    "file": "snapshot/docs/THREAT_MODEL.md",
+    "sha256": "eec3b603de99999bbd2bf85f3bb145cd63dcd3955346dea6cb50be98b1c3ea9b"
+  },
+  {
+    "file": "snapshot/PRIVACY.md",
+    "sha256": "9e8fb3e789ba31f6655a5563daaecd5dda2662ed1b50669218c09d22ab7bd9c8"
+  },
+  {
+    "file": "snapshot/README.md",
+    "sha256": "14ac00d7e231bb2c03ecb6a3e7ba33a027133933d4238d4061363730175d9eec"
+  },
+  {
+    "file": "snapshot/SECURITY.md",
+    "sha256": "ed6caecf2cc7e67331e657404ad646106d6529bf499d91ea9fe39181467a15e1"
+  },
+  {
+    "file": "snapshot/supabase/README.md",
+    "sha256": "dd005a401a7839d628c3d9d57191b6cd6688797841a95d3193aa1898b8d30e25"
+  },
+  {
+    "file": "snapshot/zona/README.md",
+    "sha256": "099cea777d249d19a6c606ecb9f145724fcea36ef095cfc2ba8cc4f5731a2e69"
+  },
+  {
+    "file": "version-items.json",
+    "sha256": "35c7f2fe02aaab5e6ab76fbef58b2718681eb8e9649937a6961459b26662f9df"
+  }
+]

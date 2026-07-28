@@ -1,0 +1,11 @@
+CHANGELOG.md
+README.md
+docs/APP_CHANGELOG.md
+docs/ARCHITECTURE.md
+docs/BRANDING.md
+docs/CHANGELOG_WRITING.md
+docs/DB_MIGRATIONS.md
+docs/OBSERVABILITY.md
+docs/ROADMAP.md
+docs/RUNBOOK.md
+docs/TEST_PLAN.md
