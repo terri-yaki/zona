@@ -208,5 +208,12 @@
     "introducedIn": "0.0.7",
     "gitBlob": "7210be85595ff8dd688c9e3b2ea79112b6fe6d8c",
     "sha256": "99ced4bd1fb4e3275efef65ba2def466b4a0f5f54a0674a4ab94af254e5f5ee8"
+  },
+  {
+    "file": "20260728133823_v0_0_7_hkt_growth_usage_report.sql",
+    "originPath": "supabase/migrations/20260728133823_v0_0_7_hkt_growth_usage_report.sql",
+    "introducedIn": "0.0.7",
+    "gitBlob": "d5c555ee9c9f3400424e230d3f86aaed421f5c7c",
+    "sha256": "a7605db2ec33a26afbc8371ac0f6295d53c7ef1e15d178c2f80d316e91db197c"
   }
 ]

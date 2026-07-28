@@ -1,15 +1,15 @@
 [
   {
     "file": "release-notes.en.md",
-    "sha256": "e5228cb840394b99ca34c0a6bbdf30124fe36c9521939a448c6ac2d1256daf2c"
+    "sha256": "7086267ad458a70492ead51f83532e106f91bf1a05b1c23d7205c3303d2bc4e2"
   },
   {
     "file": "release-notes.zh-Hant.md",
-    "sha256": "613320a861b7f6e168a8b0439e959c454522f042b65fce080bf823b2b5514e18"
+    "sha256": "38e7529eb363b1ee718d8d215fa9332725886a82f96e10c71cb4062400003446"
   },
   {
     "file": "snapshot/CHANGELOG.md",
-    "sha256": "75485dd0ad6b18fea202d81c00064a3873f05abb26eb74795484ce55d65fe397"
+    "sha256": "7a2be8193926a2781a9225df7de36a1f6dda82475120783ae3474a6cb5b5e023"
   },
   {
     "file": "snapshot/docs/adr/0001-source-token-architecture.md",
@@ -61,7 +61,7 @@
   },
   {
     "file": "snapshot/docs/OBSERVABILITY.md",
-    "sha256": "6d536954a538453df4cc0f67af115a411a96e18aa6741213715e28ffa4d31b28"
+    "sha256": "e12fe59e81847ad26e2e78534c321ca1b8b5c87805a4a198f5f186b96b993b7e"
   },
   {
     "file": "snapshot/docs/openapi.yaml",
@@ -125,6 +125,6 @@
   },
   {
     "file": "version-items.json",
-    "sha256": "35c7f2fe02aaab5e6ab76fbef58b2718681eb8e9649937a6961459b26662f9df"
+    "sha256": "b2262d92ba1dfb78f84df4db05a3cc26bc7e0c8e47b24d7500c18fa5e99e8446"
   }
 ]

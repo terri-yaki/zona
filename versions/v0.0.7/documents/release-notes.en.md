@@ -13,5 +13,3 @@ catch up.
   content leaves the phone when you sign out.
 - **You stay in control.** See how much Zona has saved and clear it any time
   from Settings.
-- **The whole day in one glance.** A private daily pulse brings delivery health
-  and a seven-day trend straight to Zona.

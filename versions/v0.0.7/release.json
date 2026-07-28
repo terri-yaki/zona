@@ -1,6 +1,6 @@
 {
   "version": "0.0.7",
-  "sourceCommit": "c60c957f01e1a52782597564a547e5b89c253fa1",
+  "sourceCommit": "d2f7e95acb04382040df364727914d8fb31dc457",
   "sourceBranch": "v0.0.7",
   "gitTag": null,
   "boundaryConfidence": "strong",
@@ -8,7 +8,7 @@
   "previousVersion": "0.0.6",
   "appJsonVersion": "0.0.7",
   "packageJsonVersion": "0.0.7",
-  "migrationCount": 30,
-  "deltaMigrationCount": 5,
+  "migrationCount": 31,
+  "deltaMigrationCount": 6,
   "documentCount": 32
 }

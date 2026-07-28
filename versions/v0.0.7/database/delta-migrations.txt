@@ -3,3 +3,4 @@
 20260728130659_v0_0_7_observability_daily_report.sql
 20260728132246_fix_v0_0_7_daily_stats_active_sources.sql
 20260728132615_fix_v0_0_7_source_telemetry_trigger.sql
+20260728133823_v0_0_7_hkt_growth_usage_report.sql
