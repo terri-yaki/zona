@@ -50,6 +50,7 @@ lock-screen message previews.
 - `docs/TEST_PLAN.md` — automated and physical-iPhone release verification.
 - `docs/ROADMAP.md` — v0.0.8–v0.0.10 architecture and the path to Zona Plus.
 - `docs/CHANGELOG_WRITING.md` — benefit-led, non-technical What's New copy.
+- `docs/BRANDING.md` — Zona Notify naming, voice, store copy, and N-to-Z motion.
 - `versions/` — separate database and documentation packages for v0.0.1–v0.0.6.
 - `docs/THREAT_MODEL.md` and `SECURITY.md` — risks and security policy.
 - `PRIVACY.md` — release-draft data and retention notice.
