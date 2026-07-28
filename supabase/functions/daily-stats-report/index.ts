@@ -28,12 +28,24 @@ function count(metrics: Record<string, unknown>, key: string): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
 
+function hktIsoDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Hong_Kong',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
+
 function reportDate(value: unknown): string {
-  const fallback = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  if (value === undefined) return fallback;
+  const hktToday = hktIsoDate(new Date());
+  const previousHktDay = hktIsoDate(new Date(new Date(`${hktToday}T12:00:00+08:00`).getTime() - 86_400_000));
+  if (value === undefined) return previousHktDay;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('INVALID_REPORT_DATE');
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime()) || value > new Date().toISOString().slice(0, 10)) throw new Error('INVALID_REPORT_DATE');
+  const parsed = new Date(`${value}T00:00:00+08:00`);
+  if (Number.isNaN(parsed.getTime()) || hktIsoDate(parsed) !== value || value > hktToday) throw new Error('INVALID_REPORT_DATE');
   return value;
 }
 
@@ -52,7 +64,8 @@ function chartPoints(value: unknown): DailyChartPoint[] {
     if (typeof row.date !== 'string' || !isRecord(row.metrics)) return [];
     return [{
       date: row.date,
-      notifications: count(row.metrics, 'notificationsAccepted'),
+      notifications: count(row.metrics, 'notificationsTriggered') || count(row.metrics, 'notificationsAccepted'),
+      activeUsers: count(row.metrics, 'activeUsers'),
       pushAccepted: count(row.metrics, 'pushAccepted'),
       errors: count(row.metrics, 'clientErrors') + count(row.metrics, 'serverErrors') + count(row.metrics, 'pushFailed'),
     }];
@@ -60,15 +73,23 @@ function chartPoints(value: unknown): DailyChartPoint[] {
 }
 
 function bodyFor(date: string, metrics: Record<string, unknown>): string {
-  const accepted = count(metrics, 'notificationsAccepted');
+  const triggered = count(metrics, 'notificationsTriggered') || count(metrics, 'notificationsAccepted');
   const attempted = count(metrics, 'pushAttempted');
   const pushed = count(metrics, 'pushAccepted');
   const errors = count(metrics, 'clientErrors') + count(metrics, 'serverErrors');
   const rate = attempted > 0 ? `${Math.round((pushed / attempted) * 100)}%` : '—';
   return [
-    `${accepted} alerts accepted · ${pushed}/${attempted} pushes accepted (${rate}).`,
-    `${count(metrics, 'activeUsers')} active users · ${count(metrics, 'activeSources')} active sources.`,
+    `${triggered} notifications triggered · ${pushed}/${attempted} pushes accepted (${rate}).`,
+    `${count(metrics, 'newUsers')} new users · ${count(metrics, 'newKeys')} new keys.`,
+    `${count(metrics, 'activeUsers')} active users · ${count(metrics, 'appOpens')} app opens · ${
+      count(metrics, 'activeInstallations')
+    } active installs.`,
+    `${count(metrics, 'activeSendingSources')} sending sources · ${count(metrics, 'activeKeys')}/${
+      count(metrics, 'totalKeys')
+    } keys active.`,
+    `${count(metrics, 'totalUsers')} total users · ${count(metrics, 'activePushDevices')} push-enabled phones.`,
     `${errors} client/server errors · ${count(metrics, 'pushFailed')} push failures.`,
+    `Hong Kong day: ${date}, 00:00–24:00 HKT.`,
   ].join('\n');
 }
 

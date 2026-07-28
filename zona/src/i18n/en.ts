@@ -305,8 +305,6 @@ export const en = {
   'whatsNew.cachePrivate.body': 'Each account stays separate, and its saved content leaves the phone when you sign out.',
   'whatsNew.cacheControl.title': 'You stay in control',
   'whatsNew.cacheControl.body': 'See how much Zona has saved and clear it any time from Settings.',
-  'whatsNew.dailyPulse.title': 'The whole day in one glance',
-  'whatsNew.dailyPulse.body': 'A private daily pulse brings delivery health and a seven-day trend straight to Zona.',
   'whatsNew.releaseAdaptive.date': 'July 2026',
   'whatsNew.releaseAdaptive.title': 'Zona fits the way you work',
   'whatsNew.releaseAdaptive.summary': 'Helpful notices arrive at the right moment, while the controls you count on stay close at hand.',
