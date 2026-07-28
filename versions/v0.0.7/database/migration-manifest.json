@@ -215,5 +215,12 @@
     "introducedIn": "0.0.7",
     "gitBlob": "d5c555ee9c9f3400424e230d3f86aaed421f5c7c",
     "sha256": "a7605db2ec33a26afbc8371ac0f6295d53c7ef1e15d178c2f80d316e91db197c"
+  },
+  {
+    "file": "20260728142110_revise_v0_0_7_customer_changelog.sql",
+    "originPath": "supabase/migrations/20260728142110_revise_v0_0_7_customer_changelog.sql",
+    "introducedIn": "0.0.7",
+    "gitBlob": "de77e4f219daf4bb0f4be6428e98cac03ef863d3",
+    "sha256": "1020bb19ca060668771d5c85cba3870363b5762946ce0986a0d0744a3c232a13"
   }
 ]

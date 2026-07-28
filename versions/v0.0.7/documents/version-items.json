@@ -2,16 +2,16 @@
   "version": "0.0.7",
   "title": {
     "en": "Your inbox is ready when you are",
-    "zhHant": "信箱準備好，你一打開就能看"
+    "zhHant": "一打開，信箱已經準備好"
   },
   "summary": {
-    "en": "Recent alerts, sources, and settings open from your phone first, then quietly catch up.",
-    "zhHant": "最近的通知、來源及設定先從手機開啟，然後在背景悄悄追上最新狀態。"
+    "en": "Open Zona and your recent alerts are already waiting—even when the connection isn’t.",
+    "zhHant": "打開Zona，最近的通知已經在等你，即使網絡不穩，也能繼續查看。"
   },
   "items": [
-    { "key": "open-and-go", "icon": "bolt.fill", "titleEn": "Open Zona and get moving", "titleZhHant": "打開Zona，立即掌握" },
-    { "key": "between-connections", "icon": "tray.full.fill", "titleEn": "Useful even between connections", "titleZhHant": "網絡不穩，仍然有用" },
-    { "key": "account-private", "icon": "person.crop.circle.fill", "titleEn": "Saved for you, and only you", "titleZhHant": "只為你儲存" },
-    { "key": "cache-control", "icon": "internaldrive", "titleEn": "You stay in control", "titleZhHant": "由你掌控" }
+    { "key": "open-and-go", "icon": "bolt.fill", "titleEn": "Open and get moving", "titleZhHant": "打開就能行動" },
+    { "key": "between-connections", "icon": "tray.full.fill", "titleEn": "Still useful offline", "titleZhHant": "離線仍然有用" },
+    { "key": "account-private", "icon": "person.crop.circle.fill", "titleEn": "Saved only for you", "titleZhHant": "只為你儲存" },
+    { "key": "cache-control", "icon": "internaldrive", "titleEn": "You decide what stays", "titleZhHant": "由你決定保留甚麼" }
   ]
 }

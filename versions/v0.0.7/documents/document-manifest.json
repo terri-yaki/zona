@@ -1,15 +1,15 @@
 [
   {
     "file": "release-notes.en.md",
-    "sha256": "7086267ad458a70492ead51f83532e106f91bf1a05b1c23d7205c3303d2bc4e2"
+    "sha256": "d77626307dd5b02acfa5a84e765f3309c72fe8cc29db8f424369da783f9292f3"
   },
   {
     "file": "release-notes.zh-Hant.md",
-    "sha256": "38e7529eb363b1ee718d8d215fa9332725886a82f96e10c71cb4062400003446"
+    "sha256": "de803f00bdea15db3a5bc55179b90aa06854843fbdf35d3dfcd69e2192b7df18"
   },
   {
     "file": "snapshot/CHANGELOG.md",
-    "sha256": "7a2be8193926a2781a9225df7de36a1f6dda82475120783ae3474a6cb5b5e023"
+    "sha256": "9fc71d14b065b831928ce9e41fd84befcb356e5babc024a1c5dfa53e4934ff5e"
   },
   {
     "file": "snapshot/docs/adr/0001-source-token-architecture.md",
@@ -125,6 +125,6 @@
   },
   {
     "file": "version-items.json",
-    "sha256": "b2262d92ba1dfb78f84df4db05a3cc26bc7e0c8e47b24d7500c18fa5e99e8446"
+    "sha256": "af4bea07b68b5ba4e46dd7defcbfc123056590464445d2cc09ca406048ebe5c0"
   }
 ]
