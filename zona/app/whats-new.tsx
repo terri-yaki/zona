@@ -14,12 +14,12 @@ import { colors, radius, shadows } from '@/theme';
 export default function WhatsNewScreen() {
   const { language, t } = useI18n();
   const bottomPadding = useBottomSafePadding(22);
-  const [serverRows, setServerRows] = useState<ChangelogRow[] | null>(null);
+  const [serverRows, setServerRows] = useState<ChangelogRow[] | null | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
     void fetchChangelogRows().then((rows) => {
-      if (active && rows) setServerRows(rows);
+      if (active) setServerRows(rows);
     });
     return () => {
       active = false;
@@ -29,7 +29,9 @@ export default function WhatsNewScreen() {
   // Server content wins when available (auto-updates without an app release);
   // the bundled copy covers offline and unmigrated backends.
   const releases = useMemo(
-    () => (serverRows ? toChangelogReleases(serverRows, language, getLocaleTag(language)) : bundledChangelog(language)),
+    () => (serverRows === null || serverRows === undefined
+      ? bundledChangelog(language)
+      : toChangelogReleases(serverRows, language, getLocaleTag(language))),
     [language, serverRows],
   );
   const installedVersion = Constants.expoConfig?.version ?? releases[0]?.version;

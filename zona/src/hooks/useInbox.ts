@@ -22,12 +22,13 @@ type InboxPageCache = {
 const pageCache = new Map<string, InboxPageCache>();
 let cachedUnreadCount = 0;
 
-function filterCacheKey(userId: string, filters: InboxFilters) {
+function filterCacheKey(userId: string, filters: InboxFilters, pageSize: number) {
   return [
     userId,
     filters.sourceId ?? '',
     filters.unreadOnly ? '1' : '0',
     filters.since ?? '',
+    String(pageSize),
   ].join('|');
 }
 
@@ -75,12 +76,12 @@ function userHasAnyCache(userId: string) {
   return false;
 }
 
-export function useInbox(userId: string, filters: InboxFilters) {
+export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
   const cacheKey = useMemo(
-    () => filterCacheKey(userId, filters),
+    () => filterCacheKey(userId, filters, pageSize),
     // filters is recreated in the screen when chips change; key off its fields.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- stable key from primitive filter fields
-    [userId, filters.sourceId, filters.unreadOnly, filters.since],
+    [userId, filters.sourceId, filters.unreadOnly, filters.since, pageSize],
   );
   const cachedPage = pageCache.get(cacheKey);
 
@@ -143,7 +144,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
     setError(null);
     try {
       const [page, count] = await Promise.all([
-        listNotifications(filters),
+        listNotifications(filters, null, pageSize),
         unreadNotificationCount(),
       ]);
       if (request !== generation.current || key !== cacheKeyRef.current) return;
@@ -170,7 +171,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
         setRefreshing(false);
       }
     }
-  }, [filters, hasEverLoaded]);
+  }, [filters, hasEverLoaded, pageSize]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !cursor || loadingMore) return;
@@ -178,7 +179,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
     const key = cacheKeyRef.current;
     setLoadingMore(true);
     try {
-      const page = await listNotifications(filters, cursor);
+      const page = await listNotifications(filters, cursor, pageSize);
       if (request !== generation.current || key !== cacheKeyRef.current) return;
       setItems((current) => {
         const merged = mergeUnique(current, page.items);
@@ -198,7 +199,7 @@ export function useInbox(userId: string, filters: InboxFilters) {
     } finally {
       if (request === generation.current && key === cacheKeyRef.current) setLoadingMore(false);
     }
-  }, [cursor, filters, hasMore, loadingMore]);
+  }, [cursor, filters, hasMore, loadingMore, pageSize]);
 
   const markAllRead = useCallback(async () => {
     if (markingAllRead || unreadCount === 0) return;
@@ -237,13 +238,8 @@ export function useInbox(userId: string, filters: InboxFilters) {
     if (!userId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel(`inbox-${userId}`)
-      .on('postgres_changes', {
-        event: '*',
-        filter: `user_id=eq.${userId}`,
-        schema: 'public',
-        table: 'notifications',
-      }, () => {
+      .channel(`zona:inbox:${userId}`, { config: { private: true } })
+      .on('broadcast', { event: 'changed' }, () => {
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           invalidateInboxCache(userId);

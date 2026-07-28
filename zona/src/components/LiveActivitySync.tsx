@@ -109,27 +109,10 @@ export function LiveActivitySync() {
     });
 
     const channel = supabase
-      .channel(`live-activity:${userId}`)
+      .channel(`zona:live:${userId}`, { config: { private: true } })
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          void runSync();
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'app_options',
-          filter: `user_id=eq.${userId}`,
-        },
+        'broadcast',
+        { event: 'changed' },
         () => {
           void runSync(true);
         },

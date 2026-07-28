@@ -8,7 +8,7 @@ import { useI18n } from '@/providers/LocalizationProvider';
 import { colors } from '@/theme';
 
 /**
- * Native liquid glass tab bar via Expo Router NativeTabs (SDK 54+).
+ * Native liquid glass tab bar via Expo Router NativeTabs (SDK 56).
  * Uses the system UITabBarController on iOS — real liquid glass on iOS 26+,
  * native translucent tab bar on earlier iOS — not a JS BlurView recreation.
  * @see https://docs.expo.dev/router/advanced/native-tabs/

@@ -11,17 +11,18 @@ import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { useInbox } from '@/hooks/useInbox';
 import { useSources } from '@/hooks/useSources';
 import { userMessage } from '@/lib/errors';
+import { runtimeNumber } from '@/lib/runtime-controls';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { getLocaleTag } from '@/i18n';
 import { colors, radius } from '@/theme';
-
-const oneDayInMilliseconds = 24 * 60 * 60 * 1_000;
 
 export default function InboxScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { language, t, tc } = useI18n();
+  const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const bottomPad = useTabBarContentPadding();
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -34,11 +35,17 @@ export default function InboxScreen() {
     unreadOnly,
   }), [selectedSource, since, unreadOnly]);
 
-  const inbox = useInbox(session?.user.id ?? '', filters);
+  const pageSize = runtimeNumber(snapshot, 'inbox.page_size', 30, 10, 100);
+  const inbox = useInbox(session?.user.id ?? '', filters, pageSize);
   const sourceState = useSources(true);
+  const timeFilterMilliseconds = runtimeNumber(snapshot, 'inbox.time_filter_hours', 24, 1, 720) * 60 * 60 * 1_000;
   const sourceOptions = useMemo(
-    () => [...sourceState.sources].sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language))),
-    [language, sourceState.sources],
+    () => sourceState.sources
+      .filter((source) => !source.revoked_at || (
+        isVisible('inbox.show_revoked_filters') && isEnabled('inbox.show_revoked_filters')
+      ))
+      .sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language))),
+    [isEnabled, isVisible, language, sourceState.sources],
   );
   const filtersActive = Boolean(selectedSource || unreadOnly || last24Hours);
   const emptyMessage = filtersActive
@@ -96,12 +103,12 @@ export default function InboxScreen() {
             {inbox.unreadCount ? t('inbox.unreadActivity') : t('inbox.noUnread')}
           </Text>
         </View>
-        {inbox.unreadCount > 0 ? (
+        {inbox.unreadCount > 0 && isVisible('inbox.mark_all_read') ? (
           <Pressable
             accessibilityLabel={t('inbox.markAllA11y')}
             accessibilityRole="button"
-            accessibilityState={{ disabled: inbox.markingAllRead }}
-            disabled={inbox.markingAllRead}
+            accessibilityState={{ disabled: inbox.markingAllRead || !isEnabled('inbox.mark_all_read') }}
+            disabled={inbox.markingAllRead || !isEnabled('inbox.mark_all_read')}
             onPress={() => void onMarkAllRead()}
             style={({ pressed }) => [styles.readAllButton, pressed && styles.pressed, inbox.markingAllRead && styles.disabled]}
           >
@@ -114,7 +121,7 @@ export default function InboxScreen() {
         )}
       </View>
 
-      <View style={styles.filterLabelRow}>
+      {isVisible('inbox.filters') ? <><View style={styles.filterLabelRow}>
         <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
         {filtersActive ? (
           <Pressable
@@ -132,12 +139,13 @@ export default function InboxScreen() {
         accessibilityLabel={t('inbox.filtersA11y')}
         contentContainerStyle={styles.filters}
         horizontal
+        pointerEvents={isEnabled('inbox.filters') ? 'auto' : 'none'}
         showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
+        style={[styles.filtersScroll, !isEnabled('inbox.filters') && styles.disabled]}
       >
         <FilterChip active={!selectedSource} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" />
         <FilterChip active={unreadOnly} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" />
-        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - oneDayInMilliseconds).toISOString())} tone="default" />
+        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - timeFilterMilliseconds).toISOString())} tone="default" />
         {sourceState.loading && sourceOptions.length === 0 ? (
           <View accessibilityLabel={t('inbox.loadingFilters')} accessible style={styles.filterLoading}>
             <ActivityIndicator color={colors.primary} size="small" />
@@ -153,7 +161,7 @@ export default function InboxScreen() {
             tone="source"
           />
         ))}
-      </ScrollView>
+      </ScrollView></> : null}
 
       {sourceState.error ? <ErrorState compact error={sourceState.error} onRetry={() => void sourceState.load()} /> : null}
       {inbox.error ? <ErrorState compact error={inbox.error} onRetry={() => void inbox.retry()} /> : null}

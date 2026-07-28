@@ -5,16 +5,16 @@ making changes.
 
 ## Project overview
 
-Zona is a private, **pre-production** multi-source notification inbox for
-iPhone. A local app on a PC sends an alert over HTTPS to an authenticated
+Zona is a private multi-source notification inbox for iOS and Android. A local
+app on a PC sends an alert over HTTPS to an authenticated
 Supabase Edge Function; the notification row is stored durably first, then Expo
 Push Service / APNs delivers a best-effort push. The iPhone app keeps a
 seven-day inbox synchronized over Supabase Realtime and row-level security.
 
 The repository is a monorepo with three parts:
 
-- `zona/` — Expo Router iPhone application (Expo SDK 54, React Native 0.81,
-  React 19, TypeScript). Package name `zona-mobile`.
+- `zona/` — Expo Router mobile application (Expo SDK 56, React Native 0.85.3,
+  React 19.2, TypeScript). Package name `zona-mobile`.
 - `supabase/` — Postgres migrations, Edge Functions (Deno), and local
   `config.toml`.
 - `examples/` — `send-notification.mjs` (Node) and `send-notification.ps1`
@@ -50,14 +50,18 @@ Key invariants (from `docs/ARCHITECTURE.md`) — do not break these:
   `verify_jwt = false` in `supabase/config.toml` — each handler **must**
   validate the Supabase user token (or source token) itself. This is a
   security-sensitive invariant.
-- Expo SDK is pinned to 54; do not force-upgrade dependencies past it.
+- Expo SDK is pinned to 56; do not force-upgrade dependencies past it.
 
-Database layout: `public.sources`, `public.push_devices`,
-`public.notifications` (owner RLS) and `private.source_credentials`,
-`private.ingest_requests`, `private.push_delivery_logs` (service-only). Writes
-go through security-definer functions with fixed `search_path` and revoked
-public execute. An hourly `pg_cron` job deletes expired notifications
-(7 days) and old rate-limit rows (1 day). `notify` requires an
+The v0.0.6 canonical read surfaces are `public.notification_sources`,
+`public.source_access_keys`, `public.notification_source_overview`,
+`public.push_registrations`, `public.inbox_notifications`, and
+`public.user_notification_preferences`. Runtime controls, plan limits,
+entitlements, source hashes, rate evidence, and push diagnostics live in the
+private schema. Legacy physical public table names remain temporarily behind
+security-invoker compatibility views/RPCs until v0.0.5 is retired. Writes go
+through security-definer functions with fixed `search_path` and explicit
+execute grants. An hourly `pg_cron` job deletes expired notifications and old
+rate-limit rows (1 day). `notify` requires an
 `Idempotency-Key` header (added in migration `202607200002`): identical
 replays return the stored notification, and key reuse with a changed payload
 returns 409.
@@ -84,7 +88,8 @@ Keep transport/persistence out of screens: presentation in `app/` and
 ### Edge Functions layout (`supabase/functions/`)
 
 `create-source`, `manage-source`, `register-push-token`, `notify`,
-`delete-account`, plus `_shared/` (`cors.ts`, `crypto.ts`, `http.ts`,
+`test-source`, `delete-account`, `cleanup-expired`, plus `_shared/`
+(`cors.ts`, `crypto.ts`, `http.ts`,
 `push.ts`, `supabase.ts`, `validation.ts` — with `*_test.ts` unit tests). The
 `_shared/supabase.ts` client accepts both current
 (`SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY`) and legacy
@@ -120,7 +125,7 @@ Deploy (from repo root):
 ```sh
 supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
-supabase functions deploy create-source manage-source register-push-token notify
+supabase functions deploy create-source manage-source register-push-token notify test-source delete-account cleanup-expired
 ```
 
 Also enable anonymous sign-ins in Authentication → Providers (the app uses
@@ -175,10 +180,10 @@ required gates.
   details, tokens, or notification content.
 - Preserve the security invariants listed above: hashed credentials,
   durable-before-push, RLS everywhere, per-function auth validation,
-  bounded payloads, per-source rate limiting (60/min per source, 300/min per
-  account).
+  bounded payloads, per-source rate limiting (60/min ceiling) and typed
+  per-account plan limits (currently 20/min for standard accounts).
 - PC remote control is explicitly out of scope for v1; do not add command
   channels or reuse the notification token for anything but ingestion.
 - Follow `SECURITY.md` for credential rotation/incident procedures and the
   dependency policy (no critical/high findings ship; no silent upgrades past
-  SDK 54).
+  SDK 56).

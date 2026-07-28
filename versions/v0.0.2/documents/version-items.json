@@ -1,0 +1,46 @@
+{
+  "en": {
+    "title": "More personal, less waiting",
+    "summary": "Zona feels closer to home with your language, your sounds, and richer alerts.",
+    "items": [
+      {
+        "title": "English or Traditional Chinese",
+        "body": "Choose the language that feels natural throughout the app."
+      },
+      {
+        "title": "Hear which PC needs you",
+        "body": "Give each computer its own alert sound and recognize the source before looking."
+      },
+      {
+        "title": "See the whole story",
+        "body": "Image attachments and Live Status put useful context where you can reach it quickly."
+      },
+      {
+        "title": "Less time watching loaders",
+        "body": "Common account and inbox actions respond with less waiting."
+      }
+    ]
+  },
+  "zhHant": {
+    "title": "更貼心，也少一點等待",
+    "summary": "Zona 現在支援你的語言、聲音和更豐富的提醒內容。",
+    "items": [
+      {
+        "title": "英文或繁體中文",
+        "body": "在整個應用程式中選擇最自然的語言。"
+      },
+      {
+        "title": "用聲音分辨電腦",
+        "body": "為每部電腦選擇不同提示音，不用看螢幕也能認出來源。"
+      },
+      {
+        "title": "提醒內容更完整",
+        "body": "圖片附件和即時狀態讓重要資訊更容易看到。"
+      },
+      {
+        "title": "少看一點載入畫面",
+        "body": "常用的帳戶和收件箱操作現在回應更快。"
+      }
+    ]
+  }
+}

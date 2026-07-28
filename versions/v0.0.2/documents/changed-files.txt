@@ -1,0 +1,12 @@
+CHANGELOG.md
+docs/API.md
+docs/ARCHITECTURE.md
+docs/LIVE_ACTIVITY.md
+docs/live-activity-redesign.png
+docs/PRD.md
+docs/PREVIEW_UPDATES.md
+docs/PUBLIC_LAUNCH_PLAN.md
+docs/RELEASE.md
+README.md
+supabase/README.md
+zona/README.md

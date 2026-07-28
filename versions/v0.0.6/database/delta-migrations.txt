@@ -1,0 +1,6 @@
+202607270001_universal_app_options.sql
+202607280001_universal_app_options_key_value.sql
+202607280002_changelog_0_0_6.sql
+202607280003_app_changelog_is_active.sql
+20260728101144_v0_0_6_runtime_control_model.sql
+20260728110731_fix_app_options_premium_guard.sql

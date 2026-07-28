@@ -76,12 +76,15 @@ export type NotificationSound =
 export type Database = {
   public: {
     Tables: {
-      app_changelog: {
+      app_release_notes: {
         Row: {
           created_at: string;
           id: string;
-          items: Json;
+          is_active: boolean;
+          legacy_items: Json;
           released_at: string;
+          starts_at: string | null;
+          expires_at: string | null;
           summary_en: string;
           summary_zh_hant: string;
           title_en: string;
@@ -92,8 +95,11 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          items: Json;
+          is_active?: boolean;
+          legacy_items: Json;
           released_at: string;
+          starts_at?: string | null;
+          expires_at?: string | null;
           summary_en: string;
           summary_zh_hant: string;
           title_en: string;
@@ -102,8 +108,11 @@ export type Database = {
           version: string;
         };
         Update: {
-          items?: Json;
+          is_active?: boolean;
+          legacy_items?: Json;
           released_at?: string;
+          starts_at?: string | null;
+          expires_at?: string | null;
           summary_en?: string;
           summary_zh_hant?: string;
           title_en?: string;
@@ -113,11 +122,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      app_release_note_items: {
+        Row: {
+          body_en: string;
+          body_zh_hant: string;
+          created_at: string;
+          expires_at: string | null;
+          icon_name: string;
+          id: string;
+          is_active: boolean;
+          item_key: string;
+          platform: 'ios' | 'android' | 'web' | null;
+          position: number;
+          release_id: string;
+          starts_at: string | null;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at: string;
+        };
+        Insert: {
+          body_en?: string;
+          body_zh_hant?: string;
+          created_at?: string;
+          expires_at?: string | null;
+          icon_name?: string;
+          id?: string;
+          is_active?: boolean;
+          item_key: string;
+          platform?: 'ios' | 'android' | 'web' | null;
+          position?: number;
+          release_id: string;
+          starts_at?: string | null;
+          title_en: string;
+          title_zh_hant?: string;
+          updated_at?: string;
+        };
+        Update: {
+          body_en?: string;
+          body_zh_hant?: string;
+          expires_at?: string | null;
+          icon_name?: string;
+          is_active?: boolean;
+          item_key?: string;
+          platform?: 'ios' | 'android' | 'web' | null;
+          position?: number;
+          starts_at?: string | null;
+          title_en?: string;
+          title_zh_hant?: string;
+          updated_at?: string;
+        };
+        Relationships: [{
+          foreignKeyName: 'app_release_note_items_release_id_fkey';
+          columns: ['release_id'];
+          isOneToOne: false;
+          referencedRelation: 'app_release_notes';
+          referencedColumns: ['id'];
+        }];
+      };
       app_options: {
         Row: {
           created_at: string;
+          is_premium: boolean;
           live_activity_enabled: boolean;
           play_sound: boolean;
+          premium_customer_id: string | null;
+          premium_expires_at: string | null;
+          premium_plan: string | null;
+          premium_product_id: string | null;
+          premium_status: string | null;
+          premium_store: string | null;
           push_enabled: boolean;
           show_preview: boolean;
           updated_at: string;
@@ -299,8 +372,140 @@ export type Database = {
         };
         Relationships: [];
       };
+      universal_app_options: {
+        Row: {
+          created_at: string;
+          expires_at: string | null;
+          is_active: boolean;
+          option_name: string;
+          starts_at: string | null;
+          updated_at: string;
+          value: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+          option_name: string;
+          starts_at?: string | null;
+          updated_at?: string;
+          value: string;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+          option_name?: string;
+          starts_at?: string | null;
+          updated_at?: string;
+          value?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
+      app_changelog: {
+        Row: {
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          items: Json;
+          released_at: string;
+          summary_en: string;
+          summary_zh_hant: string;
+          title_en: string;
+          title_zh_hant: string;
+          updated_at: string;
+          version: string;
+        };
+        Relationships: [];
+      };
+      inbox_notifications: {
+        Row: {
+          attachment_bytes: number | null;
+          attachment_mime: string | null;
+          attachment_path: string | null;
+          body: string;
+          category: string | null;
+          created_at: string;
+          data: Json;
+          expires_at: string;
+          id: string;
+          idempotency_key: string | null;
+          read_at: string | null;
+          request_hash: string | null;
+          severity: NotificationSeverity | null;
+          source_id: string;
+          source_name_snapshot: string;
+          title: string;
+          user_id: string;
+        };
+        Relationships: [];
+      };
+      notification_source_overview: {
+        Row: {
+          access_key_created_at: string;
+          access_key_expires_at: string | null;
+          access_key_id: string;
+          access_key_last_used_at: string | null;
+          access_key_name: string;
+          access_key_revoked_at: string | null;
+          access_key_updated_at: string;
+          created_at: string;
+          display_name: string;
+          hostname: string | null;
+          id: string;
+          is_active: boolean;
+          key_prefix: string | null;
+          last_seen_at: string | null;
+          revoked_at: string | null;
+          sound_name: NotificationSound;
+          user_id: string;
+        };
+        Relationships: [];
+      };
+      notification_sources: {
+        Row: {
+          created_at: string;
+          display_name: string;
+          hostname: string | null;
+          id: string;
+          last_seen_at: string | null;
+          revoked_at: string | null;
+          user_id: string;
+        };
+        Relationships: [];
+      };
+      push_registrations: {
+        Row: {
+          created_at: string;
+          device_id: string;
+          disabled_at: string | null;
+          expo_push_token: string;
+          id: string;
+          platform: 'android' | 'ios';
+          updated_at: string;
+          user_id: string;
+        };
+        Relationships: [];
+      };
+      source_access_keys: {
+        Row: {
+          created_at: string;
+          expires_at: string | null;
+          id: string;
+          is_active: boolean;
+          key_prefix: string | null;
+          last_used_at: string | null;
+          name: string;
+          revoked_at: string | null;
+          sound_name: NotificationSound;
+          source_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Relationships: [];
+      };
       source_api_keys: {
         Row: {
           api_key_id: string;
@@ -323,6 +528,25 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_notification_preferences: {
+        Row: {
+          created_at: string;
+          is_premium: boolean;
+          live_activity_enabled: boolean;
+          play_sound: boolean;
+          premium_customer_id: string | null;
+          premium_expires_at: string | null;
+          premium_plan: string | null;
+          premium_product_id: string | null;
+          premium_status: string | null;
+          premium_store: string | null;
+          push_enabled: boolean;
+          show_preview: boolean;
+          updated_at: string;
+          user_id: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       create_source: {
@@ -340,6 +564,46 @@ export type Database = {
           p_display_name: string | null;
           p_is_active: boolean | null;
           p_source_id: string;
+        };
+        Returns: Json;
+      };
+      delete_inbox_notification: {
+        Args: { p_notification_id: string };
+        Returns: boolean;
+      };
+      get_app_bootstrap: {
+        Args: {
+          p_app_version: string;
+          p_build_number: number;
+          p_installation_id: string;
+          p_locale: 'en' | 'zh-Hant';
+          p_platform: 'android' | 'ios' | 'web';
+          p_release_channel: 'development' | 'preview' | 'production';
+        };
+        Returns: Json;
+      };
+      get_user_notification_preferences: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      mark_all_inbox_notifications_read: {
+        Args: { p_read_at: string };
+        Returns: number;
+      };
+      mark_inbox_notification_read: {
+        Args: { p_notification_id: string; p_read_at: string };
+        Returns: boolean;
+      };
+      update_source_notification_sound: {
+        Args: { p_access_key_id: string; p_sound_name: string };
+        Returns: Json;
+      };
+      update_user_notification_preferences: {
+        Args: {
+          p_live_activity_enabled?: boolean | null;
+          p_play_sound?: boolean | null;
+          p_push_enabled?: boolean | null;
+          p_show_preview?: boolean | null;
         };
         Returns: Json;
       };

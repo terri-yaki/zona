@@ -1,0 +1,16 @@
+CHANGELOG.md
+docs/adr/0001-source-token-architecture.md
+docs/adr/0002-anonymous-sign-in.md
+docs/API.md
+docs/ARCHITECTURE.md
+docs/openapi.yaml
+docs/PRD.md
+docs/RELEASE.md
+docs/RUNBOOK.md
+docs/TEST_PLAN.md
+docs/THREAT_MODEL.md
+PRIVACY.md
+README.md
+SECURITY.md
+supabase/README.md
+zona/README.md

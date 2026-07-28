@@ -1,0 +1,2 @@
+# Historical release snapshots preserve their original bytes.
+versions/** -text -whitespace

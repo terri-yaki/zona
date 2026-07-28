@@ -1,0 +1,14 @@
+{
+  "version": "0.0.2",
+  "sourceCommit": "eefae7600c37eb786d6c8e1d7d94013c9aa2f4a8",
+  "sourceBranch": null,
+  "gitTag": null,
+  "boundaryConfidence": "medium",
+  "boundaryNote": "Commit explicitly prepares 0.0.2; app.json and package.json disagree on the version.",
+  "previousVersion": "0.0.1",
+  "appJsonVersion": "0.0.2",
+  "packageJsonVersion": "0.0.1",
+  "migrationCount": 8,
+  "deltaMigrationCount": 2,
+  "documentCount": 23
+}

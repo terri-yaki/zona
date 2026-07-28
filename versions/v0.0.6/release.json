@@ -1,0 +1,14 @@
+{
+  "version": "0.0.6",
+  "sourceCommit": "ce20ef014222130a12c24e04ff09bb6f498c34a3",
+  "sourceBranch": "v0.0.6",
+  "gitTag": null,
+  "boundaryConfidence": "strong",
+  "boundaryNote": "Exact source commit used for the 0.0.6 production build; app.json and package.json both report 0.0.6.",
+  "previousVersion": "0.0.5",
+  "appJsonVersion": "0.0.6",
+  "packageJsonVersion": "0.0.6",
+  "migrationCount": 25,
+  "deltaMigrationCount": 6,
+  "documentCount": 28
+}

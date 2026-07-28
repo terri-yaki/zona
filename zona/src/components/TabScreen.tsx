@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'reac
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '@/theme';
+import { RuntimeStatusBanner } from '@/components/RuntimeStatusBanner';
 
 /**
  * Shared shell for NativeTabs screens.
@@ -20,6 +21,7 @@ export function TabScreen({
 }>) {
   return (
     <SafeAreaView edges={edges} style={[styles.safe, style]}>
+      <RuntimeStatusBanner />
       {children}
     </SafeAreaView>
   );

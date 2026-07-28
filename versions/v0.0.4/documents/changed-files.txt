@@ -1,0 +1,8 @@
+CHANGELOG.md
+docs/ANDROID_PUSH.md
+docs/API.md
+docs/ARCHITECTURE.md
+docs/openapi.yaml
+README.md
+supabase/README.md
+zona/README.md

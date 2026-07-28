@@ -7,16 +7,19 @@ import { AppIcon } from '@/components/AppIcon';
 import { enablePushNotifications, markPushOnboardingComplete } from '@/lib/push';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
 
 export default function PushOnboardingScreen() {
   const { session } = useAuth();
   const { t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   const router = useRouter();
   const [working, setWorking] = useState(false);
   const userId = session?.user.id;
 
   if (!userId) return <Redirect href="/sign-in" />;
+  if (!isVisible('onboarding.push') || !isEnabled('onboarding.push')) return <Redirect href="/(tabs)" />;
   const authenticatedUserId = userId;
 
   async function finish(ask: boolean) {

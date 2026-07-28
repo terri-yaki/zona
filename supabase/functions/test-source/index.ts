@@ -71,32 +71,44 @@ Deno.serve(async (req) => {
     if (error) {
       if (error.message.includes('SOURCE_NOT_FOUND')) throw new Error('SOURCE_NOT_FOUND');
       if (error.message.includes('INVALID_TOKEN')) throw new Error('SOURCE_INACTIVE');
+      if (error.message.includes('TEST_NOTIFICATIONS_DISABLED')) throw new Error('SERVICE_UNAVAILABLE');
       throw error;
     }
 
     const accepted = (data as TestNotification[] | null)?.[0];
     if (!accepted) throw new Error('SOURCE_NOT_FOUND');
 
-    const { data: storedOptions, error: optionsError } = await service
-      .from('app_options')
-      .select('push_enabled, play_sound, show_preview')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const [optionsResult, deliveryPolicyResult] = await Promise.all([
+      service
+        .from('user_notification_preferences')
+        .select('push_enabled, play_sound, show_preview')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      service.rpc('notification_delivery_policy_internal', { p_user_id: user.id }),
+    ]);
+    const { data: storedOptions, error: optionsError } = optionsResult;
     if (optionsError) console.error('test app options lookup', optionsError);
     const options = (storedOptions as AppOptions | null) ?? {
       push_enabled: true,
       play_sound: true,
       show_preview: true,
     };
+    if (deliveryPolicyResult.error) console.error('test delivery policy lookup', deliveryPolicyResult.error);
+    const deliveryPolicy = deliveryPolicyResult.data && typeof deliveryPolicyResult.data === 'object'
+      ? deliveryPolicyResult.data as Record<string, unknown>
+      : {};
+    const deliverPush = deliveryPolicyResult.error === null && deliveryPolicy.deliverPush === true;
+    const configuredMaxDevices = typeof deliveryPolicy.maxPushDevices === 'number' ? Math.trunc(deliveryPolicy.maxPushDevices) : 10;
+    const maxPushDevices = Math.min(1000, Math.max(1, configuredMaxDevices));
 
-    const { data: storedDevices, error: devicesError } = options.push_enabled
+    const { data: storedDevices, error: devicesError } = options.push_enabled && deliverPush
       ? await service
-        .from('push_devices')
+        .from('push_registrations')
         .select('id, expo_push_token, platform')
         .eq('user_id', user.id)
         .is('disabled_at', null)
         .order('updated_at', { ascending: false })
-        .limit(10)
+        .limit(maxPushDevices)
       : { data: [], error: null };
     if (devicesError) console.error('test push device lookup', devicesError);
 
@@ -173,6 +185,7 @@ Deno.serve(async (req) => {
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);
     if (code === 'SOURCE_NOT_FOUND') return json({ error: code }, 404);
     if (code === 'SOURCE_INACTIVE') return json({ error: code }, 409);
+    if (code === 'SERVICE_UNAVAILABLE') return json({ error: code }, 503, { 'Retry-After': '60' });
     if (code === 'PAYLOAD_TOO_LARGE') return json({ error: code }, 413);
     if (['INVALID_SOURCE', 'CONTENT_TYPE', 'INVALID_JSON'].includes(code)) {
       return json({ error: 'INVALID_SOURCE' }, 400);

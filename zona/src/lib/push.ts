@@ -34,7 +34,7 @@ if (Platform.OS !== 'web') {
   });
 }
 
-async function installationId(): Promise<string> {
+export async function getInstallationId(): Promise<string> {
   const existing = await AsyncStorage.getItem(installationKey);
   if (existing) return existing;
   const next = Crypto.randomUUID();
@@ -98,7 +98,7 @@ async function registerCurrentExpoToken() {
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
   const platform = nativePushPlatform(Platform.OS);
   if (!platform) throw new Error('Push registration is not supported on this platform.');
-  await registerPushToken(token, await installationId(), platform);
+  await registerPushToken(token, await getInstallationId(), platform);
 }
 
 export async function enablePushNotifications(userId: string): Promise<'registered' | 'denied' | 'simulator' | 'expo-go' | 'web' | 'android-unconfigured'> {
@@ -159,7 +159,7 @@ export async function syncPushRegistration(userId: string): Promise<'registered'
 }
 
 export async function unregisterThisInstallation(userId?: string) {
-  await unregisterPushDevice(await installationId());
+  await unregisterPushDevice(await getInstallationId());
   if (userId) await saveHealth(userId, 'unregistered');
 }
 

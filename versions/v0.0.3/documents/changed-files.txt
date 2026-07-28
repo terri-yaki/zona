@@ -1,0 +1,5 @@
+CHANGELOG.md
+docs/API.md
+docs/APP_CHANGELOG.md
+docs/DB_MIGRATIONS.md
+zona/README.md

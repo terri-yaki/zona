@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "sourceCommit": "bfad2dd400c7f92952e848cd8554f9307156a06f",
+  "sourceBranch": null,
+  "gitTag": null,
+  "boundaryConfidence": "inferred",
+  "boundaryNote": "First complete multi-PC notification MVP; manifests at this commit still report 1.0.0.",
+  "previousVersion": null,
+  "appJsonVersion": "1.0.0",
+  "packageJsonVersion": "1.0.0",
+  "migrationCount": 6,
+  "deltaMigrationCount": 6,
+  "documentCount": 19
+}

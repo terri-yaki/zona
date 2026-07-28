@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
@@ -34,14 +34,17 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { languageAutonym, type LanguagePreference } from '@/i18n';
+import { runtimeString, type FeatureKey } from '@/lib/runtime-controls';
 import { colors, radius } from '@/theme';
 import type { AppOptions } from '@/types';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
-  const { languageName, preference, setPreference, t } = useI18n();
+  const { languageName, preference, setPreference, t, tc } = useI18n();
+  const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const bottomPad = useTabBarContentPadding(16);
   const userId = session?.user.id;
   const [permission, setPermission] = useState(t('settings.checking'));
@@ -57,13 +60,22 @@ export default function SettingsScreen() {
   const [liveActivityCapability, setLiveActivityCapability] = useState<LiveActivityCapability | null>(null);
   const [languageModal, setLanguageModal] = useState(false);
   const liveActivitySupported = liveActivityPlatformSupported();
+  const config = useMemo(() => ({
+    userGuideUrl: runtimeString(snapshot, 'content.user_guide_url', 'https://gist.github.com/terri-yaki/b1cdbf91263f139f928de292f788d5bc'),
+    retentionDays: snapshot.limits.retentionDays,
+  }), [snapshot]);
+
+  const controlDescription = useCallback((key: FeatureKey, fallback: string) => (
+    isEnabled(key) ? fallback : snapshot.features[key].reason || fallback
+  ), [isEnabled, snapshot.features]);
 
   const refreshStatus = useCallback(async () => {
     if (!userId) return;
     setHealth(await getPushRegistrationHealth(userId));
     try {
       await migrateLegacyLiveActivityPreference(userId);
-      setOptions(await getAppOptions(userId));
+      const nextOptions = await getAppOptions(userId);
+      setOptions(nextOptions);
       setOptionsError(null);
     } catch (error) {
       setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
@@ -271,7 +283,6 @@ export default function SettingsScreen() {
   const languageValue = preference === 'system'
     ? t('settings.languageSystemWithValue', { language: languageName })
     : languageAutonym(preference);
-
   return (
     <TabScreen>
       <ScrollView
@@ -290,44 +301,54 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <SettingRow icon="person" label={t('settings.account')} value={userId ? `${userId.slice(0, 8)}…` : '—'} />
         <View style={styles.divider} />
-        <SettingRow icon="clock" label={t('settings.historyRetention')} value={t('common.sevenDays')} />
+        <SettingRow icon="clock" label={t('settings.historyRetention')} value={tc('settings.retentionDay', 'settings.retentionDays', config.retentionDays)} />
       </View>
 
       <Text style={styles.section}>{t('settings.sectionNotifications')}</Text>
       <View style={styles.card}>
-        <OptionRow
-          description={t('settings.pushAlertsDesc')}
-          disabled={!options || Boolean(savingOption)}
-          label={t('settings.pushAlerts')}
-          onChange={(value) => void setOption('push_enabled', value)}
-          value={options?.push_enabled ?? true}
-        />
-        <View style={styles.divider} />
-        <OptionRow
-          description={t('settings.soundDesc')}
-          disabled={!options || Boolean(savingOption) || !options.push_enabled}
-          label={t('settings.sound')}
-          onChange={(value) => void setOption('play_sound', value)}
-          value={options?.play_sound ?? true}
-        />
-        <View style={styles.divider} />
-        <OptionRow
-          description={t('settings.previewsDesc')}
-          disabled={!options || Boolean(savingOption) || !options.push_enabled}
-          label={t('settings.previews')}
-          onChange={(value) => void setOption('show_preview', value)}
-          value={options?.show_preview ?? true}
-        />
-        {liveActivitySupported ? (
+        {isVisible('settings.push') ? (
+          <OptionRow
+            description={controlDescription('settings.push', t('settings.pushAlertsDesc'))}
+            disabled={!options || Boolean(savingOption) || !isEnabled('settings.push')}
+            label={t('settings.pushAlerts')}
+            onChange={(value) => void setOption('push_enabled', value)}
+            value={options?.push_enabled ?? true}
+          />
+        ) : null}
+        {isVisible('settings.sound') ? (
           <>
-            <View style={styles.divider} />
+            {isVisible('settings.push') ? <View style={styles.divider} /> : null}
+            <OptionRow
+              description={controlDescription('settings.sound', t('settings.soundDesc'))}
+              disabled={!options || Boolean(savingOption) || !options.push_enabled || !isEnabled('settings.sound')}
+              label={t('settings.sound')}
+              onChange={(value) => void setOption('play_sound', value)}
+              value={options?.play_sound ?? true}
+            />
+          </>
+        ) : null}
+        {isVisible('settings.preview') ? (
+          <>
+            {isVisible('settings.push') || isVisible('settings.sound') ? <View style={styles.divider} /> : null}
+            <OptionRow
+              description={controlDescription('settings.preview', t('settings.previewsDesc'))}
+              disabled={!options || Boolean(savingOption) || !options.push_enabled || !isEnabled('settings.preview')}
+              label={t('settings.previews')}
+              onChange={(value) => void setOption('show_preview', value)}
+              value={options?.show_preview ?? true}
+            />
+          </>
+        ) : null}
+        {liveActivitySupported && isVisible('settings.live_activity') ? (
+          <>
+            {isVisible('settings.push') || isVisible('settings.sound') || isVisible('settings.preview') ? <View style={styles.divider} /> : null}
             <OptionRow
               description={
                 liveActivityCapability && liveActivityCapability !== 'ready'
                   ? liveActivityCapabilityLabel(liveActivityCapability)
-                  : t('settings.liveStatusDesc')
+                  : controlDescription('settings.live_activity', t('settings.liveStatusDesc'))
               }
-              disabled={!options || Boolean(savingOption)}
+              disabled={!options || Boolean(savingOption) || !isEnabled('settings.live_activity')}
               label={t('settings.liveStatus')}
               onChange={(value) => void setOption('live_activity_enabled', value)}
               value={options?.live_activity_enabled ?? false}
@@ -348,43 +369,64 @@ export default function SettingsScreen() {
         <View style={styles.divider} />
         <SettingRow icon="antenna.radiowaves.left.and.right" label={t('settings.relay')} value={relayStatus} />
         {health?.error ? <Text accessibilityLiveRegion="polite" style={styles.healthError}>{health.error}</Text> : null}
-        <View style={styles.divider} />
-        <Pressable accessibilityRole="button" disabled={registering} onPress={registerAgain} style={({ pressed }) => [styles.registerRow, registering && styles.disabled, pressed && styles.pressed]}>
-          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↻" name="arrow.clockwise" size={17} /></View>
-          <Text style={styles.link}>{registering ? t('settings.checkingRegistration') : t('settings.checkRegistration')}</Text>
-          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
+        {isVisible('settings.push_registration') ? <>
+          <View style={styles.divider} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: registering || !isEnabled('settings.push_registration') }}
+            disabled={registering || !isEnabled('settings.push_registration')}
+            onPress={registerAgain}
+            style={({ pressed }) => [styles.registerRow, (registering || !isEnabled('settings.push_registration')) && styles.disabled, pressed && styles.pressed]}
+          >
+            <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↻" name="arrow.clockwise" size={17} /></View>
+            <Text style={styles.link}>{registering ? t('settings.checkingRegistration') : t('settings.checkRegistration')}</Text>
+            <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+          </Pressable>
+        </> : null}
       </View>
 
       <Text style={styles.section}>{t('settings.sectionApp')}</Text>
       <View style={styles.card}>
-        <Pressable accessibilityRole="button" onPress={() => setLanguageModal(true)} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+        {isVisible('settings.language') ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.language') }} disabled={!isEnabled('settings.language')} onPress={() => setLanguageModal(true)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.language') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="A" name="globe" size={17} /></View>
           <Text style={styles.link}>{t('settings.language')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{languageValue}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
-        <View style={styles.divider} />
-        <Pressable accessibilityRole="button" onPress={() => router.push('/whats-new')} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+        </Pressable> : null}
+        {isVisible('settings.whats_new') ? <>{isVisible('settings.language') ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.whats_new') }} disabled={!isEnabled('settings.whats_new')} onPress={() => router.push('/whats-new')} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.whats_new') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="+" name="sparkles" size={17} /></View>
           <Text style={styles.link}>{t('settings.whatsNew')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{t('settings.whatsNewValue')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
-        <View style={styles.divider} />
+        </Pressable></> : null}
+        {isVisible('settings.manual_update') ? <>{isVisible('settings.language') || isVisible('settings.whats_new') ? <View style={styles.divider} /> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={checkingUpdate}
+          accessibilityState={{ disabled: checkingUpdate || !isEnabled('settings.manual_update') }}
+          disabled={checkingUpdate || !isEnabled('settings.manual_update')}
           onPress={() => {
             setCheckingUpdate(true);
             void checkForAppUpdateInteractive().finally(() => setCheckingUpdate(false));
           }}
-          style={({ pressed }) => [styles.registerRow, checkingUpdate && styles.disabled, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.registerRow, (checkingUpdate || !isEnabled('settings.manual_update')) && styles.disabled, pressed && styles.pressed]}
         >
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
           <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
+        </Pressable></> : null}
+        {isVisible('settings.user_guide') ? <>{isVisible('settings.language') || isVisible('settings.whats_new') || isVisible('settings.manual_update') ? <View style={styles.divider} /> : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !isEnabled('settings.user_guide') }}
+          disabled={!isEnabled('settings.user_guide')}
+          onPress={() => Linking.openURL(config.userGuideUrl)}
+          style={({ pressed }) => [styles.registerRow, !isEnabled('settings.user_guide') && styles.disabled, pressed && styles.pressed]}
+        >
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="?" name="book" size={17} /></View>
+          <Text style={styles.link}>{t('settings.userGuide')}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable></> : null}
       </View>
 
       <Text style={styles.section}>{t('settings.sectionPrivacy')}</Text>

@@ -14,6 +14,7 @@ import { severityAppearance } from '@/lib/notification-severity';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
@@ -23,6 +24,7 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}
 export default function NotificationDetailScreen() {
   const { session, loading: authLoading } = useAuth();
   const { language, t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   const { id: idParameter } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
   const bottomPadding = useBottomSafePadding(24);
@@ -94,7 +96,7 @@ export default function NotificationDetailScreen() {
 
   useEffect(() => {
     const path = item?.attachment_path;
-    if (!path) return;
+    if (!path || !isVisible('notification.attachments') || !isEnabled('notification.attachments')) return;
     let active = true;
     supabase.storage
       .from('notification-attachments')
@@ -109,7 +111,7 @@ export default function NotificationDetailScreen() {
     return () => {
       active = false;
     };
-  }, [item?.attachment_path]);
+  }, [isEnabled, isVisible, item?.attachment_path]);
 
   const attachmentPath = item?.attachment_path ?? null;
   const attachmentReady = Boolean(attachmentPath) && attachment?.path === attachmentPath;
@@ -198,7 +200,8 @@ export default function NotificationDetailScreen() {
   }
 
   const deleteBusy = confirmingDelete || deleting;
-  const severity = severityAppearance(item.severity);
+  const showSeverity = isVisible('notification.severity') && isEnabled('notification.severity');
+  const severity = severityAppearance(showSeverity ? item.severity : null);
   return (
     <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
       <View style={styles.sourceRow}>
@@ -219,7 +222,7 @@ export default function NotificationDetailScreen() {
         <Text style={styles.body}>{item.body}</Text>
       </View>
 
-      {item.attachment_path ? (
+      {item.attachment_path && isVisible('notification.attachments') && isEnabled('notification.attachments') ? (
         <>
           <Text style={styles.attachmentLabel}>{t('notification.attachment')}</Text>
           <View style={styles.attachmentCard}>
@@ -260,7 +263,7 @@ export default function NotificationDetailScreen() {
         </View>
       ) : null}
 
-      {Object.keys(item.data ?? {}).length ? (
+      {Object.keys(item.data ?? {}).length && isVisible('notification.metadata') && isEnabled('notification.metadata') ? (
         <>
           <Text style={styles.metadataLabel}>{t('notification.metadata')}</Text>
           <View style={styles.codeBox}><Text selectable style={styles.code}>{JSON.stringify(item.data, null, 2)}</Text></View>

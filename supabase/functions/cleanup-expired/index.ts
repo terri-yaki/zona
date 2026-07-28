@@ -19,7 +19,7 @@ async function removeExpiredAttachments(now: string) {
   let removed = 0;
   for (let batch = 0; batch < maximumBatches; batch += 1) {
     const { data, error } = await service
-      .from('notifications')
+      .from('inbox_notifications')
       .select('id, attachment_path')
       .lte('expires_at', now)
       .not('attachment_path', 'is', null)
@@ -35,7 +35,7 @@ async function removeExpiredAttachments(now: string) {
     if (storageError) throw storageError;
 
     const { error: deleteError } = await service
-      .from('notifications')
+      .from('inbox_notifications')
       .delete()
       .in('id', rows.map((row) => row.id))
       .lte('expires_at', now);

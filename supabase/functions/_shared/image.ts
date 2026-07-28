@@ -1,6 +1,6 @@
 export type ImageMime = 'image/png' | 'image/jpeg' | 'image/webp';
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// The attachment size cap is operator-configured; see _shared/limits.ts.
 
 // Content is never trusted from headers or file names; only magic bytes decide.
 export function sniffImageMime(bytes: Uint8Array): ImageMime | null {
