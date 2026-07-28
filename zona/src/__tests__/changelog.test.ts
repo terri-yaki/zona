@@ -115,10 +115,16 @@ describe('bundledChangelog', () => {
     expect(en[0].latest).toBe(true);
     expect(en[0].title).toBe('Your inbox is ready when you are');
     expect(en[0].dateLabel).toBe('July 2026');
+    expect(en[0].items.map((item) => item.title)).toEqual([
+      'Open and get moving',
+      'Still useful offline',
+      'Saved only for you',
+      'You decide what stays',
+    ]);
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 
     const zh = bundledChangelog('zh-Hant');
-    expect(zh[0].title).toBe('信箱準備好，你一打開就能看');
+    expect(zh[0].title).toBe('一打開，信箱已經準備好');
     expect(zh[0].dateLabel).toBe('2026 年 7 月');
   });
 });
