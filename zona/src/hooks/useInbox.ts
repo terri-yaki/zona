@@ -1,35 +1,58 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { cachePolicies } from '@/cache/policies';
+import { registerCacheResetter } from '@/cache/session';
 import {
+  currentCacheLease,
+  markCacheDirty,
+  readCache,
+  writeCache,
+} from '@/cache/store';
+import {
+  getInboxSnapshot,
   listNotifications,
   markAllNotificationsRead,
   type InboxCursor,
   type InboxFilters,
-  unreadNotificationCount,
 } from '@/data/notifications';
-import { supabase } from '@/lib/supabase';
 import { translate } from '@/i18n';
+import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
 
 type InboxPageCache = {
-  items: InboxNotification[];
   cursor: InboxCursor | null;
-  hasMore: boolean;
   fetchedAt: number;
+  hasMore: boolean;
+  items: InboxNotification[];
+  unreadCount: number;
+  variant: string;
 };
 
-const pageCache = new Map<string, InboxPageCache>();
-let cachedUnreadCount = 0;
+type StoredInboxPage = Omit<InboxPageCache, 'fetchedAt' | 'variant'>;
 
-function filterCacheKey(userId: string, filters: InboxFilters, pageSize: number) {
+const maxCachedInboxItems = 200;
+const pageCache = new Map<string, InboxPageCache>();
+const unreadCountByUser = new Map<string, number>();
+
+registerCacheResetter((ownerUserId) => {
+  unreadCountByUser.delete(ownerUserId);
+  for (const key of [...pageCache.keys()]) {
+    if (key.startsWith(`${ownerUserId}|`)) pageCache.delete(key);
+  }
+});
+
+function filterCacheVariant(filters: InboxFilters, pageSize: number) {
   return [
-    userId,
-    filters.sourceId ?? '',
-    filters.unreadOnly ? '1' : '0',
-    filters.since ?? '',
+    filters.sourceId ?? 'all',
+    filters.unreadOnly ? 'unread' : 'all',
+    filters.since ?? 'anytime',
     String(pageSize),
   ].join('|');
+}
+
+function memoryCacheKey(userId: string, variant: string) {
+  return `${userId}|${variant}`;
 }
 
 function mergeUnique(current: InboxNotification[], next: InboxNotification[]) {
@@ -37,129 +60,131 @@ function mergeUnique(current: InboxNotification[], next: InboxNotification[]) {
   return [...current, ...next.filter((item) => !seen.has(item.id))];
 }
 
-function writePageCache(key: string, entry: Omit<InboxPageCache, 'fetchedAt'>) {
-  pageCache.set(key, { ...entry, fetchedAt: Date.now() });
+function isFresh(entry: InboxPageCache) {
+  return Date.now() - entry.fetchedAt <= cachePolicies.inbox.freshForMs;
 }
 
-function invalidateInboxCache(userId?: string) {
-  if (!userId) {
-    pageCache.clear();
-    return;
-  }
-  for (const key of [...pageCache.keys()]) {
-    if (key.startsWith(`${userId}|`)) pageCache.delete(key);
-  }
+function rememberPage(
+  ownerUserId: string,
+  variant: string,
+  value: StoredInboxPage,
+  fetchedAt = Date.now(),
+) {
+  const bounded = { ...value, items: value.items.slice(0, maxCachedInboxItems) };
+  pageCache.set(memoryCacheKey(ownerUserId, variant), { ...bounded, fetchedAt, variant });
+  unreadCountByUser.set(ownerUserId, value.unreadCount);
+  void writeCache(ownerUserId, 'inbox', variant, bounded, {
+    fetchedAt,
+    lease: currentCacheLease(ownerUserId),
+  }).catch((error) => console.warn('Could not save the inbox cache.', error));
 }
 
-function markCacheItemsRead(userId: string, readAt: string) {
+function markMemoryPagesDirty(ownerUserId: string) {
   for (const [key, entry] of pageCache.entries()) {
-    if (!key.startsWith(`${userId}|`)) continue;
-    // cache key: userId|sourceId|unreadOnly|since
-    const unreadOnly = key.split('|')[2] === '1';
-    if (unreadOnly) {
-      pageCache.set(key, { items: [], cursor: null, hasMore: false, fetchedAt: Date.now() });
-      continue;
-    }
-    pageCache.set(key, {
-      ...entry,
-      items: entry.items.map((item) => (item.read_at ? item : { ...item, read_at: readAt })),
-      fetchedAt: Date.now(),
-    });
+    if (key.startsWith(`${ownerUserId}|`)) pageCache.set(key, { ...entry, fetchedAt: 0 });
   }
 }
 
-function userHasAnyCache(userId: string) {
-  if (!userId) return false;
+function markMemoryItemsRead(ownerUserId: string, readAt: string) {
+  unreadCountByUser.set(ownerUserId, 0);
+  for (const [key, entry] of pageCache.entries()) {
+    if (!key.startsWith(`${ownerUserId}|`)) continue;
+    const unreadOnly = entry.variant.split('|')[1] === 'unread';
+    const updated: StoredInboxPage = unreadOnly
+      ? { cursor: null, hasMore: false, items: [], unreadCount: 0 }
+      : {
+        cursor: entry.cursor,
+        hasMore: entry.hasMore,
+        items: entry.items.map((item) => (item.read_at ? item : { ...item, read_at: readAt })),
+        unreadCount: 0,
+      };
+    rememberPage(ownerUserId, entry.variant, updated);
+  }
+}
+
+function userHasAnyCache(ownerUserId: string) {
   for (const key of pageCache.keys()) {
-    if (key.startsWith(`${userId}|`)) return true;
+    if (key.startsWith(`${ownerUserId}|`)) return true;
   }
   return false;
 }
 
 export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
-  const cacheKey = useMemo(
-    () => filterCacheKey(userId, filters, pageSize),
-    // filters is recreated in the screen when chips change; key off its fields.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable key from primitive filter fields
-    [userId, filters.sourceId, filters.unreadOnly, filters.since, pageSize],
-  );
+  const cacheVariant = filterCacheVariant(filters, pageSize);
+  const cacheKey = memoryCacheKey(userId, cacheVariant);
   const cachedPage = pageCache.get(cacheKey);
 
   const [items, setItems] = useState<InboxNotification[]>(() => cachedPage?.items ?? []);
-  const [unreadCount, setUnreadCount] = useState(() => cachedUnreadCount);
+  const [unreadCount, setUnreadCount] = useState(() => unreadCountByUser.get(userId) ?? 0);
   const [cursor, setCursor] = useState<InboxCursor | null>(() => cachedPage?.cursor ?? null);
   const [hasMore, setHasMore] = useState(() => cachedPage?.hasMore ?? false);
-  // Full-screen bootstrap only — filter switches must not flip this to true.
   const [bootstrapping, setBootstrapping] = useState(() => !cachedPage && !userHasAnyCache(userId));
   const [filterLoading, setFilterLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [hasEverLoaded, setHasEverLoaded] = useState(() => Boolean(cachedPage) || userHasAnyCache(userId));
   const generation = useRef(0);
   const cacheKeyRef = useRef(cacheKey);
-  const [hasEverLoaded, setHasEverLoaded] = useState(() => Boolean(cachedPage) || userHasAnyCache(userId));
+  const cacheVariantRef = useRef(cacheVariant);
+
   useEffect(() => {
     cacheKeyRef.current = cacheKey;
-  }, [cacheKey]);
+    cacheVariantRef.current = cacheVariant;
+  }, [cacheKey, cacheVariant]);
 
-  // Swap to cached results instantly when the filter chip changes.
-  // Uncached filters clear the list and soft-load — never full-screen LoadingScreen.
   const [appliedCacheKey, setAppliedCacheKey] = useState(cacheKey);
   if (appliedCacheKey !== cacheKey) {
     setAppliedCacheKey(cacheKey);
     const entry = pageCache.get(cacheKey);
-    if (entry) {
-      setItems(entry.items);
-      setCursor(entry.cursor);
-      setHasMore(entry.hasMore);
-      setFilterLoading(false);
-      setBootstrapping(false);
-      setError(null);
-    } else {
-      setItems([]);
-      setCursor(null);
-      setHasMore(false);
-      setError(null);
-      if (hasEverLoaded) {
-        setBootstrapping(false);
-        setFilterLoading(true);
-      } else {
-        setBootstrapping(true);
-        setFilterLoading(false);
-      }
-    }
+    setItems(entry?.items ?? []);
+    setCursor(entry?.cursor ?? null);
+    setHasMore(entry?.hasMore ?? false);
+    setUnreadCount(entry?.unreadCount ?? unreadCountByUser.get(userId) ?? 0);
+    setError(null);
+    setBootstrapping(!entry && !hasEverLoaded);
+    setFilterLoading(!entry && hasEverLoaded);
   }
+
+  const applyPage = useCallback((page: StoredInboxPage, fetchedAt = Date.now()) => {
+    setItems(page.items);
+    setCursor(page.cursor);
+    setHasMore(page.hasMore);
+    setUnreadCount(page.unreadCount);
+    setHasEverLoaded(true);
+    rememberPage(userId, cacheVariantRef.current, page, fetchedAt);
+  }, [userId]);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
     const request = ++generation.current;
     const key = cacheKeyRef.current;
-    const hasCache = pageCache.has(key);
+    const variant = cacheVariantRef.current;
+    let memory = pageCache.get(key);
 
     if (mode === 'refresh') setRefreshing(true);
-    else if (!hasCache && !hasEverLoaded) setBootstrapping(true);
-    else if (!hasCache && hasEverLoaded) setFilterLoading(true);
-    // With cache: keep the list on screen (no hard load).
-
+    else if (!memory && !hasEverLoaded) setBootstrapping(true);
+    else if (!memory && hasEverLoaded) setFilterLoading(true);
     setError(null);
-    try {
-      const [page, count] = await Promise.all([
-        listNotifications(filters, null, pageSize),
-        unreadNotificationCount(),
-      ]);
-      if (request !== generation.current || key !== cacheKeyRef.current) return;
 
-      setItems(page.items);
-      setCursor(page.cursor);
-      setHasMore(page.hasMore);
-      setUnreadCount(count);
-      cachedUnreadCount = count;
-      setHasEverLoaded(true);
-      writePageCache(key, {
-        items: page.items,
-        cursor: page.cursor,
-        hasMore: page.hasMore,
-      });
+    try {
+      if (!memory && mode !== 'refresh' && mode !== 'realtime') {
+        const cached = await readCache<StoredInboxPage>(userId, 'inbox', variant);
+        if (request !== generation.current || key !== cacheKeyRef.current) return;
+        if (cached.value) {
+          applyPage(cached.value, cached.fetchedAt);
+          memory = pageCache.get(key);
+          setBootstrapping(false);
+          setFilterLoading(false);
+          if (cached.state === 'fresh') return;
+        }
+      }
+
+      if (memory && isFresh(memory) && mode !== 'refresh' && mode !== 'realtime') return;
+
+      const snapshot = await getInboxSnapshot(filters, pageSize);
+      if (request !== generation.current || key !== cacheKeyRef.current) return;
+      applyPage(snapshot);
     } catch (caught) {
       if (request === generation.current && key === cacheKeyRef.current) {
         setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
@@ -171,7 +196,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
         setRefreshing(false);
       }
     }
-  }, [filters, hasEverLoaded, pageSize]);
+  }, [applyPage, filters, hasEverLoaded, pageSize, userId]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !cursor || loadingMore) return;
@@ -181,17 +206,17 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     try {
       const page = await listNotifications(filters, cursor, pageSize);
       if (request !== generation.current || key !== cacheKeyRef.current) return;
-      setItems((current) => {
-        const merged = mergeUnique(current, page.items);
-        writePageCache(key, {
-          items: merged,
-          cursor: page.cursor,
-          hasMore: page.hasMore,
-        });
-        return merged;
-      });
+      const merged = mergeUnique(items, page.items);
+      const updated = {
+        cursor: page.cursor,
+        hasMore: page.hasMore,
+        items: merged,
+        unreadCount,
+      };
+      setItems(merged);
       setCursor(page.cursor);
       setHasMore(page.hasMore);
+      rememberPage(userId, cacheVariantRef.current, updated);
     } catch (caught) {
       if (request === generation.current && key === cacheKeyRef.current) {
         setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
@@ -199,7 +224,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     } finally {
       if (request === generation.current && key === cacheKeyRef.current) setLoadingMore(false);
     }
-  }, [cursor, filters, hasMore, loadingMore, pageSize]);
+  }, [cursor, filters, hasMore, items, loadingMore, pageSize, unreadCount, userId]);
 
   const markAllRead = useCallback(async () => {
     if (markingAllRead || unreadCount === 0) return;
@@ -208,13 +233,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     try {
       const readAt = new Date().toISOString();
       await markAllNotificationsRead(readAt);
+      markMemoryItemsRead(userId, readAt);
+      void markCacheDirty(userId, 'inbox').catch(() => undefined);
       setUnreadCount(0);
-      cachedUnreadCount = 0;
-      markCacheItemsRead(userId, readAt);
-      // Unread-only filter should empty after read-all; other filters keep rows as read.
       if (filters.unreadOnly) {
         setItems([]);
-        writePageCache(cacheKeyRef.current, { items: [], cursor: null, hasMore: false });
         setCursor(null);
         setHasMore(false);
       } else {
@@ -229,7 +252,6 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     }
   }, [filters.unreadOnly, markingAllRead, unreadCount, userId]);
 
-  // load identity changes with filters → revalidate without blanking the chrome when already loaded.
   useFocusEffect(useCallback(() => {
     void load(pageCache.has(cacheKeyRef.current) || hasEverLoaded ? 'soft' : 'initial');
   }, [hasEverLoaded, load]));
@@ -242,7 +264,8 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
       .on('broadcast', { event: 'changed' }, () => {
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
-          invalidateInboxCache(userId);
+          markMemoryPagesDirty(userId);
+          void markCacheDirty(userId, 'inbox').catch(() => undefined);
           void load('realtime');
         }, 200);
       })

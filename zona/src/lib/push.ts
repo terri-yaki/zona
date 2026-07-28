@@ -82,6 +82,10 @@ export async function getPushRegistrationHealth(userId: string): Promise<PushReg
   }
 }
 
+export function clearPushUserState(userId: string) {
+  return AsyncStorage.multiRemove([onboardingKey(userId), healthKey(userId)]);
+}
+
 function cannotUseNativePush(): 'web' | 'expo-go' | 'simulator' | null {
   if (Platform.OS === 'web') return 'web';
   if (Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'expo-go';

@@ -7,6 +7,15 @@ import { parseRuntimeSnapshot, type RuntimeSnapshot } from '@/lib/runtime-contro
 import { supabase } from '@/lib/supabase';
 import type { SupportedLanguage } from '@/i18n';
 
+export type AppBootstrapContext = {
+  appVersion: string;
+  buildNumber: number;
+  installationId: string;
+  locale: SupportedLanguage;
+  platform: 'android' | 'ios' | 'web';
+  releaseChannel: 'production' | 'preview' | 'development';
+};
+
 function releaseChannel(): 'production' | 'preview' | 'development' {
   if (__DEV__) return 'development';
   return Updates.channel === 'preview' ? 'preview' : 'production';
@@ -17,14 +26,40 @@ function buildNumber(): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-export async function fetchAppBootstrap(language: SupportedLanguage): Promise<RuntimeSnapshot> {
+export async function getAppBootstrapContext(language: SupportedLanguage): Promise<AppBootstrapContext> {
+  return {
+    appVersion: Constants.expoConfig?.version ?? '0.0.0',
+    buildNumber: buildNumber(),
+    installationId: await getInstallationId(),
+    locale: language,
+    platform: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web',
+    releaseChannel: releaseChannel(),
+  };
+}
+
+export function appBootstrapCacheVariant(context: AppBootstrapContext) {
+  return [
+    context.platform,
+    context.appVersion,
+    context.buildNumber,
+    context.releaseChannel,
+    context.locale,
+    context.installationId,
+  ].join('|');
+}
+
+export async function fetchAppBootstrap(
+  language: SupportedLanguage,
+  context?: AppBootstrapContext,
+): Promise<RuntimeSnapshot> {
+  const resolvedContext = context ?? await getAppBootstrapContext(language);
   const { data, error } = await supabase.rpc('get_app_bootstrap', {
-    p_platform: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web',
-    p_app_version: Constants.expoConfig?.version ?? '0.0.0',
-    p_build_number: buildNumber(),
-    p_release_channel: releaseChannel(),
-    p_locale: language,
-    p_installation_id: await getInstallationId(),
+    p_platform: resolvedContext.platform,
+    p_app_version: resolvedContext.appVersion,
+    p_build_number: resolvedContext.buildNumber,
+    p_release_channel: resolvedContext.releaseChannel,
+    p_locale: resolvedContext.locale,
+    p_installation_id: resolvedContext.installationId,
   });
   if (error) throw error;
   return parseRuntimeSnapshot(data);

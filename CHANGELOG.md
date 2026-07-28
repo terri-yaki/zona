@@ -8,6 +8,21 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
+- v0.0.7 adds a bounded, account-scoped on-device cache for the inbox, unread
+  count, sources, preferences, changelog, and evaluated runtime configuration.
+  Fresh content opens locally and stale content revalidates without blanking
+  the current screen.
+- Settings reports the cache footprint and lets the signed-in user clear saved
+  content. Sign-out and account deletion invalidate outstanding writes and
+  remove private cached state.
+- `get_inbox_snapshot` returns the first filtered page and unread total in one
+  RLS-scoped call, backed by an unread-owner index. The app temporarily falls
+  back to the two legacy reads while the additive migration rolls out.
+- `docs/ROADMAP.md` maps the account, delivery, entitlement, subscription, and
+  paid-value work planned for v0.0.8 through v0.0.10.
+- `docs/CHANGELOG_WRITING.md` defines benefit-led, non-technical in-app release
+  copy and uses v0.0.6 as the reference tone.
+
 - Runtime feature controls with `enabled`, `disabled`, `hidden`, and
   `read_only` modes; activation windows; iOS/Android/web, channel, locale,
   tier, and build targeting; deterministic percentage rollout; localized

@@ -21,9 +21,33 @@ export type WhatsNewRelease = {
 /** Add new releases at the top. Copy stays in the language catalogs. */
 export const whatsNewReleases: WhatsNewRelease[] = [
   {
+    id: '2026-07-cache',
+    version: '0.0.7',
+    latest: true,
+    dateKey: 'whatsNew.releaseCache.date',
+    titleKey: 'whatsNew.releaseCache.title',
+    summaryKey: 'whatsNew.releaseCache.summary',
+    items: [
+      { icon: 'bolt.fill', titleKey: 'whatsNew.cacheFast.title', bodyKey: 'whatsNew.cacheFast.body' },
+      { icon: 'tray.full.fill', titleKey: 'whatsNew.cacheOffline.title', bodyKey: 'whatsNew.cacheOffline.body' },
+      { icon: 'person.crop.circle.fill', titleKey: 'whatsNew.cachePrivate.title', bodyKey: 'whatsNew.cachePrivate.body' },
+      { icon: 'internaldrive', titleKey: 'whatsNew.cacheControl.title', bodyKey: 'whatsNew.cacheControl.body' },
+    ],
+  },
+  {
+    id: '2026-07-adaptive',
+    version: '0.0.6',
+    dateKey: 'whatsNew.releaseAdaptive.date',
+    titleKey: 'whatsNew.releaseAdaptive.title',
+    summaryKey: 'whatsNew.releaseAdaptive.summary',
+    items: [
+      { icon: 'info.circle.fill', titleKey: 'whatsNew.guidance.title', bodyKey: 'whatsNew.guidance.body' },
+      { icon: 'shield.lefthalf.filled', titleKey: 'whatsNew.steady.title', bodyKey: 'whatsNew.steady.body' },
+    ],
+  },
+  {
     id: '2026-07-personal',
     version: '0.0.2',
-    latest: true,
     dateKey: 'whatsNew.releasePersonal.date',
     titleKey: 'whatsNew.releasePersonal.title',
     summaryKey: 'whatsNew.releasePersonal.summary',

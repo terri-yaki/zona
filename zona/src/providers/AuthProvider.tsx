@@ -1,7 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
-import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { clearPrivateUserState } from '@/cache/private-state';
 import { supabase } from '@/lib/supabase';
 import { translate } from '@/i18n';
 
@@ -18,14 +19,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const activeUserId = useRef<string | null>(null);
   const clearAuthError = useCallback(() => setAuthError(null), []);
+  const applySession = useCallback((nextSession: Session | null) => {
+    const previousUserId = activeUserId.current;
+    const nextUserId = nextSession?.user.id ?? null;
+    activeUserId.current = nextUserId;
+    setSession(nextSession);
+    if (previousUserId && previousUserId !== nextUserId) {
+      void clearPrivateUserState(previousUserId).catch((error) => {
+        console.warn('Could not clear the previous account cache.', error);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     const { data: authSubscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
-      setSession(nextSession);
+      applySession(nextSession);
     });
     const appStateSubscription = Platform.OS === 'web' ? null : AppState.addEventListener('change', (state) => {
       if (state === 'active') supabase.auth.startAutoRefresh();
@@ -37,7 +50,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
         if (error) setAuthError(translate('error.UNAUTHORIZED'));
-        setSession(data.session);
+        applySession(data.session);
         if (Platform.OS !== 'web' && AppState.currentState === 'active') supabase.auth.startAutoRefresh();
       } catch {
         if (active) setAuthError(translate('error.connection'));
@@ -52,7 +65,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       appStateSubscription?.remove();
       if (Platform.OS !== 'web') supabase.auth.stopAutoRefresh();
     };
-  }, []);
+  }, [applySession]);
 
   const value = useMemo(() => ({ session, loading, authError, clearAuthError }), [authError, clearAuthError, loading, session]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

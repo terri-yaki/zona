@@ -103,8 +103,13 @@ export default function SourcesScreen() {
     setBusySourceId(source.id);
     try {
       await renameSource(source.id, normalized);
+      patchSource(source.id, (current) => ({
+        ...current,
+        display_name: normalized,
+        api_key: current.api_key ? { ...current.api_key, name: normalized } : null,
+      }));
       setRenameSourceTarget(null);
-      await load();
+      void load();
     } catch (caught) {
       Alert.alert(t('sources.renameError'), userMessage(caught));
     } finally {
@@ -126,7 +131,18 @@ export default function SourcesScreen() {
             setBusySourceId(source.id);
             try {
               await revokeSource(source.id);
-              await load();
+              const revokedAt = new Date().toISOString();
+              patchSource(source.id, (current) => ({
+                ...current,
+                revoked_at: revokedAt,
+                api_key: current.api_key ? {
+                  ...current.api_key,
+                  is_active: false,
+                  revoked_at: current.api_key.revoked_at ?? revokedAt,
+                  updated_at: revokedAt,
+                } : null,
+              }));
+              void load();
             } catch (caught) {
               Alert.alert(t('sources.revokeError'), userMessage(caught));
             } finally {
@@ -143,7 +159,15 @@ export default function SourcesScreen() {
     setBusySourceId(source.id);
     try {
       await setSourceActive(source.id, isActive);
-      await load();
+      patchSource(source.id, (current) => ({
+        ...current,
+        api_key: current.api_key ? {
+          ...current.api_key,
+          is_active: isActive,
+          updated_at: new Date().toISOString(),
+        } : null,
+      }));
+      void load();
     } catch (caught) {
       Alert.alert(t('sources.updateKeyError'), userMessage(caught));
     } finally {
@@ -208,7 +232,8 @@ export default function SourcesScreen() {
         ? t('sources.testRejected')
         : t('sources.testInboxOnly');
       Alert.alert(t('sources.testSent'), message);
-      await load();
+      patchSource(source.id, (current) => ({ ...current, last_seen_at: new Date().toISOString() }));
+      void load();
     } catch (caught) {
       Alert.alert(t('sources.testError'), userMessage(caught));
     } finally {

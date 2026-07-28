@@ -113,12 +113,12 @@ describe('bundledChangelog', () => {
     const en = bundledChangelog('en');
     expect(en.length).toBeGreaterThan(0);
     expect(en[0].latest).toBe(true);
-    expect(en[0].title).toBe('Your notifications got more personal');
+    expect(en[0].title).toBe('Your inbox is ready when you are');
     expect(en[0].dateLabel).toBe('July 2026');
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 
     const zh = bundledChangelog('zh-Hant');
-    expect(zh[0].title).toBe('通知變得更有個性');
+    expect(zh[0].title).toBe('信箱準備好，你一打開就能看');
     expect(zh[0].dateLabel).toBe('2026 年 7 月');
   });
 });

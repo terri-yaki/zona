@@ -39,6 +39,7 @@ const androidSymbols = {
   'hand.raised.fill': 'privacy_tip',
   'key.fill': 'vpn_key',
   'info.circle.fill': 'info',
+  internaldrive: 'storage',
   'list.bullet.rectangle.fill': 'view_list',
   pencil: 'edit',
   person: 'person',

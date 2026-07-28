@@ -8,6 +8,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { useBottomSafePadding } from '@/components/TabScreen';
 import { createSource } from '@/lib/api';
 import { ensureAndroidSourceNotificationChannel } from '@/lib/android-source-notifications';
+import { markSourcesCacheDirty } from '@/hooks/useSources';
 import { normalizeOptional, validateSourceInput } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -36,6 +37,7 @@ export default function NewSourceScreen() {
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
+  const userId = session.user.id;
   if (!created && (!isVisible('sources.create') || !isEnabled('sources.create'))) {
     return (
       <View style={styles.unavailable}>
@@ -66,6 +68,7 @@ export default function NewSourceScreen() {
     try {
       const next = await createSource(displayName.trim(), normalizeOptional(hostname));
       setCreated(next);
+      markSourcesCacheDirty(userId);
       void ensureAndroidSourceNotificationChannel(next.sourceId, next.displayName).catch((channelError) => {
         console.warn('Could not create the Android source notification channel.', channelError);
       });

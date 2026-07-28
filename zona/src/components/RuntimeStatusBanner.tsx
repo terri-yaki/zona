@@ -4,16 +4,19 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 
 import { AppIcon } from '@/components/AppIcon';
+import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
 
 export function RuntimeStatusBanner() {
   const { t } = useI18n();
+  const { session } = useAuth();
   const { snapshot } = useRuntimeConfig();
-  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
+  const [dismissedAnnouncementKey, setDismissedAnnouncementKey] = useState<string | null>(null);
   const candidate = snapshot.announcements[0] ?? null;
-  const announcement = candidate?.id === dismissedAnnouncementId ? null : candidate;
+  const candidateKey = candidate && session?.user.id ? `${session.user.id}.${candidate.id}` : null;
+  const announcement = candidateKey === dismissedAnnouncementKey ? null : candidate;
   const maintenance = snapshot.releasePolicy.maintenanceMode;
   const buildNumber = Number.parseInt(Constants.nativeBuildVersion ?? '0', 10) || 0;
   const updateRequired = snapshot.releasePolicy.updateMode === 'hard'
@@ -24,13 +27,15 @@ export function RuntimeStatusBanner() {
 
   useEffect(() => {
     if (!candidate?.isDismissible) return;
-    const key = `zona.runtime-announcement.dismissed.${candidate.id}`;
+    const ownerUserId = session?.user.id;
+    if (!ownerUserId) return;
+    const key = `zona.runtime-announcement.dismissed.${ownerUserId}.${candidate.id}`;
     void AsyncStorage.getItem(key)
       .then((value) => {
-        if (value === '1') setDismissedAnnouncementId(candidate.id);
+        if (value === '1') setDismissedAnnouncementKey(`${ownerUserId}.${candidate.id}`);
       })
       .catch((error) => console.warn('Could not read the dismissed announcement.', error));
-  }, [candidate?.id, candidate?.isDismissible]);
+  }, [candidate?.id, candidate?.isDismissible, session?.user.id]);
 
   if (!maintenance && !updateAvailable && !announcement) return null;
 
@@ -50,10 +55,11 @@ export function RuntimeStatusBanner() {
   const actionLabel = maintenance || updateAvailable ? null : announcement?.actionLabel;
 
   async function dismissAnnouncement() {
-    if (!announcement?.isDismissible) return;
-    setDismissedAnnouncementId(announcement.id);
+    const ownerUserId = session?.user.id;
+    if (!announcement?.isDismissible || !ownerUserId) return;
+    setDismissedAnnouncementKey(`${ownerUserId}.${announcement.id}`);
     try {
-      await AsyncStorage.setItem(`zona.runtime-announcement.dismissed.${announcement.id}`, '1');
+      await AsyncStorage.setItem(`zona.runtime-announcement.dismissed.${ownerUserId}.${announcement.id}`, '1');
     } catch (error) {
       console.warn('Could not persist the dismissed announcement.', error);
     }

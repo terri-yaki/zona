@@ -582,6 +582,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_inbox_snapshot: {
+        Args: {
+          p_page_size?: number;
+          p_since?: string | null;
+          p_source_id?: string | null;
+          p_unread_only?: boolean;
+        };
+        Returns: Json;
+      };
       get_user_notification_preferences: {
         Args: Record<PropertyKey, never>;
         Returns: Json;

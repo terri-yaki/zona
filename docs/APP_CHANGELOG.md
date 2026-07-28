@@ -119,8 +119,18 @@ upsert is required to restore a manually deleted row.
 
 ## Writing rules
 
-- Write for people, not the commit log: one benefit per card, usually 1–5
+The full editorial standard and v0.0.6 reference are in
+[`CHANGELOG_WRITING.md`](CHANGELOG_WRITING.md). In short, What's New describes
+the result a person experiences, not the mechanism used to build it.
+
+- Write for people, not the commit log: one benefit per card, usually 1–4
   cards per release.
+- Turn technical capacity into a concrete outcome a person can picture.
+- Keep schema, migration, RPC, RLS, cache, bootstrap, and other implementation
+  terms out of in-app copy.
+- Do not publish invisible foundations or unfinished work as user features.
+- Avoid promises such as instant or guaranteed unless they are true in every
+  supported condition.
 - Keep English and Traditional Chinese together. Empty Traditional Chinese
   text falls back to English, but published notes should translate both.
 - Use full-width Traditional Chinese punctuation: `，` and `。`. Do not place

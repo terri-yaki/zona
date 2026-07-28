@@ -14,7 +14,7 @@ export type InboxFilters = {
   unreadOnly: boolean;
 };
 
-function rowToNotification(row: {
+type NotificationPayload = {
   attachment_bytes: number | null;
   attachment_mime: string | null;
   attachment_path: string | null;
@@ -30,7 +30,9 @@ function rowToNotification(row: {
   source_name_snapshot: string;
   title: string;
   user_id: string;
-}): InboxNotification {
+};
+
+function rowToNotification(row: NotificationPayload): InboxNotification {
   const data = row.data && typeof row.data === 'object' && !Array.isArray(row.data)
     ? row.data
     : {};
@@ -76,6 +78,52 @@ export async function unreadNotificationCount() {
     .is('read_at', null);
   if (error) throw dataError(error, translate('error.loadTitle'));
   return count ?? 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function snapshotRpcUnavailable(error: { code?: string; message?: string }) {
+  return error.code === '42883'
+    || error.code === 'PGRST202'
+    || /get_inbox_snapshot|schema cache/i.test(error.message ?? '');
+}
+
+export async function getInboxSnapshot(
+  filters: InboxFilters,
+  pageSize = inboxPageSize,
+) {
+  const { data, error } = await supabase.rpc('get_inbox_snapshot', {
+    p_page_size: pageSize,
+    p_since: filters.since,
+    p_source_id: filters.sourceId,
+    p_unread_only: filters.unreadOnly,
+  });
+
+  if (error) {
+    // Keep the app usable while the additive v0.0.7 migration rolls out.
+    if (!snapshotRpcUnavailable(error)) throw dataError(error, translate('error.loadTitle'));
+    const [page, unreadCount] = await Promise.all([
+      listNotifications(filters, null, pageSize),
+      unreadNotificationCount(),
+    ]);
+    return { ...page, unreadCount };
+  }
+
+  if (!isRecord(data) || !Array.isArray(data.rows) || typeof data.unreadCount !== 'number') {
+    throw dataError(null, translate('error.loadTitle'));
+  }
+  const rows = data.rows as NotificationPayload[];
+  const hasMore = rows.length > pageSize;
+  const items = rows.slice(0, pageSize).map(rowToNotification);
+  const last = items.at(-1);
+  return {
+    cursor: hasMore && last ? { createdAt: last.created_at, id: last.id } : null,
+    hasMore,
+    items,
+    unreadCount: data.unreadCount,
+  };
 }
 
 export async function getNotification(id: string) {

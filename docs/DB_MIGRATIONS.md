@@ -42,6 +42,9 @@ app.json bump **and** a changelog migration with the matching label.
       migrations. Seed content only (e.g. changelog rows) — bilingual
       (`*_en` + `*_zh_hant`), normalized items per `docs/APP_CHANGELOG.md`, and
       `released_at` chosen deliberately (it controls the LATEST badge).
+- [ ] **Data API grants are explicit**: creating an object in `public` does not
+      imply anonymous or authenticated access. Revoke broad defaults and grant
+      only the roles that need the table, view, or function.
 - [ ] **Compatibility renames**: do not replace a client-writable table or a
       Realtime table subscription with a view while an installed binary still
       depends on it. Introduce a canonical security-invoker view, owner RPCs,

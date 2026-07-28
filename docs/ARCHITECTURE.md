@@ -71,6 +71,14 @@ The Expo Router application owns presentation, navigation, authentication
 session state, permission onboarding, installation identity, push-token
 registration, and RLS-backed inbox synchronization.
 
+Starting in v0.0.7, bounded AsyncStorage caches keep recent owner-scoped inbox
+pages, sources, preferences, changelog content, and the evaluated runtime
+snapshot available between launches. Each key includes the owning user and a
+query or environment variant. Screens show fresh cached content immediately,
+keep stale content visible while revalidating, and never queue offline writes.
+Sign-out increments a per-user cache generation before clearing storage, so a
+late network response cannot put private data back after the session ends.
+
 Recommended internal boundaries as the application grows:
 
 - `providers/`: session and application-wide lifecycle state.

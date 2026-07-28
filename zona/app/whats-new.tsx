@@ -5,26 +5,36 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { useBottomSafePadding } from '@/components/TabScreen';
-import { fetchChangelogRows } from '@/data/changelog';
+import { fetchChangelogRows, getCachedChangelogRows } from '@/data/changelog';
 import { getLocaleTag } from '@/i18n';
 import { bundledChangelog, toChangelogReleases, type ChangelogRow } from '@/lib/changelog';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, shadows } from '@/theme';
 
 export default function WhatsNewScreen() {
   const { language, t } = useI18n();
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
   const bottomPadding = useBottomSafePadding(22);
   const [serverRows, setServerRows] = useState<ChangelogRow[] | null | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
-    void fetchChangelogRows().then((rows) => {
-      if (active) setServerRows(rows);
-    });
+    if (!userId) return () => { active = false; };
+    void (async () => {
+      const cached = await getCachedChangelogRows(userId);
+      if (!active) return;
+      if (cached.rows !== null) setServerRows(cached.rows);
+      if (cached.state === 'fresh') return;
+      const rows = await fetchChangelogRows(userId);
+      if (active && rows !== null) setServerRows(rows);
+      else if (active && cached.rows === null) setServerRows(null);
+    })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [userId]);
 
   // Server content wins when available (auto-updates without an app release);
   // the bundled copy covers offline and unmigrated backends.

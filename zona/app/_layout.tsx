@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
+import { CacheLifecycleSync } from '@/components/CacheLifecycleSync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
@@ -115,6 +116,7 @@ function RootNavigator() {
   const { isEnabled, isVisible } = useRuntimeConfig();
   return (
     <>
+      <CacheLifecycleSync />
           {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}

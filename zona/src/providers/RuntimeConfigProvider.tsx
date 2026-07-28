@@ -1,8 +1,19 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 
-import { fetchAppBootstrap } from '@/data/bootstrap';
+import {
+  appBootstrapCacheVariant,
+  fetchAppBootstrap,
+  getAppBootstrapContext,
+  type AppBootstrapContext,
+} from '@/data/bootstrap';
+import {
+  currentCacheLease,
+  isCacheLeaseCurrent,
+  markCacheDirty,
+  readCache,
+  writeCache,
+} from '@/cache/store';
 import {
   defaultRuntimeSnapshot,
   featureEnabled,
@@ -15,7 +26,6 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { supabase } from '@/lib/supabase';
 
-type CachedSnapshot = { fetchedAt: number; snapshot: RuntimeSnapshot };
 type RuntimeConfigContextValue = {
   snapshot: RuntimeSnapshot;
   loading: boolean;
@@ -23,6 +33,20 @@ type RuntimeConfigContextValue = {
   refresh: () => Promise<void>;
   isVisible: (key: FeatureKey) => boolean;
   isEnabled: (key: FeatureKey) => boolean;
+};
+
+type RuntimeState = {
+  fetchedAt: number;
+  scopeKey: string | null;
+  snapshot: RuntimeSnapshot;
+  variant: string | null;
+};
+
+type ActiveContext = {
+  bootstrap: AppBootstrapContext;
+  ownerUserId: string;
+  scopeKey: string;
+  variant: string;
 };
 
 const RuntimeConfigContext = createContext<RuntimeConfigContextValue>({
@@ -34,12 +58,7 @@ const RuntimeConfigContext = createContext<RuntimeConfigContextValue>({
   isEnabled: () => true,
 });
 
-const cachePrefix = 'zona.runtime-config.v1';
 const inFlight = new Map<string, Promise<RuntimeSnapshot>>();
-
-function cacheKey(userId: string, language: string) {
-  return `${cachePrefix}.${userId}.${language}`;
-}
 
 function loadOnce(key: string, loader: () => Promise<RuntimeSnapshot>) {
   const existing = inFlight.get(key);
@@ -53,94 +72,118 @@ export function RuntimeConfigProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const { language } = useI18n();
   const userId = session?.user.id ?? null;
-  const key = userId ? cacheKey(userId, language) : null;
-  const [snapshot, setSnapshot] = useState(defaultRuntimeSnapshot);
+  const scopeKey = userId ? `${userId}|${language}` : null;
+  const [state, setState] = useState<RuntimeState>({
+    fetchedAt: 0,
+    scopeKey: null,
+    snapshot: defaultRuntimeSnapshot,
+    variant: null,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetchedAt = useRef(0);
-  const activeKey = useRef<string | null>(key);
+  const activeScope = useRef(scopeKey);
+  const activeContext = useRef<ActiveContext | null>(null);
 
-  useEffect(() => {
-    activeKey.current = key;
-  }, [key]);
+  const snapshot = state.scopeKey === scopeKey ? state.snapshot : defaultRuntimeSnapshot;
+  const fetchedAt = state.scopeKey === scopeKey ? state.fetchedAt : 0;
 
   const refresh = useCallback(async () => {
-    if (!key || !userId) return;
+    const target = activeContext.current;
+    if (!target || activeScope.current !== target.scopeKey) return;
+    const lease = currentCacheLease(target.ownerUserId);
     setLoading(true);
     try {
-      const next = await loadOnce(key, () => fetchAppBootstrap(language));
-      if (activeKey.current !== key) return;
+      const requestKey = `${target.ownerUserId}|${target.variant}`;
+      const next = await loadOnce(requestKey, () => fetchAppBootstrap(language, target.bootstrap));
+      if (activeScope.current !== target.scopeKey || !isCacheLeaseCurrent(lease)) return;
       const now = Date.now();
-      setSnapshot(next);
-      fetchedAt.current = now;
+      setState({
+        fetchedAt: now,
+        scopeKey: target.scopeKey,
+        snapshot: next,
+        variant: target.variant,
+      });
       setError(null);
-      const cached: CachedSnapshot = { fetchedAt: now, snapshot: next };
       try {
-        await AsyncStorage.setItem(key, JSON.stringify(cached));
+        await writeCache(target.ownerUserId, 'runtime', target.variant, next, { fetchedAt: now, lease });
       } catch (storageError) {
         console.warn('Could not cache runtime configuration.', storageError);
       }
     } catch (caught) {
-      if (activeKey.current === key) {
+      if (activeScope.current === target.scopeKey) {
         setError(caught instanceof Error ? caught.message : 'Runtime configuration is unavailable.');
       }
     } finally {
-      if (activeKey.current === key) setLoading(false);
+      if (activeScope.current === target.scopeKey) setLoading(false);
     }
-  }, [key, language, userId]);
+  }, [language]);
 
   useEffect(() => {
     let active = true;
+    activeScope.current = scopeKey;
+    activeContext.current = null;
     void (async () => {
-      let raw: string | null = null;
-      try {
-        raw = key ? await AsyncStorage.getItem(key) : null;
-      } catch (storageError) {
-        console.warn('Could not read cached runtime configuration.', storageError);
-      }
+      await Promise.resolve();
       if (!active) return;
-      setSnapshot(defaultRuntimeSnapshot);
-      fetchedAt.current = 0;
       setError(null);
-      if (active && raw) {
-        try {
-          const cached = JSON.parse(raw) as Partial<CachedSnapshot>;
-          const parsed = parseRuntimeSnapshot(cached.snapshot);
-          setSnapshot(parsed);
-          fetchedAt.current = typeof cached.fetchedAt === 'number' ? cached.fetchedAt : 0;
-        } catch {
-          if (key) {
-            try {
-              await AsyncStorage.removeItem(key);
-            } catch (storageError) {
-              console.warn('Could not remove invalid runtime configuration.', storageError);
-            }
-          }
+      if (!scopeKey || !userId) {
+        setState({ fetchedAt: 0, scopeKey: null, snapshot: defaultRuntimeSnapshot, variant: null });
+        setLoading(false);
+        return;
+      }
+      setState({ fetchedAt: 0, scopeKey, snapshot: defaultRuntimeSnapshot, variant: null });
+      setLoading(true);
+      try {
+        const bootstrap = await getAppBootstrapContext(language);
+        if (!active || activeScope.current !== scopeKey) return;
+        const variant = appBootstrapCacheVariant(bootstrap);
+        activeContext.current = { bootstrap, ownerUserId: userId, scopeKey, variant };
+        const cached = await readCache<RuntimeSnapshot>(userId, 'runtime', variant, Number.POSITIVE_INFINITY);
+        if (!active || activeScope.current !== scopeKey) return;
+
+        let cacheIsFresh = false;
+        if (cached.value) {
+          const parsed = parseRuntimeSnapshot(cached.value);
+          setState({ fetchedAt: cached.fetchedAt, scopeKey, snapshot: parsed, variant });
+          cacheIsFresh = cached.state === 'fresh'
+            && Date.now() - cached.fetchedAt < parsed.refreshAfterSeconds * 1000;
+        }
+        if (cacheIsFresh) {
+          setLoading(false);
+        } else {
+          await refresh();
+        }
+      } catch (caught) {
+        if (active && activeScope.current === scopeKey) {
+          setLoading(false);
+          setError(caught instanceof Error ? caught.message : 'Runtime configuration is unavailable.');
         }
       }
-      if (active && key) await refresh();
     })();
 
     return () => { active = false; };
-  }, [key, refresh]);
+  }, [language, refresh, scopeKey, userId]);
 
   useEffect(() => {
-    if (!key) return;
-    const onAppState = (state: AppStateStatus) => {
-      if (state !== 'active') return;
+    if (!scopeKey) return;
+    const onAppState = (nextState: AppStateStatus) => {
+      if (nextState !== 'active') return;
       const ttl = snapshot.refreshAfterSeconds * 1000;
-      if (Date.now() - fetchedAt.current >= ttl) void refresh();
+      if (Date.now() - fetchedAt >= ttl) void refresh();
     };
     const subscription = AppState.addEventListener('change', onAppState);
     return () => subscription.remove();
-  }, [key, refresh, snapshot.refreshAfterSeconds]);
+  }, [fetchedAt, refresh, scopeKey, snapshot.refreshAfterSeconds]);
 
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onChange = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void refresh(), 200);
+      timer = setTimeout(() => {
+        void markCacheDirty(userId, 'runtime').catch(() => undefined);
+        void refresh();
+      }, 200);
     };
     const globalChannel = supabase
       .channel('zona:config', { config: { private: true } })

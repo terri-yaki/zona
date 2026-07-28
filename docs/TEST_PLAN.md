@@ -144,6 +144,14 @@ boundaries. Cover:
 - notification interaction routing with missing, malformed, or unauthorized IDs;
 - current-installation registration refresh and safe sign-out;
 - offline transitions and recovery without representing errors as an empty inbox.
+- cold launch from a fresh on-device cache, stale content followed by background
+  refresh, manual refresh, and recovery from corrupt or oversized cache data;
+- strict account isolation across sign-out and account switching, including a
+  delayed request that completes after the former user's cache is cleared;
+- bounded cache retention, size reporting, manual clearing, and the absence of
+  any offline write queue;
+- one-call inbox snapshot behavior plus the temporary two-read fallback when
+  the additive v0.0.7 RPC is not available yet;
 - stale-while-revalidate runtime bootstrap caching, fail-safe compiled defaults,
   per-feature hidden/disabled behavior, build update banners, maintenance mode,
   and persisted dismissal of dismissible announcements;
