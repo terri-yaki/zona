@@ -1,0 +1,114 @@
+[
+  {
+    "file": "release-notes.en.md",
+    "sha256": "3dc9adf84d20114f4a080cd8e39afcd2a5df3ea391c251c0cfbfdf0e508404b2"
+  },
+  {
+    "file": "release-notes.zh-Hant.md",
+    "sha256": "7ed0b092b874a96daf353a8a4a4febf8b89f7626be47574ecef1309172f60516"
+  },
+  {
+    "file": "snapshot/CHANGELOG.md",
+    "sha256": "50c9280fc4d6b4065594ca05c5ff97a04e9b77cfdf93257f938942de8b979987"
+  },
+  {
+    "file": "snapshot/docs/adr/0001-source-token-architecture.md",
+    "sha256": "2228483258a4a3edec8ac7594a0926de857e2bdffff9f82974873d8de05338f0"
+  },
+  {
+    "file": "snapshot/docs/adr/0002-anonymous-sign-in.md",
+    "sha256": "ea29cdb4016fc4bb590418154a833b4f9e80189c864cd51d2c3d3d2131ce1d37"
+  },
+  {
+    "file": "snapshot/docs/adr/0003-runtime-controls-and-canonical-schema.md",
+    "sha256": "fec2949d42ece304fd931e4eb235271196b1ac24f1cb04a45e03f6e5226b7704"
+  },
+  {
+    "file": "snapshot/docs/ANDROID_PUSH.md",
+    "sha256": "3696dfef97cd3938087be1d896f1aa9de5bb293b3ded37da766f278b1e579b53"
+  },
+  {
+    "file": "snapshot/docs/API.md",
+    "sha256": "5dffaa041b3105a6a062294fa5772d18a045b6b8e9a2be807134e39c4b59b539"
+  },
+  {
+    "file": "snapshot/docs/APP_CHANGELOG.md",
+    "sha256": "6467a10645dbbd1903a1e0675a224e4a985bc0efc08ae878c81de9806ec31687"
+  },
+  {
+    "file": "snapshot/docs/ARCHITECTURE.md",
+    "sha256": "08dc98955fb16accd7979d39669c45ce435a6c662a1e4846d8d1a233183345b6"
+  },
+  {
+    "file": "snapshot/docs/DB_MIGRATIONS.md",
+    "sha256": "2b2f1e6d3cd1056e929b12aea6dfa407dae4cca1e344f46e44157216301a67aa"
+  },
+  {
+    "file": "snapshot/docs/LIVE_ACTIVITY.md",
+    "sha256": "58d77ccc39a8c153ce766e4e049290f0466f9a51edabd0eab289675a30a76a1c"
+  },
+  {
+    "file": "snapshot/docs/live-activity-redesign.png",
+    "sha256": "ab9feafedbad82019473427f1de11598c51b3235c4a7e5edee3b2eece5f5f917"
+  },
+  {
+    "file": "snapshot/docs/openapi.yaml",
+    "sha256": "95c15b8e5f6c8dbc8d5e04e4cd0b710a3e033e6683ab8170df4907c396cf2a94"
+  },
+  {
+    "file": "snapshot/docs/PRD.md",
+    "sha256": "65898bfd2439b43b8a1afaa5ad0436abb20d4efbb716e487c2ef5ab04309a2af"
+  },
+  {
+    "file": "snapshot/docs/PREVIEW_UPDATES.md",
+    "sha256": "12e34876f33e804fb11ca8f0e3047dd19591c54d9466ed60f6a6a8ca55f1ea60"
+  },
+  {
+    "file": "snapshot/docs/PUBLIC_LAUNCH_PLAN.md",
+    "sha256": "7e21cd481e92578481158beab4a50a5cf76047c80f654c891bf0dab92c938d65"
+  },
+  {
+    "file": "snapshot/docs/RELEASE.md",
+    "sha256": "de91849697386d3f04680a8b7ce1f74db5f5f23ec977456fca4621a44e1809e5"
+  },
+  {
+    "file": "snapshot/docs/RUNBOOK.md",
+    "sha256": "9c9b12824451350b0588c8e1d087bb2382bae33c57a556eb4270a98cec914156"
+  },
+  {
+    "file": "snapshot/docs/RUNTIME_CONTROLS.md",
+    "sha256": "4c1373ef3c1c96963739b2c59adb78538a2fffc2fdf11db920562a9718aee7ae"
+  },
+  {
+    "file": "snapshot/docs/TEST_PLAN.md",
+    "sha256": "4dcfe8ceba7fc9229d5638c84fa23b3961d8de7aaac6f33831d8f3257a06b09c"
+  },
+  {
+    "file": "snapshot/docs/THREAT_MODEL.md",
+    "sha256": "7e4421629442d9d8597bb03b558442b3f2b3feb23ad79c6a2f6891f95f1ed371"
+  },
+  {
+    "file": "snapshot/PRIVACY.md",
+    "sha256": "9e8fb3e789ba31f6655a5563daaecd5dda2662ed1b50669218c09d22ab7bd9c8"
+  },
+  {
+    "file": "snapshot/README.md",
+    "sha256": "361b101de908f20b27e1f7b037439081d8c0083daf9c87d7c91ee8cf7716ed71"
+  },
+  {
+    "file": "snapshot/SECURITY.md",
+    "sha256": "5b241330094fe0215f5e20ea10c116dfa25b0f2b11f32e109456590a0256baab"
+  },
+  {
+    "file": "snapshot/supabase/README.md",
+    "sha256": "dd005a401a7839d628c3d9d57191b6cd6688797841a95d3193aa1898b8d30e25"
+  },
+  {
+    "file": "snapshot/zona/README.md",
+    "sha256": "099cea777d249d19a6c606ecb9f145724fcea36ef095cfc2ba8cc4f5731a2e69"
+  },
+  {
+    "file": "version-items.json",
+    "sha256": "d4a8264d84f3e80c2adf6ac5df35c0bfeda9cc650be516eb675eca4a119e9521"
+  }
+]

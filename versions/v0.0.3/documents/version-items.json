@@ -1,0 +1,38 @@
+{
+  "en": {
+    "title": "Make every alert sound like yours",
+    "summary": "A wider sound collection and clearer release stories make Zona easier to recognize and understand.",
+    "items": [
+      {
+        "title": "Choose from 66 iPhone tones",
+        "body": "Give different computers a sound that stands out without feeling out of place."
+      },
+      {
+        "title": "What's new, right in Zona",
+        "body": "See the useful changes in each update without hunting through technical notes."
+      },
+      {
+        "title": "A safer goodbye",
+        "body": "Account deletion now asks twice before removing your Zona data."
+      }
+    ]
+  },
+  "zhHant": {
+    "title": "讓每個提醒都有你的聲音",
+    "summary": "更多提示音和更清楚的更新故事，讓 Zona 更容易辨認和了解。",
+    "items": [
+      {
+        "title": "從 66 款 iPhone 提示音中選擇",
+        "body": "為不同電腦挑選容易辨認，又自然順耳的聲音。"
+      },
+      {
+        "title": "直接在 Zona 查看更新",
+        "body": "不用翻查技術文件，也能知道每次更新帶來甚麼。"
+      },
+      {
+        "title": "告別前多一重保障",
+        "body": "刪除帳戶前會再次確認，避免意外移除 Zona 資料。"
+      }
+    ]
+  }
+}

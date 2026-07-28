@@ -1,0 +1,78 @@
+[
+  {
+    "file": "release-notes.en.md",
+    "sha256": "13e62ea6691595580c69e2d52c5bc2d86ad832e55f631a773399389d3432a679"
+  },
+  {
+    "file": "release-notes.zh-Hant.md",
+    "sha256": "8b4a5a3eb34cdbd4a5eb143945fa653ee2ad0355fb5a2b7281f4f977f5fbbe0b"
+  },
+  {
+    "file": "snapshot/CHANGELOG.md",
+    "sha256": "a7bd0dbf00f6ff9808cd6f087aa446b74cd09ad4389d7e3db9ec5a5430f00729"
+  },
+  {
+    "file": "snapshot/docs/adr/0001-source-token-architecture.md",
+    "sha256": "2228483258a4a3edec8ac7594a0926de857e2bdffff9f82974873d8de05338f0"
+  },
+  {
+    "file": "snapshot/docs/adr/0002-anonymous-sign-in.md",
+    "sha256": "ea29cdb4016fc4bb590418154a833b4f9e80189c864cd51d2c3d3d2131ce1d37"
+  },
+  {
+    "file": "snapshot/docs/API.md",
+    "sha256": "8bb959c829dcbe56caf5fe261eda481812f33eae2894c242266b8376e90ceb08"
+  },
+  {
+    "file": "snapshot/docs/ARCHITECTURE.md",
+    "sha256": "103bf0b073ee4b73f382a4b65f2cfcab8b5a3cd368e99c6c42e4879dc51785aa"
+  },
+  {
+    "file": "snapshot/docs/openapi.yaml",
+    "sha256": "053e755ba24c5ec781370ae19c773b158d5074f8fa605841181b8612acf79fd6"
+  },
+  {
+    "file": "snapshot/docs/PRD.md",
+    "sha256": "229876fd6bdcb40d5ce496da70214727c721fc434549100b454782586f49f9f5"
+  },
+  {
+    "file": "snapshot/docs/RELEASE.md",
+    "sha256": "8279f57dce9368b8974cd015d693de60ca13aba127a81710e2ababbaa995f198"
+  },
+  {
+    "file": "snapshot/docs/RUNBOOK.md",
+    "sha256": "d44219d803edac4b15a801a90cafcf9123b17ee2f83e0e2cb43c8f645503d7b6"
+  },
+  {
+    "file": "snapshot/docs/TEST_PLAN.md",
+    "sha256": "91bfa1bd42f662de78bcdab64f0d83fdedcb052b6175a13c62b35d5e75193297"
+  },
+  {
+    "file": "snapshot/docs/THREAT_MODEL.md",
+    "sha256": "4e91f4ca5391f49e59a6f0d3115c2dc73093f69a5462352875e4ebe5405e4511"
+  },
+  {
+    "file": "snapshot/PRIVACY.md",
+    "sha256": "9e8fb3e789ba31f6655a5563daaecd5dda2662ed1b50669218c09d22ab7bd9c8"
+  },
+  {
+    "file": "snapshot/README.md",
+    "sha256": "8db916c1ce98b2bd888902ce64cd174c9a63568be032294849c8230f1de0481f"
+  },
+  {
+    "file": "snapshot/SECURITY.md",
+    "sha256": "64cecfa3974770abc7bc3dc8eadb9e855239639c9d8be57f4aaf22e28a473be7"
+  },
+  {
+    "file": "snapshot/supabase/README.md",
+    "sha256": "8e8e31b51449aa2255ad8853819fccecb3d8da26f71ef14fde7d03921090a600"
+  },
+  {
+    "file": "snapshot/zona/README.md",
+    "sha256": "ca304a22719c592264fe3bb7ebfecc1e295dd8be330063291a84764532a5fd35"
+  },
+  {
+    "file": "version-items.json",
+    "sha256": "f5a0293dba999eea21533d95941c37f35f91df573741b32cbcb6dee9aa3eeb9f"
+  }
+]

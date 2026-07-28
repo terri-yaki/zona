@@ -1,0 +1,30 @@
+{
+  "en": {
+    "title": "See what needs attention first",
+    "summary": "Alert colors now help the important things rise above the everyday noise.",
+    "items": [
+      {
+        "title": "Four clear levels",
+        "body": "Use green, yellow, orange, or red to show how urgently an alert needs attention."
+      },
+      {
+        "title": "Priority you can spot instantly",
+        "body": "Severity appears in both notifications and the inbox, while ordinary alerts stay clean and white."
+      }
+    ]
+  },
+  "zhHant": {
+    "title": "一眼看出甚麼最重要",
+    "summary": "提醒顏色讓重要事項自然浮現，不再被日常訊息淹沒。",
+    "items": [
+      {
+        "title": "四個清楚等級",
+        "body": "用綠、黃、橙或紅色，表達提醒需要多快處理。"
+      },
+      {
+        "title": "優先次序一眼可見",
+        "body": "通知和收件箱都會顯示重要程度，一般提醒則保持簡潔白色。"
+      }
+    ]
+  }
+}

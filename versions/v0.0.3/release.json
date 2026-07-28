@@ -1,0 +1,14 @@
+{
+  "version": "0.0.3",
+  "sourceCommit": "6fb30265407bb682f047aaaeb885c0532d335f37",
+  "sourceBranch": null,
+  "gitTag": null,
+  "boundaryConfidence": "inferred",
+  "boundaryNote": "Last commit before Android and 0.0.4 development began; package.json still reports an older version.",
+  "previousVersion": "0.0.2",
+  "appJsonVersion": "0.0.3",
+  "packageJsonVersion": "0.0.1",
+  "migrationCount": 16,
+  "deltaMigrationCount": 8,
+  "documentCount": 25
+}

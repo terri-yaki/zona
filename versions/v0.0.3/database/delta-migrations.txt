@@ -1,0 +1,8 @@
+202607250001_harden_account_deletion.sql
+202607250002_ios_alert_tone_sounds.sql
+202607250003_remove_zona_sound_presets.sql
+202607250004_app_changelog.sql
+202607260001_restore_notification_attachments_bucket.sql
+202607260002_fix_delete_account_coalesce.sql
+202607260003_changelog_0_0_3.sql
+202607260004_changelog_ci_test.sql

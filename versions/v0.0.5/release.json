@@ -1,0 +1,14 @@
+{
+  "version": "0.0.5",
+  "sourceCommit": "5d2c8f16b38be914813f451cc507e1e7e26e042e",
+  "sourceBranch": null,
+  "gitTag": null,
+  "boundaryConfidence": "strong",
+  "boundaryNote": "Explicit severity release commit; app.json and package.json both report 0.0.5.",
+  "previousVersion": "0.0.4",
+  "appJsonVersion": "0.0.5",
+  "packageJsonVersion": "0.0.5",
+  "migrationCount": 19,
+  "deltaMigrationCount": 1,
+  "documentCount": 26
+}

@@ -1,0 +1,30 @@
+{
+  "en": {
+    "title": "Zona now supports Android!",
+    "summary": "Your PC alerts can now follow you to either iPhone or Android.",
+    "items": [
+      {
+        "title": "One inbox across phones",
+        "body": "Receive the same source-aware alerts on the mobile platform you use."
+      },
+      {
+        "title": "Made to feel at home on Android",
+        "body": "Navigation, spacing, notification channels, and sounds now fit the platform."
+      }
+    ]
+  },
+  "zhHant": {
+    "title": "Zona 現已支援 Android！",
+    "summary": "無論使用 iPhone 還是 Android，電腦提醒都可以跟著你。",
+    "items": [
+      {
+        "title": "不同手機，同一個收件箱",
+        "body": "在你使用的平台接收提醒，並清楚看到每則訊息的來源。"
+      },
+      {
+        "title": "真正融入 Android",
+        "body": "導覽、版面、通知頻道和聲音都更符合 Android 的使用方式。"
+      }
+    ]
+  }
+}

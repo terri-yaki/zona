@@ -1,0 +1,46 @@
+{
+  "en": {
+    "title": "Zona adapts more smoothly",
+    "summary": "The app can now keep you informed when something changes, without getting in the way of essential controls.",
+    "items": [
+      {
+        "title": "Helpful notices at the right moment",
+        "body": "Zona can explain maintenance or important updates inside the app when they matter."
+      },
+      {
+        "title": "Only the updates meant for you",
+        "body": "What's New can show the right highlights for your phone and hide outdated cards without erasing history."
+      },
+      {
+        "title": "Essential controls stay within reach",
+        "body": "Even during a temporary service pause, privacy, account, and safety actions remain available."
+      },
+      {
+        "title": "A steadier foundation",
+        "body": "Zona can adjust selected features safely as the service grows, so fixes can reach you with less disruption."
+      }
+    ]
+  },
+  "zhHant": {
+    "title": "Zona 現在更懂得靈活配合",
+    "summary": "當服務有變化時，應用程式可以清楚通知你，同時保留重要控制。",
+    "items": [
+      {
+        "title": "在適當時候提供提示",
+        "body": "需要維護或有重要更新時，Zona 可以直接在應用程式內說明。"
+      },
+      {
+        "title": "只顯示適合你的更新",
+        "body": "「最新消息」會按你的手機顯示相關內容，過時項目可以隱藏，歷史仍然保留。"
+      },
+      {
+        "title": "重要控制隨時可用",
+        "body": "即使部分服務暫停，私隱、帳戶和安全操作仍可繼續使用。"
+      },
+      {
+        "title": "為未來打好基礎",
+        "body": "Zona 可以隨服務成長安全調整部分功能，讓修正帶來更少干擾。"
+      }
+    ]
+  }
+}

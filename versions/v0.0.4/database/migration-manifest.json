@@ -1,0 +1,128 @@
+[
+  {
+    "file": "202607200001_initial.sql",
+    "originPath": "supabase/migrations/202607200001_initial.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "d72530d23b0021964d7db1c7384f96b036868d74",
+    "sha256": "be99f4d93933a7d0a261fab75c78453d811aada0ebaf0b38215e9b53a6c956db"
+  },
+  {
+    "file": "202607200002_production_hardening.sql",
+    "originPath": "supabase/migrations/202607200002_production_hardening.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "d0ecdefed302b3229bcf7e1b28c8b49af5fe9c8b",
+    "sha256": "3e6349d413480b243261265632257a1ce93a9e02f9362991cd018024aaea0edf"
+  },
+  {
+    "file": "202607200003_notification_attachments.sql",
+    "originPath": "supabase/migrations/202607200003_notification_attachments.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "5b926ec3fc6e1611e80adeb433459a3c2a8bf773",
+    "sha256": "c8c0e220fc07235bae40f65d09b976c5dae2dbb7967c26743c119ef1975bc30c"
+  },
+  {
+    "file": "202607240001_app_options_api_keys.sql",
+    "originPath": "supabase/migrations/202607240001_app_options_api_keys.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "2e0c521ca775c2bc54c797b08bd38f79da7b7a47",
+    "sha256": "cbd18eb2ca77b3c0d31167ea4e0150c960a010b023ca3d7896e7940f02c8987f"
+  },
+  {
+    "file": "202607240002_fix_api_key_last_used.sql",
+    "originPath": "supabase/migrations/202607240002_fix_api_key_last_used.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "f6452096a8e3dbcd1a9c8c5470d4f30b7b807cea",
+    "sha256": "3c6c7315cb8d466d01742bbcbd21d30aa7f034f6a32a2803c361d0d64ac41e14"
+  },
+  {
+    "file": "202607240003_per_host_sounds_and_fast_mobile_rpc.sql",
+    "originPath": "supabase/migrations/202607240003_per_host_sounds_and_fast_mobile_rpc.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "dc67e9cc14e7885d070f8a48efbe51f24744d332",
+    "sha256": "946c480fc24f1a339099fff77aaafa14e8dd52fc573be8b286a93f68db0a0878"
+  },
+  {
+    "file": "202607240004_more_notification_sounds.sql",
+    "originPath": "supabase/migrations/202607240004_more_notification_sounds.sql",
+    "introducedIn": "0.0.2",
+    "gitBlob": "c78f8740c797cb10d09287d89a781f9c72a43e44",
+    "sha256": "a826cb3747225473d318802cdcbc206300da4c37cd5c7776bf04d2bc005701f7"
+  },
+  {
+    "file": "202607240005_live_activity_option.sql",
+    "originPath": "supabase/migrations/202607240005_live_activity_option.sql",
+    "introducedIn": "0.0.2",
+    "gitBlob": "f0ddd53c99baa25193139b81b6ea8753d9f307c1",
+    "sha256": "84c05cbff5f09039db33075ce59862dcf8876d7238db128e6fa72e8b18724d0e"
+  },
+  {
+    "file": "202607250001_harden_account_deletion.sql",
+    "originPath": "supabase/migrations/202607250001_harden_account_deletion.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "41c45a05a6d70f513cbe0b21047576034396d0ef",
+    "sha256": "ee043f163c8370cbd4671d20ac00acc9b841740b6fce710ff142c08b783d4747"
+  },
+  {
+    "file": "202607250002_ios_alert_tone_sounds.sql",
+    "originPath": "supabase/migrations/202607250002_ios_alert_tone_sounds.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "7e9d775f5ede8438cc73c5090e12f4c84f17c3a5",
+    "sha256": "4e1f8c850aaf1ddeada03d7374818cda996a22eed826b5eaad6e6ca1d6e301fa"
+  },
+  {
+    "file": "202607250003_remove_zona_sound_presets.sql",
+    "originPath": "supabase/migrations/202607250003_remove_zona_sound_presets.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "ab1b88e7729330bd03d62c38a911744153b0d3b9",
+    "sha256": "b055aa6bbc6136ae48aacbb0aac8876fe13c0a12401f762c2c4251bce2644be9"
+  },
+  {
+    "file": "202607250004_app_changelog.sql",
+    "originPath": "supabase/migrations/202607250004_app_changelog.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "2728c3db875722af8a66ba20f5f0a7c9a3bd12cd",
+    "sha256": "60e7ccb8979ce5d73ec45969382a19af27e05b465eb6253ad11ccca012de23e8"
+  },
+  {
+    "file": "202607260001_restore_notification_attachments_bucket.sql",
+    "originPath": "supabase/migrations/202607260001_restore_notification_attachments_bucket.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "9e245f6184b85e326645a50c8acbd03b21761c9f",
+    "sha256": "ba2270d0327c02449a0d870f06c125ba4efbbf8391f12431419dc9e67cd6dea2"
+  },
+  {
+    "file": "202607260002_fix_delete_account_coalesce.sql",
+    "originPath": "supabase/migrations/202607260002_fix_delete_account_coalesce.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "b542efe5701399e96ff7cb588de92b8f955f191c",
+    "sha256": "3ce62f52108b2834db76fc9211def2b4e8c8699e15595dacf0a4ea4b25db49f3"
+  },
+  {
+    "file": "202607260003_changelog_0_0_3.sql",
+    "originPath": "supabase/migrations/202607260003_changelog_0_0_3.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "cbd7825e1c0f2a352410e324b6c5fa41af244583",
+    "sha256": "8ed6ecd15b1aa52b578c9eaeda23d6b1c16456e939aaf280ba39a1b9e4d3fff5"
+  },
+  {
+    "file": "202607260004_changelog_ci_test.sql",
+    "originPath": "supabase/migrations/202607260004_changelog_ci_test.sql",
+    "introducedIn": "0.0.3",
+    "gitBlob": "c8ea71758197444add38d442c12ef0c2e821aaef",
+    "sha256": "5c966ca3004e4755687273e06781f8275427e9ff5cb972b407a18e009b8d00c5"
+  },
+  {
+    "file": "20260726060048_android_push_devices.sql",
+    "originPath": "supabase/migrations/20260726060048_android_push_devices.sql",
+    "introducedIn": "0.0.4",
+    "gitBlob": "2182d3884ab85754aefa601f20a774e44870c9c0",
+    "sha256": "0b9b169dcbe563d0be8c778bc6617068f4f1ee90aee4ad56b95a0b7cb44b3e37"
+  },
+  {
+    "file": "20260726075743_changelog_0_0_4_android_support.sql",
+    "originPath": "supabase/migrations/20260726075743_changelog_0_0_4_android_support.sql",
+    "introducedIn": "0.0.4",
+    "gitBlob": "c468d33d70c6c85a0823a6dd74d5d6bf2e005cd5",
+    "sha256": "ffda1e40a61f90875617c5d058d374d89526475e7692ed3073b01604ec5816a6"
+  }
+]

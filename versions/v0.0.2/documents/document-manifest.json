@@ -1,0 +1,94 @@
+[
+  {
+    "file": "release-notes.en.md",
+    "sha256": "3329e31b320196697e38cd562cd22bda029e462a7b5068d11e4732c5214154c0"
+  },
+  {
+    "file": "release-notes.zh-Hant.md",
+    "sha256": "04a357c584745639bfb4907dc68550a85876a6c36d56a15f3d2ab64707d7ee79"
+  },
+  {
+    "file": "snapshot/CHANGELOG.md",
+    "sha256": "4edf7f3d5ca97b24420972615c4d5d2ca603e313567739aff3ebcd0e440641d0"
+  },
+  {
+    "file": "snapshot/docs/adr/0001-source-token-architecture.md",
+    "sha256": "2228483258a4a3edec8ac7594a0926de857e2bdffff9f82974873d8de05338f0"
+  },
+  {
+    "file": "snapshot/docs/adr/0002-anonymous-sign-in.md",
+    "sha256": "ea29cdb4016fc4bb590418154a833b4f9e80189c864cd51d2c3d3d2131ce1d37"
+  },
+  {
+    "file": "snapshot/docs/API.md",
+    "sha256": "fb925e8f4c09d2a4459822672474df7de7f3f39e0fb6fe1b358af8151d73ac9d"
+  },
+  {
+    "file": "snapshot/docs/ARCHITECTURE.md",
+    "sha256": "e40eadb1711c1a8fdf1010be9592d5ae9b77fbb6b7389882f26ec0192f5df15b"
+  },
+  {
+    "file": "snapshot/docs/LIVE_ACTIVITY.md",
+    "sha256": "3bd42e32f1495e7b2df81b95d964bd70a112cffd4b8f61bb8aae406622ed019f"
+  },
+  {
+    "file": "snapshot/docs/live-activity-redesign.png",
+    "sha256": "ab9feafedbad82019473427f1de11598c51b3235c4a7e5edee3b2eece5f5f917"
+  },
+  {
+    "file": "snapshot/docs/openapi.yaml",
+    "sha256": "053e755ba24c5ec781370ae19c773b158d5074f8fa605841181b8612acf79fd6"
+  },
+  {
+    "file": "snapshot/docs/PRD.md",
+    "sha256": "1645ab2f32aacf75b7e3447270d9e8a1fc72536ed9d3c5768e9df6fa63535b69"
+  },
+  {
+    "file": "snapshot/docs/PREVIEW_UPDATES.md",
+    "sha256": "12e34876f33e804fb11ca8f0e3047dd19591c54d9466ed60f6a6a8ca55f1ea60"
+  },
+  {
+    "file": "snapshot/docs/PUBLIC_LAUNCH_PLAN.md",
+    "sha256": "7e21cd481e92578481158beab4a50a5cf76047c80f654c891bf0dab92c938d65"
+  },
+  {
+    "file": "snapshot/docs/RELEASE.md",
+    "sha256": "ac7fbc3643b14ff47bb06615b0cd0ab9cc9754aeb90c9a44c47fc1149d9843ad"
+  },
+  {
+    "file": "snapshot/docs/RUNBOOK.md",
+    "sha256": "d44219d803edac4b15a801a90cafcf9123b17ee2f83e0e2cb43c8f645503d7b6"
+  },
+  {
+    "file": "snapshot/docs/TEST_PLAN.md",
+    "sha256": "91bfa1bd42f662de78bcdab64f0d83fdedcb052b6175a13c62b35d5e75193297"
+  },
+  {
+    "file": "snapshot/docs/THREAT_MODEL.md",
+    "sha256": "4e91f4ca5391f49e59a6f0d3115c2dc73093f69a5462352875e4ebe5405e4511"
+  },
+  {
+    "file": "snapshot/PRIVACY.md",
+    "sha256": "9e8fb3e789ba31f6655a5563daaecd5dda2662ed1b50669218c09d22ab7bd9c8"
+  },
+  {
+    "file": "snapshot/README.md",
+    "sha256": "79e1e7c7b4ce871226157130bd7cbd48aa742cd6f8d2f130a104fc07a724e2c2"
+  },
+  {
+    "file": "snapshot/SECURITY.md",
+    "sha256": "64cecfa3974770abc7bc3dc8eadb9e855239639c9d8be57f4aaf22e28a473be7"
+  },
+  {
+    "file": "snapshot/supabase/README.md",
+    "sha256": "efe11dacc51d0fc51177375e4fbd8f76a2fcca08f21f37932f51c0fdefd8fea2"
+  },
+  {
+    "file": "snapshot/zona/README.md",
+    "sha256": "14b0752148514ebe3d3132d7f63ef9e02c4992e7c83766eddc0261b17eb452ae"
+  },
+  {
+    "file": "version-items.json",
+    "sha256": "1f02f0aa712aa4606cf86b1a771e783aedf70750ba8e53fe554f74d3b962069a"
+  }
+]

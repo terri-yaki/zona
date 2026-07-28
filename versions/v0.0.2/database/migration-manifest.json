@@ -1,0 +1,58 @@
+[
+  {
+    "file": "202607200001_initial.sql",
+    "originPath": "supabase/migrations/202607200001_initial.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "d72530d23b0021964d7db1c7384f96b036868d74",
+    "sha256": "be99f4d93933a7d0a261fab75c78453d811aada0ebaf0b38215e9b53a6c956db"
+  },
+  {
+    "file": "202607200002_production_hardening.sql",
+    "originPath": "supabase/migrations/202607200002_production_hardening.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "d0ecdefed302b3229bcf7e1b28c8b49af5fe9c8b",
+    "sha256": "3e6349d413480b243261265632257a1ce93a9e02f9362991cd018024aaea0edf"
+  },
+  {
+    "file": "202607200003_notification_attachments.sql",
+    "originPath": "supabase/migrations/202607200003_notification_attachments.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "5b926ec3fc6e1611e80adeb433459a3c2a8bf773",
+    "sha256": "c8c0e220fc07235bae40f65d09b976c5dae2dbb7967c26743c119ef1975bc30c"
+  },
+  {
+    "file": "202607240001_app_options_api_keys.sql",
+    "originPath": "supabase/migrations/202607240001_app_options_api_keys.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "2e0c521ca775c2bc54c797b08bd38f79da7b7a47",
+    "sha256": "cbd18eb2ca77b3c0d31167ea4e0150c960a010b023ca3d7896e7940f02c8987f"
+  },
+  {
+    "file": "202607240002_fix_api_key_last_used.sql",
+    "originPath": "supabase/migrations/202607240002_fix_api_key_last_used.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "f6452096a8e3dbcd1a9c8c5470d4f30b7b807cea",
+    "sha256": "3c6c7315cb8d466d01742bbcbd21d30aa7f034f6a32a2803c361d0d64ac41e14"
+  },
+  {
+    "file": "202607240003_per_host_sounds_and_fast_mobile_rpc.sql",
+    "originPath": "supabase/migrations/202607240003_per_host_sounds_and_fast_mobile_rpc.sql",
+    "introducedIn": "0.0.1",
+    "gitBlob": "dc67e9cc14e7885d070f8a48efbe51f24744d332",
+    "sha256": "946c480fc24f1a339099fff77aaafa14e8dd52fc573be8b286a93f68db0a0878"
+  },
+  {
+    "file": "202607240004_more_notification_sounds.sql",
+    "originPath": "supabase/migrations/202607240004_more_notification_sounds.sql",
+    "introducedIn": "0.0.2",
+    "gitBlob": "c78f8740c797cb10d09287d89a781f9c72a43e44",
+    "sha256": "a826cb3747225473d318802cdcbc206300da4c37cd5c7776bf04d2bc005701f7"
+  },
+  {
+    "file": "202607240005_live_activity_option.sql",
+    "originPath": "supabase/migrations/202607240005_live_activity_option.sql",
+    "introducedIn": "0.0.2",
+    "gitBlob": "f0ddd53c99baa25193139b81b6ea8753d9f307c1",
+    "sha256": "84c05cbff5f09039db33075ce59862dcf8876d7238db128e6fa72e8b18724d0e"
+  }
+]

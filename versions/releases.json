@@ -1,0 +1,50 @@
+[
+  {
+    "version": "0.0.1",
+    "sourceCommit": "bfad2dd400c7f92952e848cd8554f9307156a06f",
+    "gitTag": null,
+    "boundaryConfidence": "inferred",
+    "previousVersion": null,
+    "path": "v0.0.1"
+  },
+  {
+    "version": "0.0.2",
+    "sourceCommit": "eefae7600c37eb786d6c8e1d7d94013c9aa2f4a8",
+    "gitTag": null,
+    "boundaryConfidence": "medium",
+    "previousVersion": "0.0.1",
+    "path": "v0.0.2"
+  },
+  {
+    "version": "0.0.3",
+    "sourceCommit": "6fb30265407bb682f047aaaeb885c0532d335f37",
+    "gitTag": null,
+    "boundaryConfidence": "inferred",
+    "previousVersion": "0.0.2",
+    "path": "v0.0.3"
+  },
+  {
+    "version": "0.0.4",
+    "sourceCommit": "bc03ffefe811ac5eec8193cc2ee1b0f3914dc832",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.3",
+    "path": "v0.0.4"
+  },
+  {
+    "version": "0.0.5",
+    "sourceCommit": "5d2c8f16b38be914813f451cc507e1e7e26e042e",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.4",
+    "path": "v0.0.5"
+  },
+  {
+    "version": "0.0.6",
+    "sourceCommit": "ce20ef014222130a12c24e04ff09bb6f498c34a3",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.5",
+    "path": "v0.0.6"
+  }
+]
