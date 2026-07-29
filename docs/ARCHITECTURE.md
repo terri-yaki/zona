@@ -37,7 +37,7 @@ flowchart LR
   N -->|"best-effort ticket request"| EXPO
   APNS --> NATIVE
   FCM --> NATIVE
-  APP -->|"anonymous session"| AUTH
+  APP -->|"guest or recoverable user session"| AUTH
   APP -->|"user JWT"| U
   APP -->|"owner-scoped RPCs + RLS reads"| DB
   DB -->|"private user/config broadcasts"| RT --> APP
@@ -62,6 +62,9 @@ flowchart LR
 9. Version 1 contains no remote command channel or arbitrary shell execution.
 10. Native compatibility is pinned to Expo SDK 56 until an explicit upgrade is
     designed, tested, and recorded.
+11. Human identities, personal accounts, app installations, notification
+    sources, and third-party integrations are separate principals. A credential
+    issued to one principal cannot authorize another.
 
 ## Component boundaries
 
@@ -93,6 +96,21 @@ Recommended internal boundaries as the application grows:
 The current implementation is small and may not yet contain every proposed
 feature directory. New work should preserve these ownership boundaries rather
 than putting transport or persistence directly into screens.
+
+### Authentication and account ownership
+
+v0.0.8 keeps private guest start while adding passwordless email, Apple,
+Google, and GitHub recovery. A guest is normally upgraded in place by linking
+a verified identity to the current Supabase Auth user; changing the Auth user
+ID during that flow is a failure. Sign-in on a replacement phone restores
+server-held account data but never reveals a source's one-time plaintext key.
+
+An additive personal account and membership layer becomes the future resource,
+billing, and integration boundary. Existing `user_id` ownership remains
+authoritative during the old-client compatibility window. Account transfer is
+server-only, requires proof of both sessions, and never silently merges two
+protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
+[ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md).
 
 ### User-authenticated Edge Functions
 
@@ -176,19 +194,28 @@ event or account deletion.
 
 ### Source creation
 
-1. The app generates an opaque `zona_live_…` token using native secure random
-   bytes and hashes it locally.
-2. An authenticated PostgREST RPC atomically stores the stable source UUID,
-   credential hash, and safe API-key metadata without an Edge cold start.
-3. Row isolation comes from `auth.uid()` inside the owner-only wrapper; the
-   service-only internal function still enforces limits and validation.
-4. A safe `api_keys` metadata row stores the name, short prefix, active state,
-   timestamps, and optional expiry; it never stores the raw token or hash.
-5. The response is marked `Cache-Control: no-store` and presents the token once.
-6. The user moves it to the sender’s secret store.
+v0.0.7 currently generates and hashes the token in the app, then stores the
+hash through an authenticated PostgREST RPC. That RPC remains a compatibility
+surface for installed builds.
 
-Losing a token does not make it recoverable. Create a replacement source,
-verify it, and revoke the old source.
+v0.0.8 makes the authenticated Edge API canonical:
+
+1. The server generates an opaque `zona_live_…` token with cryptographic
+   randomness.
+2. It atomically stores the stable source/access-key identity, credential hash,
+   and safe metadata; plaintext is never persisted.
+3. The no-store response presents the token once, then the user moves it to the
+   sender's secret store.
+4. A source may later receive a second independently revocable key for overlap
+   rotation without changing the source UUID, display name, sound, or history.
+
+The one-to-many schema migration and old-client cutover are specified in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and ADR 0001's v0.0.8
+amendment. OpenAPI changes ship with the implementation, not ahead of it.
+
+Losing a token does not make it recoverable. Before v0.0.8, create a
+replacement source, verify it, and revoke the old source. In v0.0.8, create a
+replacement key on the same source, verify it, then revoke only the lost key.
 
 ### Notification acceptance
 

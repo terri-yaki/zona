@@ -62,15 +62,37 @@ The user must be able to:
 
 ### Authentication and account lifecycle
 
-- **AUTH-01** Authentication must use Supabase Auth anonymous sign-in; no email
-  or password is collected (see ADR 0002). Signing out an anonymous account is
-  permanent and must be confirmed in the UI.
+- **AUTH-01** The shipped guest path uses Supabase Auth anonymous sign-in and
+  collects no email or password. Signing out an unprotected guest is permanent
+  and must be confirmed in the UI. Protected v0.0.8 accounts may collect the
+  minimum verified identity data described by AUTH-05–AUTH-12 and ADR 0004.
 - **AUTH-02** Expired, malformed, or cross-account sessions must fail closed.
 - **AUTH-03** Signing out must stop delivery to that installation or clearly
   report when deregistration could not be completed.
 - **AUTH-04** Before external TestFlight or App Store distribution, the app
   must offer an easy-to-find, confirmed account-deletion flow that deletes the
   Supabase Auth account and application data that is not legally retained.
+- **AUTH-05** v0.0.8 must retain private guest start and let a guest protect the
+  same account with email, Apple, Google, or GitHub without changing its Auth
+  user ID or existing ownership.
+- **AUTH-06** A protected user can restore server-held sources, preferences,
+  entitlements, and retained history on another phone. Plaintext source keys
+  remain non-recoverable.
+- **AUTH-07** Users can list and link sign-in methods, but cannot unlink their
+  final verified recovery method.
+- **AUTH-08** Provider identity conflicts must stop for an explicit account
+  choice; email equality must never silently merge accounts.
+- **AUTH-09** Zona-controlled installation, transfer, export, and deletion
+  actions require server-verified recent reauthentication and a redacted audit
+  event. Identity-linking UI applies the same proof policy as defense in depth;
+  Supabase's public identity APIs remain the underlying enforcement boundary.
+- **AUTH-10** Human sessions, account ownership, app installations, source
+  credentials, and future integration credentials are separate principals.
+- **AUTH-11** Users can inspect and revoke app installations and sign out this
+  phone, other phones, or every phone with clear push/cache cleanup semantics.
+- **AUTH-12** The additive account foundation must keep v0.0.5–v0.0.7 personal
+  account flows operational during the compatibility window. See
+  [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and ADR 0004.
 
 ### Source lifecycle
 
@@ -84,9 +106,11 @@ The user must be able to:
 - **SRC-05** Duplicate hostnames and display names are allowed.
 - **SRC-06** The UI must not describe a source as currently online unless an
   explicit heartbeat protocol exists. Alert activity is not presence.
-- **SRC-07** A source cannot rotate its credential in place in version 1. The
-  supported recovery flow is create replacement, update sender, verify, then
-  revoke the old source.
+- **SRC-07** Shipped builds before v0.0.8 cannot rotate a credential in place;
+  their recovery flow is create replacement, update sender, verify, then revoke
+  the old source.
+- **SRC-08** v0.0.8 adds independently revocable overlapping keys to one
+  permanent source so rotation preserves source identity, history, and sound.
 
 ### Notification ingestion and inbox
 
@@ -217,7 +241,13 @@ exists” is not sufficient evidence.
 | AC-16 | Account deletion removes the Auth account and owned data | TestFlight and database verification |
 | AC-17 | Anonymous sign-in succeeds on a fresh install and restores the same account across restarts | Device smoke test |
 | AC-18 | A multipart send stores a magic-byte-verified image readable only by its owner; spoofed, oversized, and replay-with-different-image sends behave per contract | Contract and two-user tests |
-| AC-18 | Accessibility checks pass on sign-in, onboarding, inbox, source creation, and settings | VoiceOver/Dynamic Type checklist |
+| AC-19 | Accessibility checks pass on sign-in, onboarding, inbox, source creation, and settings | VoiceOver/Dynamic Type checklist |
+| AC-20 | Email, Apple, Google, and GitHub protect a guest without changing its Auth user ID or owned data | Provider E2E and database parity evidence |
+| AC-21 | A protected account restores its server-held data and push registration on another phone | iPhone/Android restore matrix |
+| AC-22 | Zona's linking and unlinking flow requires recent proof and cannot remove the last recovery method; tests also document the residual direct-Supabase identity-API boundary | Auth integration tests |
+| AC-23 | A provider identity already owned elsewhere stops for explicit conflict handling and never silently merges | Two-account provider test |
+| AC-24 | Revoking one or all installations stops their sensitive access and future push without affecting active allowed phones | Session/push E2E evidence |
+| AC-25 | Guest transfer and account deletion are idempotent, resumable, cross-account isolated, and fail closed | Database/Storage/Auth fault-injection evidence |
 
 Pairing-code expiry/reuse tests are intentionally retired by ADR 0001.
 

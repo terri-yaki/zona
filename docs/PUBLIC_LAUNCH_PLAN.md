@@ -108,8 +108,8 @@ Required flow:
 1. Allow anonymous evaluation within a small free quota.
 2. Require account linking before purchase or before creating a long-lived
    second source.
-3. Offer Sign in with Apple as the minimum recoverable identity. Add email
-   magic-link only if user research shows it is needed.
+3. Offer passwordless email, Apple, Google, and GitHub as recoverable methods;
+   keep Apple first-class in the iPhone experience.
 4. Preserve the existing Supabase `auth.users.id` when linking the anonymous
    identity so existing sources and inbox rows do not move.
 5. Provide sign-in restoration, Restore Purchases, subscription management,
@@ -121,10 +121,12 @@ reduces vendors but requires more receipt and lifecycle code. Decide after the
 validation phase.
 
 Regardless of provider, the server remains authoritative. Add an entitlement
-record containing user ID, product, original transaction ID, environment,
+record containing account ID, product, original transaction ID, environment,
 status, expiry, grace period, revocation, and last verification time. Verify
 signed App Store notifications/webhooks, process them idempotently, and enforce
-quotas inside database functions—not only in the mobile UI.
+quotas inside database functions—not only in the mobile UI. The complete
+identity, installation, and transfer contract is in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md).
 
 Define behavior for billing grace, expiration, refund, revocation, account
 linking, Restore Purchases, account deletion, and a Plus account falling above
@@ -147,8 +149,9 @@ without deleting existing data before normal retention.
 - Remove an uploaded object if attachment metadata persistence fails.
 - Enforce multipart request size before unbounded buffering at the gateway or
   with a byte-counting parser.
-- Decide one source-creation path and remove the unused Edge Function or RPC
-  path to reduce contract drift.
+- Implement the v0.0.8 canonical server-generated Edge source-key path, keep the
+  client-hash RPC only for old-build compatibility, then retire it when release
+  policy permits.
 - Default lock-screen previews to private/redacted content for new public
   accounts.
 - Publish completed privacy, terms, support, and security contacts and link them

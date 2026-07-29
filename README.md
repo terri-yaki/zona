@@ -46,6 +46,8 @@ lock-screen message previews.
 
 - `docs/PRD.md` — product scope, requirements, acceptance matrix, and blockers.
 - `docs/ARCHITECTURE.md` — data flow, trust boundaries, and extension rules.
+- `docs/ACCOUNT_MANAGEMENT.md` — v0.0.8 guest protection, provider sign-in,
+  recovery, devices, deletion, and future integration boundaries.
 - `docs/openapi.yaml` — machine-readable Edge Function API contract.
 - `docs/TEST_PLAN.md` — automated and physical-iPhone release verification.
 - `docs/ROADMAP.md` — v0.0.8–v0.0.10 architecture and the path to Zona Plus.

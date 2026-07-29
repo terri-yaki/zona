@@ -24,7 +24,8 @@ or future PC-control scope changes.
 
 - Supabase secret/service-role key and project configuration.
 - Per-source Bearer credentials and their hashes.
-- User Auth sessions (anonymous; no email or password exists).
+- User Auth sessions and linked email/OAuth identities; guests may still have
+  no recovery identity.
 - Expo push tokens and installation identifiers.
 - Notification title, body, category, metadata, read state, and source snapshot.
 - Source names, hostnames, activity, and revocation state.
@@ -67,7 +68,7 @@ or future PC-control scope changes.
 | T-10 | Push content exposed on lock screen or to providers | iOS user settings; TLS in transit | Privacy disclosure, sender guidance not to send secrets, consider redacted push mode later |
 | T-11 | Malicious metadata overwrites routing IDs | Server appends reserved notification/source IDs | Test collision behavior; construct reserved fields after untrusted metadata and validate detail authorization |
 | T-12 | Stale push token sends to wrong account/device | Registration ownership conflict checks; current-installation unregister | Test reinstall/account-switch lifecycle; process Expo receipt invalidation in future |
-| T-13 | Anonymous session hijacked or account orphaned | Session stored in OS-backed storage; no email/password exists to phish; sign-out warns that it is permanent | Device tests for session persistence, session revocation drill, documented account-loss and email-linking upgrade path |
+| T-13 | Guest session hijacked or account orphaned | Session stored in OS-backed storage; guest has no recovery identifier; sign-out warns that it is permanent | Device tests for persistence/revocation, guest-loss warning, and same-UUID protection path |
 | T-14 | Revoked source remains usable due race/cache | Ingestion checks `revoked_at` in DB | Concurrent revoke/ingest test; no credential caching outside transaction |
 | T-15 | Cleanup fails and private content persists | `pg_cron` database expiry plus a Vault-authenticated Storage API cleanup job | Cron freshness/oldest-expired-row and attachment-object alerts |
 | T-16 | Operator/dependency compromise | Provider IAM and lockfiles | MFA, least privilege, protected CI, dependency scans, audit logs, credential rotation drills |
@@ -79,6 +80,14 @@ or future PC-control scope changes.
 | T-22 | Runtime configuration is mistaken for authorization or injects unsafe behavior | Client keys are compiled/allowlisted; raw controls are private; server switches and RLS remain authoritative; no dynamic code/routes/SQL | Bootstrap parser tests, unknown-key rejection, security review for every new key |
 | T-23 | A user subscribes to another account's Realtime invalidations | Private Broadcast topics include the owner UUID and `realtime.messages` policy compares it with `auth.uid()` | Two-user subscribe tests; keep payloads as invalidation-only and content-free |
 | T-24 | A stale or malicious release rule blocks essential privacy/account access | Maintenance/update state renders a bounded banner; Privacy, sign-out, deletion, and source revocation are outside the runtime allowlist | Mobile tests and manual release-policy exercise before activation |
+| T-25 | OAuth/magic-link callback is replayed, redirected, or completes the wrong intent | PKCE, exact redirect allowlist, state/nonce, short-lived single-use auth transaction | Foreground/background/terminated tests for replay, wrong state, wrong intent, expiry, cancellation, and provider denial |
+| T-26 | Linking switches an anonymous user ID and strands or exposes guest data | Guest protection must link in place and verify the Auth user ID is unchanged | Tests for every provider, identity conflict, cache owner change, and preserved source credentials |
+| T-27 | Two accounts are silently merged because provider emails match | No automatic application-level merge; conflict stops and requires proof of both sessions | Two-user/provider-conflict tests; v0.0.8 blocks protected-to-protected self-merge |
+| T-28 | A user removes the final recovery method or an attacker links/unlinks one | Supabase requires another identity before unlink; Zona's UI additionally requires recent proof and emits a redacted audit/security notice | Link/unlink race and session-age tests; document that direct Supabase identity calls can bypass Zona's app-level proof gate |
+| T-29 | Revoked phone retains access through an unexpired JWT | Installation/session revocation, account tombstone, and short access-token lifetime | Revoke-current/other/all-device tests and strict status checks on transfer/deletion |
+| T-30 | Login, source, installation, and integration credentials become interchangeable | Separate principals, tables, scopes, and endpoints; no Supabase session accepted by `/notify` | Credential-confusion matrix across every endpoint; never expose provider or service tokens to sources |
+| T-31 | Guest transfer partially moves sources, attachments, limits, or entitlements | Expiring dual-session proof, preview, account locks, idempotent server job, destination-wins rules | Fault injection at each transfer stage, retry/resume, attachment parity, and audit-result tests |
+| T-32 | Protected user is phished or an email/social provider is taken over/unavailable | Native/provider-hosted auth, PKCE/state/nonce, multiple linkable methods, recent reauthentication, security notices | Provider takeover/recovery drill, email-delivery monitoring, suspicious link/unlink alerts, and support procedure that never bypasses proof |
 
 ## Abuse and capacity cases
 

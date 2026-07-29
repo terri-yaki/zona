@@ -11,7 +11,9 @@ alert reaches the right phone from the right source—remains useful for free.
 over.
 
 - Add recoverable sign-in and a clear upgrade path from today's private guest
-  account.
+  account, with email, Apple, Google, and GitHub.
+- Let people manage linked sign-in methods and their signed-in phones without
+  confusing a phone, a sender key, or a future integration with their account.
 - Add phone-to-phone restore for sources, preferences, and recent history.
 - Make delivery more dependable with a durable send queue and delivery health
   that distinguishes accepted, sent, and failed alerts.
@@ -21,6 +23,9 @@ over.
 Architecture work: stable account identity, resumable ownership transfer,
 queued delivery workers, receipt reconciliation, and server-owned usage
 counters. Public database access stays explicitly granted and owner-scoped.
+The complete account lifecycle and rollout contract is in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
+[ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md).
 
 ## v0.0.9 — Zona Plus beta
 

@@ -114,6 +114,22 @@ UUIDs and credentials remain valid until explicitly revoked. A future managed
 companion may authenticate as a normal source, but pairing must never reveal or
 reuse another source’s credential.
 
+### v0.0.8 source-key amendment
+
+The shipping v0.0.7 app deviated from this ADR's issuance description: it
+generates and hashes the token on-device, then calls an owner RPC. v0.0.8 makes
+server-generated issuance through the authenticated Edge API canonical again.
+The response returns plaintext once with `Cache-Control: no-store`; only the
+hash is stored. The client-generated-hash RPC remains temporarily for old app
+builds and is not used by new clients or integrations.
+
+v0.0.8 also changes source-to-key cardinality to one-to-many so a replacement
+key can overlap with an old key on the same permanent source. Source display
+identity and sound are not access-key properties. Existing keys are backfilled
+without changing their plaintext validity. The proposed schema and rollout are
+specified in [ACCOUNT_MANAGEMENT.md](../ACCOUNT_MANAGEMENT.md); OpenAPI and
+Architecture must change in the same implementation commit.
+
 ## Revisit triggers
 
 Reconsider this decision if secure token transfer becomes the dominant support
