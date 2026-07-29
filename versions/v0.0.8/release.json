@@ -1,0 +1,14 @@
+{
+  "version": "0.0.8",
+  "sourceCommit": "92d11b4e6e1704636fd60e057457cf44bc37227c",
+  "sourceBranch": "v0.0.8",
+  "gitTag": null,
+  "boundaryConfidence": "strong",
+  "boundaryNote": "Exact implementation commit containing the v0.0.8 recoverable-account foundation, installation/session controls, source access-key rotation, documentation, and deployed migrations.",
+  "previousVersion": "0.0.7",
+  "appJsonVersion": "0.0.8",
+  "packageJsonVersion": "0.0.8",
+  "migrationCount": 36,
+  "deltaMigrationCount": 4,
+  "documentCount": 34
+}

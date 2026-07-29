@@ -1,6 +1,6 @@
 # Zona version archives
 
-This directory preserves the database migrations, documentation, and user-facing release items for Zona 0.0.1 through 0.0.7.
+This directory preserves the database migrations, documentation, and user-facing release items for Zona 0.0.1 through 0.0.8.
 
 Each version is intentionally split into:
 

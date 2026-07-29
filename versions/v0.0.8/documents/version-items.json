@@ -1,0 +1,37 @@
+{
+  "version": "0.0.8",
+  "title": {
+    "en": "Your Zona comes with you",
+    "zhHant": "你的 Zona，隨時跟你走"
+  },
+  "summary": {
+    "en": "Protect the Zona you have built, bring it to a new phone, and change a sender key without starting over.",
+    "zhHant": "保護你建立好的 Zona，換手機後也能繼續使用，傳送端金鑰亦可隨時安全更換。"
+  },
+  "items": [
+    {
+      "key": "recover-anywhere",
+      "icon": "arrow.clockwise.icloud.fill",
+      "titleEn": "Pick up on a new phone",
+      "titleZhHant": "換手機也能接續使用",
+      "bodyEn": "Protect your Zona, sign in again, and your sources and recent inbox are ready to meet you.",
+      "bodyZhHant": "保護你的 Zona，再次登入後，來源和最近的通知都會準備好迎接你。"
+    },
+    {
+      "key": "sign-in-your-way",
+      "icon": "person.badge.key.fill",
+      "titleEn": "Sign in your way",
+      "titleZhHant": "用喜歡的方式登入",
+      "bodyEn": "Choose email, Apple, Google, or GitHub, then add another method for extra peace of mind.",
+      "bodyZhHant": "你可以選擇電郵、Apple、Google 或 GitHub，也可多加一種方式，令帳戶更安心。"
+    },
+    {
+      "key": "rotate-without-restarting",
+      "icon": "key.horizontal.fill",
+      "titleEn": "Change a key, keep everything else",
+      "titleZhHant": "更換金鑰，其他照舊",
+      "bodyEn": "Give scripts and agents their own keys, replace one safely, and keep the same source name, sound, filters, and history.",
+      "bodyZhHant": "腳本和代理程式可以各用一把金鑰，安全更換其中一把時，來源名稱、提示音、篩選和記錄都保持不變。"
+    }
+  ]
+}
