@@ -1,8 +1,6 @@
-import type { CreatedSource, DeleteAccountResult } from '@/types';
+import type { CreatedSource, CreatedSourceAccessKey, DeleteAccountResult, ManagedSourceAccessKey } from '@/types';
 
 import { dataError, functionError } from './errors';
-import { env } from './env';
-import { createSourceCredential } from './source-token';
 import { supabase } from './supabase';
 import { isDeleteAccountResult } from './validation';
 import type { NativePushPlatform } from './push-platform';
@@ -28,23 +26,56 @@ async function invoke<T>(name: string, body: Record<string, unknown>, validate: 
 }
 
 export async function createSource(displayName: string, hostname: string | null): Promise<CreatedSource> {
-  const credential = await createSourceCredential();
-  const { data: sourceId, error } = await supabase.rpc('create_source', {
-    p_display_name: displayName,
-    p_hostname: hostname,
-    p_key_prefix: credential.keyPrefix,
-    p_token_hash: credential.tokenHash,
-  });
-  if (error || typeof sourceId !== 'string') {
-    throw dataError(error, translate('sourceNew.createError'));
-  }
-  return {
-    sourceId,
-    displayName,
-    hostname,
-    token: credential.token,
-    ingestUrl: `${env.supabaseUrl}/functions/v1/notify`,
-  };
+  return invoke<CreatedSource>('create-source', { displayName, hostname }, isCreatedSource);
+}
+
+export function createSourceAccessKey(sourceId: string, keyLabel: string) {
+  return invoke<CreatedSourceAccessKey>(
+    'create-source-key',
+    { sourceId, keyLabel },
+    isCreatedSourceAccessKey,
+  );
+}
+
+export function manageSourceAccessKey(
+  accessKeyId: string,
+  action: 'rename' | 'set_active' | 'revoke',
+  options: { keyLabel?: string; isActive?: boolean } = {},
+) {
+  return invoke<ManagedSourceAccessKey>(
+    'manage-source-key',
+    { accessKeyId, action, ...options },
+    isManagedSourceAccessKey,
+  );
+}
+
+function isCreatedSourceAccessKey(value: unknown): value is CreatedSourceAccessKey {
+  return object(value)
+    && typeof value.sourceId === 'string'
+    && typeof value.accessKeyId === 'string'
+    && typeof value.keyLabel === 'string'
+    && typeof value.token === 'string'
+    && typeof value.ingestUrl === 'string';
+}
+
+function isCreatedSource(value: unknown): value is CreatedSource {
+  return object(value)
+    && typeof value.sourceId === 'string'
+    && typeof value.accessKeyId === 'string'
+    && typeof value.keyLabel === 'string'
+    && typeof value.token === 'string'
+    && typeof value.ingestUrl === 'string'
+    && typeof value.displayName === 'string'
+    && (typeof value.hostname === 'string' || value.hostname === null);
+}
+
+function isManagedSourceAccessKey(value: unknown): value is ManagedSourceAccessKey {
+  return object(value)
+    && typeof value.sourceId === 'string'
+    && typeof value.accessKeyId === 'string'
+    && typeof value.keyLabel === 'string'
+    && typeof value.isActive === 'boolean'
+    && (typeof value.revokedAt === 'string' || value.revokedAt === null);
 }
 
 export async function renameSource(sourceId: string, displayName: string) {

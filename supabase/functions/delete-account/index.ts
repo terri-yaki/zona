@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
-import { requireUser, service } from '../_shared/supabase.ts';
+import { requireUserSession, service } from '../_shared/supabase.ts';
 
 type DeleteBody = { confirmation?: unknown; expectedUserId?: unknown };
 
@@ -40,19 +40,44 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
 
+  let jobId: string | null = null;
   try {
-    const user = await requireUser(req);
+    const { user } = await requireUserSession(req);
     const body = await readJson(req, 1_024) as DeleteBody;
     if (body.confirmation !== 'DELETE') return json({ error: 'CONFIRMATION_REQUIRED' }, 400);
     if (body.expectedUserId !== undefined && body.expectedUserId !== user.id) {
       return json({ error: 'ACCOUNT_MISMATCH' }, 409);
     }
+    if (!user.is_anonymous) {
+      const lastSignInAt = Date.parse(user.last_sign_in_at ?? '');
+      if (!Number.isFinite(lastSignInAt) || Date.now() - lastSignInAt > 10 * 60 * 1_000) {
+        return json({ error: 'REAUTH_REQUIRED' }, 403, { 'Cache-Control': 'no-store' });
+      }
+    }
+
+    const { data: deletion, error: beginError } = await service.rpc('begin_account_deletion_internal', {
+      p_user_id: user.id,
+      p_idempotency_key: `account-delete:${user.id}`,
+    });
+    if (beginError) throw beginError;
+    jobId = typeof deletion?.jobId === 'string' ? deletion.jobId : null;
+    const accountId = typeof deletion?.accountId === 'string' ? deletion.accountId : null;
+    if (!jobId || !accountId) throw new Error('DELETE_JOB_INVALID');
 
     const attachments = await removeAccountAttachments(user.id);
     const { data: cleanup, error: cleanupError } = await service.rpc('delete_account_data_internal', {
       p_user_id: user.id,
     });
     if (cleanupError) throw cleanupError;
+
+    const combinedCleanup = { ...(cleanup ?? {}), attachments };
+    const { error: checkpointError } = await service.rpc('mark_account_deletion_data_deleted_internal', {
+      p_job_id: jobId,
+      p_account_id: accountId,
+      p_user_id: user.id,
+      p_cleanup: combinedCleanup,
+    });
+    if (checkpointError) throw checkpointError;
 
     const { error: deleteError } = await service.auth.admin.deleteUser(user.id, false);
     if (deleteError) throw deleteError;
@@ -61,16 +86,32 @@ Deno.serve(async (req) => {
     if (verification.user) throw new Error('ACCOUNT_DELETE_NOT_CONFIRMED');
     if (verificationError && !isMissingUser(verificationError)) throw verificationError;
 
+    const { error: completionError } = await service.rpc('complete_account_deletion_internal', {
+      p_job_id: jobId,
+      p_account_id: accountId,
+      p_user_id: user.id,
+      p_cleanup: combinedCleanup,
+    });
+    if (completionError) throw completionError;
+
     return json(
       {
         deleted: true,
         userId: user.id,
-        cleanup: { ...(cleanup ?? {}), attachments },
+        jobId,
+        status: 'completed',
+        cleanup: combinedCleanup,
       },
       200,
       { 'Cache-Control': 'no-store' },
     );
   } catch (error) {
+    if (jobId) {
+      await service.rpc('fail_account_deletion_internal', {
+        p_job_id: jobId,
+        p_error_code: 'DELETE_STEP_FAILED',
+      });
+    }
     const code = error instanceof Error ? error.message : 'UNKNOWN';
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);
     if (code === 'PAYLOAD_TOO_LARGE') return json({ error: code }, 413);

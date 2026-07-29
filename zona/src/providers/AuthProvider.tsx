@@ -3,6 +3,8 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState, Platform } from 'react-native';
 
 import { clearPrivateUserState } from '@/cache/private-state';
+import { startEmailAuth, startProviderAuth, verifyEmailAuthCode } from '@/lib/auth-flow';
+import type { AuthIntent, AuthProviderName } from '@/lib/auth-transactions';
 import { supabase } from '@/lib/supabase';
 import { translate } from '@/i18n';
 
@@ -11,9 +13,14 @@ type AuthState = {
   loading: boolean;
   authError: string | null;
   clearAuthError: () => void;
+  continueAsGuest: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  sendEmailAuth: (email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startEmailAuth>;
+  startProvider: (provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startProviderAuth>;
+  verifyEmailCode: typeof verifyEmailAuthCode;
 };
 
-const AuthContext = createContext<AuthState>({ session: null, loading: true, authError: null, clearAuthError() {} });
+const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -32,6 +39,32 @@ export function AuthProvider({ children }: PropsWithChildren) {
       });
     }
   }, []);
+
+  const continueAsGuest = useCallback(async () => {
+    clearAuthError();
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+  }, [clearAuthError]);
+
+  const refreshSession = useCallback(async () => {
+    const { data: refreshed, error } = await supabase.auth.refreshSession();
+    if (error) throw error;
+    applySession(refreshed.session);
+  }, [applySession]);
+
+  const sendEmailAuth = useCallback((email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
+    startEmailAuth(email, intent)
+  ), []);
+
+  const startProvider = useCallback((provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
+    startProviderAuth(provider, intent)
+  ), []);
+
+  const verifyEmailCode = useCallback(async (input: Parameters<typeof verifyEmailAuthCode>[0]) => {
+    const user = await verifyEmailAuthCode(input);
+    await refreshSession();
+    return user;
+  }, [refreshSession]);
 
   useEffect(() => {
     let active = true;
@@ -67,10 +100,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [applySession]);
 
-  const value = useMemo(() => ({ session, loading, authError, clearAuthError }), [authError, clearAuthError, loading, session]);
+  const value = useMemo(() => ({
+    session,
+    loading,
+    authError,
+    clearAuthError,
+    continueAsGuest,
+    refreshSession,
+    sendEmailAuth,
+    startProvider,
+    verifyEmailCode,
+  }), [authError, clearAuthError, continueAsGuest, loading, refreshSession, sendEmailAuth, session, startProvider, verifyEmailCode]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('useAuth must be used within AuthProvider.');
+  return value;
 }

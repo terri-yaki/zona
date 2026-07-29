@@ -44,4 +44,4 @@ jobs:
       - run: deno fmt --config functions/deno.json --check functions
       - run: deno lint --config functions/deno.json functions
       - run: deno test --config functions/deno.json functions/_shared
-      - run: deno check --config functions/deno.json functions/create-source/index.ts functions/manage-source/index.ts functions/notify/index.ts functions/register-push-token/index.ts functions/delete-account/index.ts functions/cleanup-expired/index.ts functions/test-source/index.ts
+      - run: deno check --config functions/deno.json functions/create-source/index.ts functions/create-source-key/index.ts functions/manage-source/index.ts functions/manage-source-key/index.ts functions/notify/index.ts functions/register-push-token/index.ts functions/delete-account/index.ts functions/cleanup-expired/index.ts functions/test-source/index.ts functions/daily-stats-report/index.ts

@@ -12,10 +12,41 @@ export type InboxNotification = Omit<NotificationRow, 'data' | 'idempotency_key'
 
 export type CreatedSource = {
   sourceId: string;
+  accessKeyId: string;
   displayName: string;
   hostname: string | null;
+  keyLabel: string;
   token: string;
   ingestUrl: string;
+};
+
+export type CreatedSourceAccessKey = {
+  sourceId: string;
+  accessKeyId: string;
+  keyLabel: string;
+  token: string;
+  ingestUrl: string;
+};
+
+export type ManagedSourceAccessKey = {
+  sourceId: string;
+  accessKeyId: string;
+  keyLabel: string;
+  isActive: boolean;
+  revokedAt: string | null;
+};
+
+export type SourceAccessKey = {
+  id: string;
+  source_id: string;
+  name: string;
+  key_prefix: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  revoked_at: string | null;
 };
 
 export type DeleteAccountCleanup = {

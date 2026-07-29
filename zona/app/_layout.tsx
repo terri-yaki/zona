@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
+import { AccountSessionSync } from '@/components/AccountSessionSync';
 import { CacheLifecycleSync } from '@/components/CacheLifecycleSync';
 import { ClientTelemetrySync } from '@/components/ClientTelemetrySync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
@@ -120,6 +121,7 @@ function RootNavigator() {
   return (
     <>
       <CacheLifecycleSync />
+          <AccountSessionSync />
           <ClientTelemetrySync />
           {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
@@ -138,11 +140,15 @@ function RootNavigator() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen name="push-onboarding" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/check-email" options={{ headerShown: false }} />
+            <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
             <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
             <Stack.Screen name="whats-new" options={{ title: t('nav.whatsNew') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
             <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />
+            <Stack.Screen name="source/[id]/keys" options={{ title: t('sourceKeys.title') }} />
           </Stack>
     </>
   );

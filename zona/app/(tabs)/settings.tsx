@@ -341,13 +341,14 @@ export default function SettingsScreen() {
         contentContainerStyle={[styles.page, { paddingBottom: bottomPad }]}
         style={styles.scroll}
       >
-      <View style={styles.profile}>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/account' as never)} style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}>
         <View style={styles.profileIcon}><AppIcon color={colors.primary} fallback="•" name="person.crop.circle.fill" size={31} /></View>
         <View style={styles.profileCopy}>
           <Text style={styles.profileTitle}>{t('settings.accountTitle')}</Text>
-          <Text numberOfLines={1} style={styles.profileEmail}>{t('settings.privateAccount')}</Text>
+          <Text numberOfLines={1} style={styles.profileEmail}>{session?.user.is_anonymous ? t('settings.privateAccount') : session?.user.email ?? t('account.protectedTitle')}</Text>
         </View>
-      </View>
+        <AppIcon color={colors.white} fallback="›" name="chevron.right" size={18} />
+      </Pressable>
 
       <Text style={styles.section}>{t('settings.sectionAccount')}</Text>
       <View style={styles.card}>
@@ -604,6 +605,7 @@ const styles = StyleSheet.create({
   scroll: { backgroundColor: colors.background, flex: 1 },
   page: { backgroundColor: colors.background, flexGrow: 1, paddingHorizontal: 16, paddingTop: 8 },
   profile: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', marginBottom: 7, padding: 17 },
+  profilePressed: { backgroundColor: colors.primaryDark },
   profileIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 22, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
   profileCopy: { flex: 1 },
   profileTitle: { color: colors.white, fontSize: 15, fontWeight: '800' },

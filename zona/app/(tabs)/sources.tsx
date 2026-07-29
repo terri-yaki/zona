@@ -11,7 +11,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -25,7 +24,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { setApiKeySound } from '@/data/sources';
 import { useSources } from '@/hooks/useSources';
-import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
+import { renameSource, revokeSource, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
 import { openAndroidSourceNotificationSettings } from '@/lib/android-source-notifications';
@@ -152,27 +151,6 @@ export default function SourcesScreen() {
         },
       ],
     );
-  }
-
-  async function toggleActive(source: Source, isActive: boolean) {
-    if (busySourceId || source.revoked_at) return;
-    setBusySourceId(source.id);
-    try {
-      await setSourceActive(source.id, isActive);
-      patchSource(source.id, (current) => ({
-        ...current,
-        api_key: current.api_key ? {
-          ...current.api_key,
-          is_active: isActive,
-          updated_at: new Date().toISOString(),
-        } : null,
-      }));
-      void load();
-    } catch (caught) {
-      Alert.alert(t('sources.updateKeyError'), userMessage(caught));
-    } finally {
-      setBusySourceId(null);
-    }
   }
 
   async function updateSound(source: Source, soundName: SoundName) {
@@ -330,20 +308,21 @@ export default function SourcesScreen() {
                 <Text style={styles.lastSeen}>
                   {item.last_seen_at ? t('sources.lastActive', { time: relativeTime(item.last_seen_at) }) : t('sources.waitingFirst')}
                 </Text>
-                <View style={styles.keyRow}>
+                <Pressable
+                  accessibilityLabel={t('sourceKeys.manageFor', { name: item.display_name })}
+                  accessibilityRole="button"
+                  onPress={() => router.push({
+                    pathname: '/source/[id]/keys',
+                    params: { id: item.id, name: item.display_name, revoked: item.revoked_at ? 'true' : 'false' },
+                  } as never)}
+                  style={({ pressed }) => [styles.keyRow, pressed && styles.actionPressed]}
+                >
                   <View style={styles.keyCopy}>
-                    <Text style={styles.keyLabel}>{t('sources.apiKey')}</Text>
+                    <Text style={styles.keyLabel}>{t('sourceKeys.manage')}</Text>
                     <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : t('sources.protectedKey')}</Text>
                   </View>
-                  {isVisible('sources.pause') ? <Switch
-                    accessibilityLabel={`${t('sources.apiKey')} ${item.display_name}`}
-                    disabled={Boolean(busySourceId) || Boolean(item.revoked_at) || !isEnabled('sources.pause')}
-                    onValueChange={(value) => void toggleActive(item, value)}
-                    trackColor={{ false: colors.border, true: colors.primarySoft }}
-                    thumbColor={keyActive ? colors.primary : colors.mutedLight}
-                    value={keyActive}
-                  /> : null}
-                </View>
+                  <AppIcon color={colors.primary} fallback=">" name="chevron.right" size={13} />
+                </Pressable>
                 {!item.revoked_at ? (
                   <View style={styles.actions}>
                     {isVisible('sources.test') ? <Pressable

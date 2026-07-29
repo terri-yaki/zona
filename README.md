@@ -19,8 +19,9 @@ push and the app keeps a seven-day inbox.
    project URL and publishable key. Never put a secret key in the Expo app.
 4. Add your EAS project ID to `zona/app.json`, install dependencies, and run
    `npm start` inside `zona/`.
-5. Sign in, create one source per PC/app, and copy the source token when it is
-   displayed. Tokens are never shown again.
+5. Continue as a guest or sign in, create one source per PC/app, and copy the
+   source token when it is displayed. Tokens are never shown again; add a new
+   labelled key before revoking an old one when a sender needs rotation.
 
 See `docs/API.md` for the notification request contract and production notes.
 Android push and EAS setup is documented in `docs/ANDROID_PUSH.md`.

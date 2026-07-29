@@ -72,7 +72,7 @@ returns 409.
   sources, settings; `sign-in.tsx`, `push-onboarding.tsx`, `source/new.tsx`,
   `notification/[id].tsx`, `privacy.tsx`.
 - `src/providers/AuthProvider.tsx` — session and app-wide lifecycle state.
-- `src/lib/` — `supabase.ts` (public client, anonymous auth), `api.ts` (Edge
+- `src/lib/` — `supabase.ts` (public client), account/auth callback helpers, `api.ts` (Edge
   Function transport), `push.ts`, `auth-storage.ts`,
   `env.ts`, `validation.ts`, `errors.ts`, `format.ts`,
   `pending-notification.ts`.
@@ -87,7 +87,7 @@ Keep transport/persistence out of screens: presentation in `app/` and
 
 ### Edge Functions layout (`supabase/functions/`)
 
-`create-source`, `manage-source`, `register-push-token`, `notify`,
+`create-source`, `create-source-key`, `manage-source`, `manage-source-key`, `register-push-token`, `notify`,
 `test-source`, `delete-account`, `cleanup-expired`, plus `_shared/`
 (`cors.ts`, `crypto.ts`, `http.ts`,
 `push.ts`, `supabase.ts`, `validation.ts` — with `*_test.ts` unit tests). The
@@ -125,15 +125,16 @@ Deploy (from repo root):
 ```sh
 supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
-supabase functions deploy create-source manage-source register-push-token notify test-source delete-account cleanup-expired
+supabase functions deploy create-source create-source-key manage-source manage-source-key register-push-token notify test-source delete-account cleanup-expired
 ```
 
-Also enable anonymous sign-ins in Authentication → Providers (the app uses
-`signInAnonymously`; see `docs/adr/0002-anonymous-sign-in.md` and
-`supabase/README.md`). iOS builds use EAS (`zona/eas.json`:
+Keep anonymous sign-ins enabled in Authentication → Providers for the guest
+path. Recoverable-account testing additionally requires email/manual identity
+linking and whichever Apple, Google, or GitHub providers are configured (see
+ADR 0004 and `supabase/README.md`). iOS builds use EAS (`zona/eas.json`:
 `preview` internal builds, `production` with auto-incremented build numbers).
-There is no CI configuration in the repo yet — `docs/TEST_PLAN.md` defines the
-required gates.
+GitHub Actions runs the core mobile and Edge Function checks; `docs/TEST_PLAN.md`
+defines the wider release gates.
 
 ## Code style guidelines
 

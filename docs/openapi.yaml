@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Zona Edge Function API
-  version: 1.0.0
+  version: 1.1.0
   summary: Source notification ingestion and authenticated mobile operations.
   description: |
     Zona's version 1 HTTP contract. All traffic uses TLS. Sender applications
@@ -231,11 +231,139 @@ paths:
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
 
+  /functions/v1/create-source-key:
+    post:
+      operationId: createSourceAccessKey
+      tags: [Mobile]
+      summary: Issue one additional access key for an owned source.
+      description: |
+        The permanent source identity is unchanged. The plaintext credential is
+        returned once with `Cache-Control: no-store`; only its hash is stored.
+        Test a replacement key before permanently revoking the old one.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSourceKeyRequest'
+      responses:
+        '201':
+          description: Access key created.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedSourceKey'
+        '400':
+          description: Source ID, key label, or request JSON is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: INVALID_SOURCE_KEY
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+        '404':
+          description: Source is absent, revoked, or not owned by the current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: SOURCE_NOT_FOUND
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          description: This source already has the maximum number of unrevoked access keys.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: SOURCE_KEY_LIMIT_REACHED
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          description: Access-key creation exceeded 30 requests per account per hour.
+          headers:
+            Retry-After:
+              description: Minimum retry delay in seconds.
+              schema:
+                type: integer
+                minimum: 1
+              example: 3600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: CREATE_RATE_LIMITED
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /functions/v1/manage-source-key:
+    post:
+      operationId: manageSourceAccessKey
+      tags: [Mobile]
+      summary: Rename, pause/resume, or revoke one owned access key.
+      description: |
+        The action affects only the selected key. Pausing is reversible;
+        revocation is permanent. Sibling keys and the source remain unchanged.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManageSourceKeyRequest'
+      responses:
+        '200':
+          description: Requested key action completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManagedSourceKey'
+        '400':
+          description: Access-key ID, action, label, active state, or request JSON is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+        '404':
+          description: Access key is absent or not owned by the current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: SOURCE_KEY_NOT_FOUND
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /functions/v1/manage-source:
     post:
       operationId: manageSource
       tags: [Mobile]
-      summary: Rename, pause/resume, or revoke an owned source API key.
+      summary: Rename or apply an aggregate pause/resume/revoke to an owned source.
+      description: |
+        Compatibility endpoint for older Zona builds. Pause/resume and revoke
+        intentionally apply to every unrevoked access key under the source.
       security:
         - userBearer: []
       requestBody:
@@ -564,9 +692,12 @@ components:
     CreatedSource:
       type: object
       additionalProperties: false
-      required: [sourceId, displayName, hostname, token, ingestUrl]
+      required: [sourceId, accessKeyId, displayName, hostname, keyLabel, token, ingestUrl]
       properties:
         sourceId:
+          type: string
+          format: uuid
+        accessKeyId:
           type: string
           format: uuid
         displayName:
@@ -576,6 +707,10 @@ components:
         hostname:
           type: [string, 'null']
           maxLength: 255
+        keyLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
         token:
           type: string
           pattern: '^zona_live_[A-Za-z0-9_-]{43}$'
@@ -584,6 +719,118 @@ components:
         ingestUrl:
           type: string
           format: uri
+
+    CreateSourceKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [sourceId, keyLabel]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        keyLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    CreatedSourceKey:
+      type: object
+      additionalProperties: false
+      required: [sourceId, accessKeyId, keyLabel, token, ingestUrl]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        accessKeyId:
+          type: string
+          format: uuid
+        keyLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        token:
+          type: string
+          pattern: '^zona_live_[A-Za-z0-9_-]{43}$'
+          writeOnly: true
+          description: Returned once; move immediately to secure sender storage.
+        ingestUrl:
+          type: string
+          format: uri
+
+    RenameSourceKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [action, accessKeyId, keyLabel]
+      properties:
+        action:
+          type: string
+          const: rename
+        accessKeyId:
+          type: string
+          format: uuid
+        keyLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+
+    RevokeSourceKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [action, accessKeyId]
+      properties:
+        action:
+          type: string
+          const: revoke
+        accessKeyId:
+          type: string
+          format: uuid
+
+    SetSourceKeyActiveRequest:
+      type: object
+      additionalProperties: false
+      required: [action, accessKeyId, isActive]
+      properties:
+        action:
+          type: string
+          const: set_active
+        accessKeyId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+
+    ManageSourceKeyRequest:
+      oneOf:
+        - $ref: '#/components/schemas/RenameSourceKeyRequest'
+        - $ref: '#/components/schemas/RevokeSourceKeyRequest'
+        - $ref: '#/components/schemas/SetSourceKeyActiveRequest'
+      discriminator:
+        propertyName: action
+        mapping:
+          rename: '#/components/schemas/RenameSourceKeyRequest'
+          revoke: '#/components/schemas/RevokeSourceKeyRequest'
+          set_active: '#/components/schemas/SetSourceKeyActiveRequest'
+
+    ManagedSourceKey:
+      type: object
+      additionalProperties: false
+      required: [sourceId, accessKeyId, keyLabel, isActive, revokedAt]
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        accessKeyId:
+          type: string
+          format: uuid
+        keyLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        isActive:
+          type: boolean
+        revokedAt:
+          type: [string, 'null']
+          format: date-time
 
     RenameSourceRequest:
       type: object

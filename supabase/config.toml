@@ -18,11 +18,18 @@ site_url = "zona://auth/callback"
 additional_redirect_urls = ["zona://**", "exp://**"]
 enable_signup = true
 enable_anonymous_sign_ins = true
+enable_manual_linking = true
 
 [functions.create-source]
 verify_jwt = false
 
 [functions.manage-source]
+verify_jwt = false
+
+[functions.create-source-key]
+verify_jwt = false
+
+[functions.manage-source-key]
 verify_jwt = false
 
 [functions.register-push-token]

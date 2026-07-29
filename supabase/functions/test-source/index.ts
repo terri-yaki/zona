@@ -8,7 +8,7 @@ import {
   resolveSound,
   ticketError,
 } from '../_shared/push.ts';
-import { requireUser, service } from '../_shared/supabase.ts';
+import { requireUserSession, service } from '../_shared/supabase.ts';
 import { uuid } from '../_shared/validation.ts';
 
 type TestNotification = {
@@ -61,9 +61,18 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
 
   try {
-    const user = await requireUser(req);
+    const { user, sessionId } = await requireUserSession(req);
     const body = await readJson(req);
     const sourceId = uuid(body.sourceId);
+    const { error: accountError } = await service.rpc('assert_account_session_active_internal', {
+      p_user_id: user.id,
+      p_session_id: sessionId,
+    });
+    if (accountError) {
+      if (accountError.message.includes('ACCOUNT_INACTIVE')) throw new Error('ACCOUNT_INACTIVE');
+      if (accountError.message.includes('INVALID_SESSION')) throw new Error('UNAUTHORIZED');
+      throw accountError;
+    }
     const { data, error } = await service.rpc('create_test_notification_internal', {
       p_user_id: user.id,
       p_source_id: sourceId,
@@ -183,6 +192,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const code = error instanceof Error ? error.message : 'UNKNOWN';
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);
+    if (code === 'ACCOUNT_INACTIVE') return json({ error: code }, 423);
     if (code === 'SOURCE_NOT_FOUND') return json({ error: code }, 404);
     if (code === 'SOURCE_INACTIVE') return json({ error: code }, 409);
     if (code === 'SERVICE_UNAVAILABLE') return json({ error: code }, 503, { 'Retry-After': '60' });

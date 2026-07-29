@@ -15,7 +15,9 @@ From the repository root:
 supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 supabase functions deploy create-source
+supabase functions deploy create-source-key
 supabase functions deploy manage-source
+supabase functions deploy manage-source-key
 supabase functions deploy register-push-token
 supabase functions deploy notify
 supabase functions deploy delete-account
@@ -28,9 +30,13 @@ shared client supports the current `SUPABASE_PUBLISHABLE_KEY` and
 `SUPABASE_SERVICE_ROLE_KEY` names. Never expose a secret/service-role key to the
 Expo app or a source application.
 
-In Authentication → Sign In / Providers, enable anonymous sign-ins — the app
-uses `signInAnonymously` and collects no email (see ADR 0002). No SMTP
-provider or redirect allowlist is needed.
+In Authentication → Sign In / Providers, keep anonymous sign-ins enabled for
+the one-tap guest path. For recoverable accounts, also enable email and manual
+identity linking, configure the Apple/Google/GitHub providers you intend to
+offer, and add the exact `zona://auth/callback` plus development `exp://`
+redirects. Provider secrets stay in Supabase and never enter the Expo bundle.
+The app reads the public Auth settings endpoint and hides methods that are not
+enabled.
 
 The migrations enable `pg_cron`, schedule hourly database expiry cleanup,
 enable Realtime for the inbox, create the private attachment bucket, and create

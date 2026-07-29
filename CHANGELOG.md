@@ -6,6 +6,18 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-30
+
+### Added
+
+- Protect your Zona with email, Apple, Google, or GitHub, then pick up your
+  sources and recent inbox on another phone.
+- Give scripts and agents their own labelled access keys, replace one safely,
+  and keep the same source name, sound, filters, and history.
+- See and remove phones that should no longer have access to your Zona.
+
+## [0.0.7] - 2026-07-29
+
 ### Added
 
 - Open Zona and your recent alerts are already waiting, with less time spent on

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zona",
     "slug": "zona",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -37,6 +37,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-web-browser",
       [
         "expo-notifications",
         {
