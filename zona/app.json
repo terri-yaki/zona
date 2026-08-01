@@ -26,6 +26,7 @@
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": false,
+      "appleTeamId": "537FW7XQD7",
       "bundleIdentifier": "com.terriyaki.zona",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
