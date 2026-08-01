@@ -1,12 +1,15 @@
 import Constants from 'expo-constants';
+import * as Clipboard from 'expo-clipboard';
+import * as Crypto from 'expo-crypto';
 import { Redirect } from 'expo-router';
-import { useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { useBottomSafePadding } from '@/components/TabScreen';
 import { relativeTime } from '@/lib/format';
 import { featureKeys, runtimeBoolean, runtimeNumber, runtimeString } from '@/lib/runtime-controls';
+import { getPushRegistrationHealth, type PushRegistrationHealth } from '@/lib/push';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
@@ -19,7 +22,21 @@ export default function AppStatusScreen() {
   const { t, tc } = useI18n();
   const { error, fetchedAt, loading, refresh, snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const [openedAt] = useState(Date.now);
+  const [diagnosticId] = useState(() => Crypto.randomUUID());
+  const [pushHealth, setPushHealth] = useState<PushRegistrationHealth | null>(null);
+  const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
   const paddingBottom = useBottomSafePadding(24);
+  const userId = session?.user.id;
+
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    void getPushRegistrationHealth(userId).then((value) => {
+      if (active) setPushHealth(value);
+    });
+    return () => { active = false; };
+  }, [userId]);
+
   if (!session) return <Redirect href="/sign-in" />;
   if (!isVisible('settings.app_status')) return <Redirect href="/(tabs)/settings" />;
 
@@ -43,6 +60,28 @@ export default function AppStatusScreen() {
         ? 'limited'
         : 'ready';
   const statusColor = status === 'ready' ? colors.success : status === 'attention' || status === 'maintenance' ? colors.danger : colors.accent;
+
+  async function copyDiagnostics() {
+    const freshness = !fetchedAt ? 'never-synced' : stale ? 'stale' : 'fresh';
+    const lines = [
+      'Zona diagnostics',
+      `Diagnostic ID: ${diagnosticId}`,
+      `Zona version: ${Constants.expoConfig?.version ?? 'unknown'}`,
+      `Native build: ${Constants.nativeBuildVersion ?? 'unknown'}`,
+      `Platform: ${Platform.OS} ${String(Platform.Version)}`,
+      `Configuration: revision ${snapshot.revision}; ${freshness}${fetchedAt ? `; synced ${new Date(fetchedAt).toISOString()}` : ''}`,
+      `Push registration: ${pushHealth?.status ?? 'not-checked'}${pushHealth?.updatedAt ? `; checked ${pushHealth.updatedAt}` : ''}`,
+      `Features: ${counts.enabled} enabled; ${limitedCount} limited (${counts.disabled} disabled, ${counts.read_only} read-only, ${counts.hidden} hidden)`,
+      `Account tier: ${snapshot.tier}`,
+    ];
+    try {
+      await Clipboard.setStringAsync(lines.join('\n'));
+      setDiagnosticsCopied(true);
+      setTimeout(() => setDiagnosticsCopied(false), 2_000);
+    } catch {
+      Alert.alert(t('appStatus.copyError'));
+    }
+  }
 
   return (
     <ScrollView contentContainerStyle={[styles.page, { paddingBottom }]}>
@@ -98,6 +137,20 @@ export default function AppStatusScreen() {
         </View>
       </> : null}
 
+      {isVisible('status.copy_diagnostics') ? <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !isEnabled('status.copy_diagnostics') }}
+        disabled={!isEnabled('status.copy_diagnostics')}
+        onPress={() => void copyDiagnostics()}
+        style={({ pressed }) => [styles.diagnostics, pressed && styles.pressed, !isEnabled('status.copy_diagnostics') && styles.disabled]}
+      >
+        <View style={styles.supportIcon}><AppIcon color={colors.primary} fallback="D" name={diagnosticsCopied ? 'checkmark' : 'doc.on.doc'} size={19} /></View>
+        <View style={styles.supportCopy}>
+          <Text accessibilityLiveRegion="polite" style={styles.supportTitle}>{diagnosticsCopied ? t('appStatus.diagnosticsCopied') : t('appStatus.copyDiagnostics')}</Text>
+          <Text style={styles.supportBody}>{t('appStatus.copyDiagnosticsBody')}</Text>
+        </View>
+      </Pressable> : null}
+
       {isVisible('status.support_link') ? <Pressable
         accessibilityRole="link"
         accessibilityState={{ disabled: !isEnabled('status.support_link') }}
@@ -147,6 +200,7 @@ const createStyles = () => StyleSheet.create({
   rowValue: { color: colors.muted, flexShrink: 1, fontSize: 13, maxWidth: '55%', textAlign: 'right' },
   divider: { backgroundColor: colors.border, height: 1 },
   support: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.medium, flexDirection: 'row', gap: 11, marginTop: 22, minHeight: 68, padding: 13 },
+  diagnostics: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 11, marginTop: 22, minHeight: 68, padding: 13 },
   supportIcon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, height: 40, justifyContent: 'center', width: 40 },
   supportCopy: { flex: 1, minWidth: 0 },
   supportTitle: { color: colors.primary, fontSize: 14, fontWeight: '800' },

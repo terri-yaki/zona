@@ -32,10 +32,17 @@ export default function NewSourceScreen() {
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [template, setTemplate] = useState<'agent' | 'curl' | 'powershell' | 'automation'>('agent');
 
   const curl = useMemo(() => created
     ? `curl -X POST "${created.ingestUrl}" -H "Authorization: Bearer ${created.token}" -H "Idempotency-Key: replace-with-a-unique-event-id" -H "Content-Type: application/json" -d '{"title":"Build complete","body":"The release build finished.","category":"build","severity":"medium"}'`
     : '', [created]);
+  const templates = useMemo(() => created ? {
+    agent: `Use this Zona source to notify my phone after important work.\nEndpoint: ${created.ingestUrl}\nAuthorization: Bearer ${created.token}\nSend JSON with title, body, optional category, severity (low, medium, high, or critical), and data. Add a unique Idempotency-Key header for each event. Never print or commit the token.`,
+    curl,
+    powershell: `$headers = @{\n  Authorization = 'Bearer ${created.token}'\n  'Idempotency-Key' = 'event-' + [guid]::NewGuid()\n}\n$body = @{\n  title = 'Task complete'\n  body = 'Your automation finished successfully.'\n  category = 'automation'\n  severity = 'low'\n} | ConvertTo-Json\nInvoke-RestMethod -Method Post -Uri '${created.ingestUrl}' -Headers $headers -ContentType 'application/json' -Body $body`,
+    automation: `# GitHub Actions — save the token as ZONA_SOURCE_TOKEN\n- name: Notify Zona\n  if: always()\n  shell: bash\n  run: |\n    curl --fail-with-body -X POST '${created.ingestUrl}' \\\n      -H 'Authorization: Bearer \${{ secrets.ZONA_SOURCE_TOKEN }}' \\\n      -H \"Idempotency-Key: github-\${{ github.run_id }}-\${{ github.run_attempt }}\" \\\n      -H 'Content-Type: application/json' \\\n      -d '{\"title\":\"Workflow finished\",\"body\":\"Check the latest run in GitHub.\",\"category\":\"github\",\"severity\":\"medium\"}'`,
+  } : null, [created, curl]);
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
@@ -130,9 +137,13 @@ export default function NewSourceScreen() {
           {testing ? <ActivityIndicator color={colors.accent} /> : <><AppIcon color={colors.accent} fallback="!" name="bell.badge.fill" size={16} /><Text style={styles.testButtonText}>{t('sourceNew.sendTest')}</Text></>}
         </Pressable> : null}
         {testMessage ? <Text accessibilityLiveRegion="polite" style={styles.testMessage}>{testMessage}</Text> : null}
-        <Text style={styles.label}>{t('sourceNew.exampleRequest')}</Text>
-        <View style={styles.codeBox}><Text selectable style={styles.code}>{curl}</Text></View>
-        <Pressable accessibilityRole="button" onPress={() => void copy(curl, 'example')} style={styles.secondary}><AppIcon color={colors.primary} fallback="□" name="doc.on.doc" size={15} /><Text style={styles.secondaryText}>{t('sourceNew.copyCurl')}</Text></Pressable>
+        <Text style={styles.label}>{t('sourceNew.firstAlertTemplates')}</Text>
+        <Text style={styles.templateHelp}>{t('sourceNew.firstAlertTemplatesBody')}</Text>
+        <ScrollView contentContainerStyle={styles.templateTabs} horizontal showsHorizontalScrollIndicator={false}>
+          {(['agent', 'curl', 'powershell', 'automation'] as const).map((choice) => <Pressable accessibilityRole="tab" accessibilityState={{ selected: template === choice }} key={choice} onPress={() => setTemplate(choice)} style={[styles.templateTab, template === choice && styles.templateTabActive]}><Text style={[styles.templateTabText, template === choice && styles.templateTabTextActive]}>{t(`sourceNew.template.${choice}`)}</Text></Pressable>)}
+        </ScrollView>
+        <View style={styles.codeBox}><Text selectable style={styles.code}>{templates?.[template] ?? ''}</Text></View>
+        <Pressable accessibilityRole="button" onPress={() => void copy(templates?.[template] ?? '', 'example')} style={styles.secondary}><AppIcon color={colors.primary} fallback="□" name="doc.on.doc" size={15} /><Text style={styles.secondaryText}>{t('sourceNew.copyTemplate')}</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.done}><Text style={styles.doneText}>{tokenCopied ? t('sourceNew.done') : t('sourceNew.copyToContinue')}</Text></Pressable>
         </ScrollView>
       </>
@@ -169,6 +180,12 @@ const createStyles = () => StyleSheet.create({
   token: { color: '#DDECE6', fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 12, lineHeight: 18 },
   codeBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 15 },
   code: { color: '#E7ECE9', fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 10, lineHeight: 16 },
+  templateHelp: { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 9 },
+  templateTabs: { gap: 7, paddingBottom: 10 },
+  templateTab: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, minHeight: 36, justifyContent: 'center', paddingHorizontal: 12 },
+  templateTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  templateTabText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  templateTabTextActive: { color: colors.white },
   primary: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 16, minHeight: 52, padding: 14 },
   primaryText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   secondary: { alignItems: 'center', borderColor: colors.primary, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 10, padding: 13 },

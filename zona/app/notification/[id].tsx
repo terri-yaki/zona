@@ -9,7 +9,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useBottomSafePadding } from '@/components/TabScreen';
-import { deleteNotification, getNotification, getNotificationDeliverySummary, markNotificationRead } from '@/data/notifications';
+import { deleteNotification, getNotification, getNotificationDeliverySummary, markNotificationRead, setNotificationPinned } from '@/data/notifications';
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { severityAppearance } from '@/lib/notification-severity';
@@ -52,6 +52,7 @@ export default function NotificationDetailScreen() {
   const [deliveryLoading, setDeliveryLoading] = useState(true);
   const [attachment, setAttachment] = useState<{ path: string; url: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [savingState, setSavingState] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deliveryVisible = isVisible('notification.delivery_status') && isEnabled('notification.delivery_status');
   const deliveryPollMilliseconds = runtimeNumber(snapshot, 'notification.delivery_poll_seconds', 15, 5, 300) * 1_000;
@@ -237,6 +238,36 @@ export default function NotificationDetailScreen() {
     }
   }
 
+  async function togglePinned() {
+    if (!item || savingState) return;
+    const next = !item.pinned_at;
+    setSavingState(true);
+    try {
+      await setNotificationPinned(item.id, next);
+      setItem((current) => current ? {
+        ...current,
+        pinned_at: next ? new Date().toISOString() : null,
+      } : current);
+    } catch (caught) {
+      Alert.alert(t('notification.pinError'), userMessage(caught));
+    } finally {
+      setSavingState(false);
+    }
+  }
+
+  async function markUnread() {
+    if (!item || !item.read_at || savingState) return;
+    setSavingState(true);
+    try {
+      await markNotificationRead(item.id, null);
+      setItem((current) => current ? { ...current, read_at: null } : current);
+    } catch (caught) {
+      Alert.alert(t('notification.unreadError'), userMessage(caught));
+    } finally {
+      setSavingState(false);
+    }
+  }
+
   if (authLoading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
   if (!id) {
@@ -350,8 +381,32 @@ export default function NotificationDetailScreen() {
           <View style={styles.codeBox}><Text selectable style={styles.code}>{JSON.stringify(item.data, null, 2)}</Text></View>
         </>
       ) : null}
-      {isVisible('notification.copy') || isVisible('notification.share') ? (
+      {isVisible('notification.pin') || isVisible('notification.mark_unread') || isVisible('notification.copy') || isVisible('notification.share') ? (
         <View style={styles.quickActions}>
+          {isVisible('notification.pin') ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: savingState || !isEnabled('notification.pin'), selected: Boolean(item.pinned_at) }}
+              disabled={savingState || !isEnabled('notification.pin')}
+              onPress={() => void togglePinned()}
+              style={({ pressed }) => [styles.quickAction, pressed && styles.pressed, (savingState || !isEnabled('notification.pin')) && styles.disabled]}
+            >
+              <AppIcon color={colors.primary} fallback="P" name={item.pinned_at ? 'pin.slash.fill' : 'pin.fill'} size={16} />
+              <Text numberOfLines={1} style={styles.quickActionText}>{item.pinned_at ? t('notification.unpin') : t('notification.pin')}</Text>
+            </Pressable>
+          ) : null}
+          {isVisible('notification.mark_unread') && item.read_at ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: savingState || !isEnabled('notification.mark_unread') }}
+              disabled={savingState || !isEnabled('notification.mark_unread')}
+              onPress={() => void markUnread()}
+              style={({ pressed }) => [styles.quickAction, pressed && styles.pressed, (savingState || !isEnabled('notification.mark_unread')) && styles.disabled]}
+            >
+              <AppIcon color={colors.primary} fallback="U" name="envelope.badge" size={16} />
+              <Text numberOfLines={1} style={styles.quickActionText}>{t('notification.markUnread')}</Text>
+            </Pressable>
+          ) : null}
           {isVisible('notification.copy') ? (
             <Pressable
               accessibilityRole="button"
@@ -419,6 +474,7 @@ const deliveryBodyKeys = {
 
 function deliveryBodyKey(summary: NotificationDeliverySummary) {
   switch (summary.reason) {
+    case 'quiet_hours': return 'notification.delivery.reason.quietHours' as const;
     case 'device_unavailable': return 'notification.delivery.reason.deviceUnavailable' as const;
     case 'message_too_big': return 'notification.delivery.reason.messageTooBig' as const;
     case 'provider_unavailable': return 'notification.delivery.reason.providerUnavailable' as const;
@@ -543,8 +599,8 @@ const createStyles = () => StyleSheet.create({
   attachmentError: { color: colors.muted, fontSize: 12, padding: 20, textAlign: 'center' },
   codeBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 14 },
   code: { color: '#E7ECE9', fontSize: 11, lineHeight: 17 },
-  quickActions: { flexDirection: 'row', gap: 10, marginTop: 22 },
-  quickAction: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.medium, flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
+  quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 },
+  quickAction: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.medium, flexBasis: '46%', flexGrow: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
   quickActionText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   delete: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 28, minHeight: 52, padding: 14 },
   deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },

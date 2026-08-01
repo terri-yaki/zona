@@ -6,8 +6,10 @@ export type AppOptions = Database['public']['Views']['user_notification_preferen
 export type Source = Database['public']['Views']['notification_sources']['Row'] & { api_key: ApiKey | null };
 
 type NotificationRow = Database['public']['Views']['inbox_notifications']['Row'];
-export type InboxNotification = Omit<NotificationRow, 'data' | 'idempotency_key' | 'request_hash'> & {
+export type InboxNotification = Omit<NotificationRow, 'data' | 'idempotency_key' | 'pinned_at' | 'push_suppressed_reason' | 'request_hash'> & {
   data: Record<string, Json | undefined>;
+  pinned_at?: string | null;
+  push_suppressed_reason?: 'quiet_hours' | null;
 };
 
 export type CreatedSource = {

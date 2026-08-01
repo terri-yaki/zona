@@ -347,12 +347,14 @@ export default function SettingsScreen() {
   const showUserGuide = isVisible('settings.user_guide');
   const showOfflineCache = isVisible('settings.offline_cache');
   const showAppStatus = isVisible('settings.app_status');
+  const showFirstAlert = isVisible('onboarding.first_alert');
   const showAnyAppRow = showLanguage || showTheme || showWhatsNew || showManualUpdate
-    || showUserGuide || showOfflineCache || showAppStatus;
+    || showUserGuide || showOfflineCache || showAppStatus || showFirstAlert;
   const showNotificationOptions = isVisible('settings.push')
     || isVisible('settings.sound')
     || isVisible('settings.preview')
-    || (liveActivitySupported && isVisible('settings.live_activity'));
+    || (liveActivitySupported && isVisible('settings.live_activity'))
+    || isVisible('settings.quiet_hours');
   return (
     <TabScreen>
       <ScrollView
@@ -431,6 +433,14 @@ export default function SettingsScreen() {
             ) : null}
           </>
         ) : null}
+        {isVisible('settings.quiet_hours') ? <>
+          {isVisible('settings.push') || isVisible('settings.sound') || isVisible('settings.preview') || (liveActivitySupported && isVisible('settings.live_activity')) ? <View style={styles.divider} /> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.quiet_hours') }} disabled={!isEnabled('settings.quiet_hours')} onPress={() => router.push('/notification-schedule' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.quiet_hours') && styles.disabled, pressed && styles.pressed]}>
+            <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="Q" name="moon.stars.fill" size={17} /></View>
+            <View style={styles.cacheCopy}><Text style={styles.link}>{t('settings.quietHours')}</Text><Text style={styles.cacheDescription}>{t('settings.quietHoursDesc')}</Text></View>
+            <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+          </Pressable>
+        </> : null}
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
       </View></> : null}
 
@@ -490,7 +500,7 @@ export default function SettingsScreen() {
           style={({ pressed }) => [styles.registerRow, (checkingUpdate || !isEnabled('settings.manual_update')) && styles.disabled, pressed && styles.pressed]}
         >
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
-          <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
+          <View style={styles.cacheCopy}><Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text><Text style={styles.cacheDescription}>{t('settings.checkUpdateDesc')}</Text></View>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
         {showUserGuide ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate ? <View style={styles.divider} /> : null}
@@ -520,6 +530,12 @@ export default function SettingsScreen() {
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="i" name="waveform.path.ecg" size={17} /></View>
           <Text style={styles.link}>{t('settings.appStatus')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{snapshot.releasePolicy.maintenanceMode ? t('settings.appStatusLimited') : t('settings.appStatusReady')}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable></> : null}
+        {showFirstAlert ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate || showUserGuide || showOfflineCache || showAppStatus ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('onboarding.first_alert') }} disabled={!isEnabled('onboarding.first_alert')} onPress={() => router.push('/first-alert' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('onboarding.first_alert') && styles.disabled, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="1" name="paperplane.fill" size={17} /></View>
+          <View style={styles.cacheCopy}><Text style={styles.link}>{t('settings.firstAlert')}</Text><Text style={styles.cacheDescription}>{t('settings.firstAlertDesc')}</Text></View>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
       </View></> : null}

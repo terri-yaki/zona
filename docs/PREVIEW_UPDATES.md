@@ -6,8 +6,8 @@ Most efficient path for **internal preview** installs of Zona.
 
 | Situation | What you do |
 | --- | --- |
-| Everyday JS/UI fix | Open the app. If prompted **Update available → Install**, tap Install. |
-| Settings → **Check for app update** | Manual check anytime. |
+| Everyday JS/UI fix | Open the app. Zona checks the release channel while launching and applies a compatible update on the next launch. |
+| Settings → **Check for a quick update** | Manually check, download, and restart into a compatible OTA update now. |
 | New notification sounds / Live Activity / native change | Install a **new preview IPA** from the Expo build link (one-time). |
 
 No Metro server and no computer required for OTA installs.
@@ -27,7 +27,7 @@ cd zona
 npx eas-cli update --channel preview --message "Describe the change"
 
 # Full preview binary (native / first OTA-capable install)
-npx eas-cli build --platform ios --profile preview --non-interactive
+npx eas-cli build --platform all --profile preview --non-interactive
 ```
 
 CI (optional): `.github/workflows/preview-ota.yml` runs `eas update --channel preview` on pushes to `main` that touch `zona/`.
@@ -37,7 +37,7 @@ Create at [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tok
 
 ## Rules
 
-1. **OTA only applies** to binaries built with the same `runtimeVersion` (policy: `appVersion` → currently `1.0.0`) and channel `preview`.
+1. **OTA only applies** to binaries built with the same `runtimeVersion` (policy: `appVersion` → currently `0.0.10`) and channel `preview`.
 2. Bumping `expo.version` requires a **new preview build** before OTA works again for that version.
 3. New bundled iOS notification sounds require a **new native build** (they are not OTA assets).
 4. Live Status (Live Activity) requires a **new native build** the first time the plugin ships; see `docs/LIVE_ACTIVITY.md`.

@@ -266,6 +266,8 @@ export type Database = {
           data: Json;
           expires_at: string;
           id: string;
+          pinned_at: string | null;
+          push_suppressed_reason: 'quiet_hours' | null;
           read_at: string | null;
           severity: NotificationSeverity | null;
           source_id: string;
@@ -283,6 +285,8 @@ export type Database = {
           data?: Json;
           expires_at?: string;
           id?: string;
+          pinned_at?: string | null;
+          push_suppressed_reason?: 'quiet_hours' | null;
           read_at?: string | null;
           severity?: NotificationSeverity | null;
           source_id: string;
@@ -300,6 +304,8 @@ export type Database = {
           data?: Json;
           expires_at?: string;
           id?: string;
+          pinned_at?: string | null;
+          push_suppressed_reason?: 'quiet_hours' | null;
           read_at?: string | null;
           severity?: NotificationSeverity | null;
           source_id?: string;
@@ -432,6 +438,8 @@ export type Database = {
           expires_at: string;
           id: string;
           idempotency_key: string | null;
+          pinned_at: string | null;
+          push_suppressed_reason: 'quiet_hours' | null;
           read_at: string | null;
           request_hash: string | null;
           severity: NotificationSeverity | null;

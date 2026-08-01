@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { setApiKeySound } from '@/data/sources';
+import { getSourceHealth, type SourceHealth } from '@/data/source-health';
 import { useSources } from '@/hooks/useSources';
 import { renameSource, revokeSource, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
@@ -80,6 +81,8 @@ export default function SourcesScreen() {
   const [renameValidationError, setRenameValidationError] = useState<string | null>(null);
   const [soundPickerSource, setSoundPickerSource] = useState<Source | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [healthBySource, setHealthBySource] = useState<Record<string, SourceHealth>>({});
+  const [healthUpdatedAt, setHealthUpdatedAt] = useState(0);
   const onlineWindowMilliseconds = runtimeNumber(snapshot, 'sources.online_window_minutes', 5, 1, 1440) * 60 * 1_000;
   const searchMinimumCount = runtimeNumber(snapshot, 'sources.search_minimum_count', 4, 0, 100);
   const cardSpacing = runtimeNumber(snapshot, 'sources.card_spacing', 6, 2, 12);
@@ -88,6 +91,18 @@ export default function SourcesScreen() {
   const visibleSources = useMemo(() => {
     return filterSources(sources, searchEnabled ? searchQuery : '');
   }, [searchEnabled, searchQuery, sources]);
+
+  useEffect(() => {
+    if (!isVisible('sources.health') || !isEnabled('sources.health') || sources.length === 0) return;
+    let active = true;
+    void getSourceHealth().then((rows) => {
+      if (active) {
+        setHealthBySource(Object.fromEntries(rows.map((row) => [row.sourceId, row])));
+        setHealthUpdatedAt(Date.now());
+      }
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [isEnabled, isVisible, sources]);
 
   function askRename(source: Source) {
     if (busySourceId) return;
@@ -311,6 +326,8 @@ export default function SourcesScreen() {
           const busy = busySourceId === item.id;
           const online = !item.revoked_at && recentlyActive(item.last_seen_at, onlineWindowMilliseconds);
           const keyActive = Boolean(item.api_key?.is_active && !item.revoked_at);
+          const health = healthBySource[item.id];
+          const inactive = !health?.lastAlertAt || healthUpdatedAt - new Date(health.lastAlertAt).getTime() > 7 * 24 * 60 * 60 * 1_000;
           return (
             <View style={[styles.card, { marginVertical: cardSpacing }, item.revoked_at && styles.revoked]}>
               <View style={styles.avatar}>
@@ -344,6 +361,15 @@ export default function SourcesScreen() {
                 {isVisible('sources.last_seen') ? <Text style={styles.lastSeen}>
                   {item.last_seen_at ? t('sources.lastActive', { time: relativeTime(item.last_seen_at) }) : t('sources.waitingFirst')}
                 </Text> : null}
+                {health && isVisible('sources.health') ? <View style={[styles.healthCard, inactive && styles.healthCardQuiet]}>
+                  <View style={styles.healthHeader}>
+                    <AppIcon color={inactive ? colors.muted : colors.success} fallback="H" name={inactive ? 'moon.zzz.fill' : 'waveform.path.ecg'} size={14} />
+                    <Text numberOfLines={1} style={styles.healthTitle}>{inactive ? t('sources.healthInactive') : t('sources.healthActive')}</Text>
+                    <Text style={styles.healthRate}>{health.deliverySuccessPercent === null ? t('sources.healthNoDelivery') : t('sources.healthDelivery', { percent: health.deliverySuccessPercent })}</Text>
+                  </View>
+                  <Text numberOfLines={1} style={styles.healthBody}>{health.lastAlertAt ? t('sources.healthLastAlert', { time: relativeTime(health.lastAlertAt), title: health.lastAlertTitle ?? t('sources.healthAlert') }) : t('sources.healthNoAlerts')}</Text>
+                  <Text style={styles.healthMeta}>{t('sources.healthVolume', { count: health.alertsLast24Hours })}</Text>
+                </View> : null}
                 <Pressable
                   accessibilityLabel={t('sourceKeys.manageFor', { name: item.display_name })}
                   accessibilityRole="button"
@@ -384,6 +410,17 @@ export default function SourcesScreen() {
                       <Text numberOfLines={1} style={styles.action}>
                         {Platform.OS === 'android' ? t('sources.soundAndroid') : t(soundLabelKeyFor(item.api_key?.sound_name))}
                       </Text>
+                    </Pressable> : null}
+                    {isVisible('sources.schedule') ? <Pressable
+                      accessibilityLabel={t('schedule.sourceA11y', { name: item.display_name })}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: !isEnabled('sources.schedule') }}
+                      disabled={!isEnabled('sources.schedule')}
+                      onPress={() => router.push({ pathname: '/notification-schedule', params: { sourceId: item.id, sourceName: item.display_name } } as never)}
+                      style={({ pressed }) => [styles.actionButton, styles.actionFlex, pressed && styles.actionPressed, !isEnabled('sources.schedule') && styles.actionDisabled]}
+                    >
+                      <AppIcon color={colors.primary} fallback="Q" name="moon.fill" size={12} />
+                      <Text style={styles.action}>{t('schedule.sourceAction')}</Text>
                     </Pressable> : null}
                     <Pressable
                       accessibilityLabel={`${t('sources.revoke')} ${item.display_name}`}
@@ -621,6 +658,13 @@ const createStyles = () => StyleSheet.create({
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 5, marginTop: 6 },
   meta: { color: colors.muted, flex: 1, fontSize: 12 },
   lastSeen: { color: colors.mutedLight, fontSize: 12, lineHeight: 17, marginTop: 3 },
+  healthCard: { backgroundColor: colors.successSoft, borderRadius: radius.small, marginTop: 9, padding: 10 },
+  healthCardQuiet: { backgroundColor: colors.surfaceMuted },
+  healthHeader: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  healthTitle: { color: colors.textSoft, flex: 1, fontSize: 11, fontWeight: '800' },
+  healthRate: { color: colors.muted, fontSize: 10, fontWeight: '700' },
+  healthBody: { color: colors.textSoft, fontSize: 11, marginTop: 5 },
+  healthMeta: { color: colors.muted, fontSize: 10, marginTop: 3 },
   keyRow: { alignItems: 'center', backgroundColor: colors.background, borderRadius: radius.small, flexDirection: 'row', marginTop: 9, minHeight: 48, paddingHorizontal: 11, paddingVertical: 7 },
   keyCopy: { flex: 1, minWidth: 0 },
   keyLabel: { color: colors.mutedLight, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },

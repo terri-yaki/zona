@@ -9,9 +9,10 @@ info:
     invoked by the authenticated iPhone app.
 
     A 202 response from `notify` means the durable, retention-bounded inbox
-    record exists. `pushQueued` counts durable delivery jobs. A background
-    worker sends them with bounded retries and checks Expo receipts; neither a
-    queue entry nor a provider receipt proves that the phone displayed an alert.
+    record exists. `pushQueued` counts durable delivery jobs and can be zero
+    when account or source quiet hours are active. A background worker sends
+    queued jobs with bounded retries and checks Expo receipts; neither a queue
+    entry nor a provider receipt proves that the phone displayed an alert.
 
     Every JSON request has a 16 KiB transport limit. `notify.data` has an
     additional 4 KiB UTF-8 serialized limit. These byte limits are normative
@@ -41,6 +42,8 @@ paths:
         The source and owner are derived from the Bearer credential. Callers
         cannot provide or override source/owner identity. The inbox record and
         eligible delivery jobs are durable before the response is returned.
+        Quiet hours suppress only those jobs; the inbox record is still
+        accepted and returned normally.
 
         `Idempotency-Key` is required. Re-sending the same key with an
         identical payload returns the stored notification with
@@ -97,7 +100,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotifyAccepted'
         '202':
-          description: Inbox record accepted and eligible push delivery jobs durably queued.
+          description: |
+            Inbox record accepted. Eligible push delivery jobs are durably
+            queued, or intentionally omitted while quiet hours are active.
           headers:
             Cache-Control:
               schema:
@@ -721,8 +726,9 @@ components:
           type: integer
           minimum: 0
           description: |
-            Durable delivery jobs created for eligible phones. Present on a
-            newly accepted notification and omitted on an idempotent replay.
+            Durable delivery jobs created for eligible phones. This is zero
+            while account or source quiet hours are active. Present on a newly
+            accepted notification and omitted on an idempotent replay.
 
     NotifyMultipartRequest:
       type: object

@@ -8,18 +8,28 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
-- Find a sender by its source name, computer name, key name, or key prefix.
-- Copy or share the useful parts of an alert without exposing its private
-  metadata or internal identifiers.
-- Open App Status to see whether Zona is ready, which features are available,
-  and how much room the account has.
+- Find any alert by its message, category, urgency, or source, then save the
+  views you return to most.
+- Pin the alerts that still need you, mark one unread for later, and fold
+  repeated messages into one calmer inbox row.
+- Protect focus time with quiet hours for the whole account or a schedule for
+  one especially busy source. Every alert still waits safely in the inbox.
+- See when each source last spoke, how busy it has been today, and whether its
+  recent pushes are getting through.
+- Start with a three-step first-alert guide and ready-to-copy examples for AI
+  agents, cURL, PowerShell, and GitHub Actions.
+- Keep an eye on unread work from an iPhone Home Screen or Lock Screen widget,
+  and use Zona from Apple Shortcuts.
+- Copy a safe diagnostic summary when support needs to understand the app,
+  phone, push, account, and current settings.
 
 ### Changed
 
 - Important labels are easier to read, small controls are easier to tap, and
   source actions adapt more naturally to narrow phones and larger text.
-- Zona can tune more of the inbox, notification, source, key, settings, and
-  background experience without waiting for another store download.
+- “Check for a quick update” now says exactly what it does: it installs
+  compatible fixes, while full app versions still arrive through TestFlight or
+  the App Store.
 
 ## [0.0.8] - 2026-07-30
 

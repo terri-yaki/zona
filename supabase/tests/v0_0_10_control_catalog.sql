@@ -5,12 +5,12 @@ select plan(22);
 
 select is(
   (select count(*)::integer from private.app_control_catalog),
-  74,
+  88,
   'the operator catalog contains every v0.0.10 feature and setting'
 );
 select is(
   (select count(*)::integer from private.app_control_catalog where control_kind = 'feature'),
-  57,
+  71,
   'all shipped feature controls are cataloged'
 );
 select is(
@@ -20,8 +20,8 @@ select is(
 );
 select is(
   (select count(*)::integer from private.app_control_catalog where not is_active),
-  0,
-  'the initial catalog is active'
+  1,
+  'only the retired foreground OTA watcher is inactive'
 );
 select ok(
   (select relrowsecurity from pg_catalog.pg_class where oid = 'private.app_control_catalog'::regclass),
@@ -49,7 +49,7 @@ select is(
    where feature_key in (
      select control_key from private.app_control_catalog where control_kind = 'feature'
    )),
-  57,
+  71,
   'every cataloged feature has a control rule'
 );
 select is(
@@ -118,7 +118,7 @@ select is(
 );
 select is(
   (select count(*)::integer from private.app_control_dashboard),
-  74,
+  88,
   'the operator dashboard covers the whole catalog'
 );
 select is(

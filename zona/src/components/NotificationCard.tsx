@@ -11,7 +11,7 @@ import type { InboxNotification } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useThemedStyles } from '@/theme-preference';
 
-export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
+export function NotificationCard({ item, onPress, repeatCount = 1 }: { item: InboxNotification; onPress: () => void; repeatCount?: number }) {
   const styles = useThemedStyles(createStyles);
   const { language, t } = useI18n();
   const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
@@ -64,6 +64,7 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
         <View style={styles.metaRow}>
           <View style={styles.sourceRow}>
             <Text numberOfLines={1} style={styles.source}>{item.source_name_snapshot}</Text>
+            {item.pinned_at ? <AppIcon color={colors.accent} fallback="P" name="pin.fill" size={12} /> : null}
             {item.category && showCategory ? <Text numberOfLines={1} style={styles.category}>{item.category}</Text> : null}
           </View>
           {item.attachment_path && showAttachment ? (
@@ -71,7 +72,10 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
           ) : null}
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
-        <Text numberOfLines={titleLines} style={[styles.title, unread && styles.unreadTitle]}>{item.title}</Text>
+        <View style={styles.titleRow}>
+          <Text numberOfLines={titleLines} style={[styles.title, unread && styles.unreadTitle]}>{item.title}</Text>
+          {repeatCount > 1 ? <Text style={styles.repeatCount}>×{repeatCount}</Text> : null}
+        </View>
         <Text numberOfLines={bodyLines} style={styles.body}>{item.body}</Text>
       </View>
       {unread ? <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.dot} /> : null}
@@ -93,6 +97,8 @@ const createStyles = () => StyleSheet.create({
   category: { backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 11, fontWeight: '700', maxWidth: 110, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3, textTransform: 'uppercase' },
   time: { color: colors.mutedLight, fontSize: 11 },
   title: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 3 },
+  titleRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+  repeatCount: { backgroundColor: colors.primarySoft, borderRadius: radius.full, color: colors.primary, fontSize: 11, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
   unreadTitle: { fontWeight: '800' },
   body: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   dot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, marginTop: 5, width: 8 },

@@ -109,6 +109,14 @@ Required database cases:
 - inactive changelog releases and individual release-note items are hidden;
 - compatibility views preserve v0.0.5 reads while v0.0.6 owner RPCs and
   user-scoped Realtime Broadcast prevent cross-account access.
+- inbox search cannot cross accounts and safely treats wildcard characters as
+  text; pinned pagination remains stable when timestamps match;
+- saved filters and notification schedules are owner-only, bounded, and reject
+  a source belonging to another account;
+- quiet hours store the alert first, skip only push-job creation, and report a
+  non-failure `quiet_hours` delivery reason across daily and overnight windows;
+- source health aggregates only owned sources and never exposes device tokens,
+  provider ticket IDs, raw errors, or notification bodies.
 
 ### Edge Function contract tests
 
@@ -158,7 +166,16 @@ through Zona's app-level recent-proof gate.
 ### Mobile component and integration tests
 
 Use React Native Testing Library with network/native modules mocked at their
-boundaries. Cover:
+boundaries. In addition to the existing inbox and lifecycle coverage, verify
+search debounce, saved-filter restore/delete, pin and mark-unread state,
+repeated-alert expansion, schedule validation, diagnostic redaction, first-alert
+templates, and widget prop selection.
+
+Native iOS release checks must generate the WidgetKit target and compile the
+App Intents source. On a physical iPhone, exercise every configured widget
+family and the **Open Zona Inbox** and **Prepare a Zona Alert** Shortcuts actions.
+
+Additional lifecycle cases:
 
 - anonymous sign-in pending, success, and provider error;
 - email, Apple, Google, and GitHub sign-in and guest-protection flows;

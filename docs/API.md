@@ -43,6 +43,11 @@ The command should return a JSON object containing `notificationId`,
 `sourceId`, and `sourceName`. The notification is then visible in Zona's inbox,
 even if remote push delivery was unavailable.
 
+Quiet hours and source schedules never reject this API request. Zona stores the
+alert normally, returns its notification ID, and keeps it searchable in the
+inbox; only the phone push is skipped for that quiet window. Notification
+details identify that outcome as quiet hours rather than a delivery failure.
+
 To include an image:
 
 ```powershell
@@ -206,6 +211,10 @@ in the URL query string.
 `data` is stored with the inbox item for application-specific context. It does
 not alter routing, source identity, sound, severity, or push behavior. Use namespaced,
 non-sensitive keys and keep large logs or files outside this field.
+
+Severity changes presentation, not authorization or delivery priority. Zona
+uses green for `low`, yellow for `medium`, orange for `high`, red for
+`critical`, and the normal white/default treatment when severity is absent.
 
 Only the documented fields are part of the contract. In particular,
 `sourceName`, `sourceId`, `userId`, `sound`, and `pushEnabled` are not supported

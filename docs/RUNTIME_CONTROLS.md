@@ -45,13 +45,14 @@ safe to draft a rule before publishing it.
 
 | Area | Keys |
 | --- | --- |
-| Inbox | `inbox.summary`, `inbox.filters`, `inbox.source_filter`, `inbox.unread_filter`, `inbox.time_filter`, `inbox.mark_all_read`, `inbox.show_revoked_filters`, `inbox.pull_to_refresh`, `inbox.pagination`, `inbox.category_badges`, `inbox.attachment_badges`, `inbox.relative_time` |
-| Notification detail | `notification.attachments`, `notification.category`, `notification.metadata`, `notification.severity`, `notification.delivery_status`, `notification.copy`, `notification.share`, `notification.absolute_time` |
-| Sources | `sources.create`, `sources.search`, `sources.pull_to_refresh`, `sources.status_badges`, `sources.hostname`, `sources.last_seen`, `sources.rename`, `sources.pause`, `sources.test`, `sources.sound` |
+| Inbox | `inbox.summary`, `inbox.filters`, `inbox.source_filter`, `inbox.unread_filter`, `inbox.time_filter`, `inbox.mark_all_read`, `inbox.show_revoked_filters`, `inbox.pull_to_refresh`, `inbox.pagination`, `inbox.category_badges`, `inbox.attachment_badges`, `inbox.relative_time`, `inbox.search`, `inbox.saved_filters`, `inbox.pinned_filter`, `inbox.severity_filter`, `inbox.grouping` |
+| Notification detail | `notification.attachments`, `notification.category`, `notification.metadata`, `notification.severity`, `notification.delivery_status`, `notification.copy`, `notification.share`, `notification.absolute_time`, `notification.pin`, `notification.mark_unread` |
+| Sources | `sources.create`, `sources.search`, `sources.pull_to_refresh`, `sources.status_badges`, `sources.hostname`, `sources.last_seen`, `sources.rename`, `sources.pause`, `sources.test`, `sources.sound`, `sources.health`, `sources.schedule` |
 | Source keys | `source_keys.create`, `source_keys.rename`, `source_keys.pull_to_refresh` |
-| Settings/account | `settings.account_summary`, `settings.delivery_status`, `settings.push`, `settings.push_registration`, `settings.sound`, `settings.preview`, `settings.live_activity`, `settings.language`, `settings.theme`, `settings.whats_new`, `settings.manual_update`, `settings.user_guide`, `settings.offline_cache`, `settings.app_status`, `account.usage` |
-| App Status | `status.control_summary`, `status.plan_limits`, `status.configuration_details`, `status.support_link` |
-| Onboarding/background | `onboarding.push`, `background.live_activity`, `background.ota_updates`, `background.push_registration`, `background.client_telemetry` |
+| Settings/account | `settings.account_summary`, `settings.delivery_status`, `settings.push`, `settings.push_registration`, `settings.sound`, `settings.preview`, `settings.live_activity`, `settings.language`, `settings.theme`, `settings.whats_new`, `settings.manual_update`, `settings.user_guide`, `settings.offline_cache`, `settings.app_status`, `settings.quiet_hours`, `account.usage` |
+| App Status | `status.control_summary`, `status.plan_limits`, `status.configuration_details`, `status.support_link`, `status.copy_diagnostics` |
+| Onboarding/background | `onboarding.push`, `onboarding.first_alert`, `background.live_activity`, `background.push_registration`, `background.client_telemetry` |
+| Native iOS | `ios.widget`, `ios.shortcuts` |
 
 Source revocation and the Privacy/account controls are intentionally absent.
 
