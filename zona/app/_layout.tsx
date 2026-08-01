@@ -22,6 +22,7 @@ import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pend
 import { isUuid } from '@/lib/validation';
 import { translate } from '@/i18n';
 import { colors, radius } from '@/theme';
+import { hydrateThemePreference, useThemedStyles } from '@/theme-preference';
 
 function NotificationNavigation() {
   const router = useRouter();
@@ -75,6 +76,7 @@ function NotificationNavigation() {
 }
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const styles = useThemedStyles(createStyles);
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
   if (__DEV__ && error) console.error('[Zona ErrorBoundary]', error);
@@ -101,6 +103,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 export default function RootLayout() {
   useEffect(() => {
     void ensureNotificationSoundChannels();
+    // Restore the saved theme preset before first paint of any screen.
+    void hydrateThemePreference();
   }, []);
 
   return (
@@ -157,7 +161,7 @@ function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   errorPage: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 28 },
   errorTitle: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center' },
   errorMessage: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 420, textAlign: 'center' },

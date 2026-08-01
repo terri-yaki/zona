@@ -31,11 +31,13 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius, shadows } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import type { CreatedSourceAccessKey, SourceAccessKey } from '@/types';
 
 type Editor = { mode: 'add'; key: null } | { mode: 'rename'; key: SourceAccessKey };
 
 export default function SourceKeysScreen() {
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ id?: string; name?: string; revoked?: string }>();
   const sourceId = typeof params.id === 'string' ? params.id : null;
   const sourceName = typeof params.name === 'string' ? params.name : '';
@@ -245,6 +247,7 @@ function KeyEditorModal({ busy, mode, onChange, onClose, onSubmit, value, visibl
   value: string;
   visible: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   return (
@@ -280,6 +283,7 @@ function NewKeyModal({ copied, created, onClose, onCopy }: {
   onClose: () => void;
   onCopy: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Token is selectable, so Done/onRequestClose stay available even if clipboard fails.
@@ -304,7 +308,7 @@ function NewKeyModal({ copied, created, onClose, onCopy }: {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   root: { backgroundColor: colors.background, flex: 1 },
   content: { padding: 20 },
   introRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 14, justifyContent: 'space-between', marginBottom: 20 },

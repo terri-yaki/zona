@@ -8,8 +8,10 @@ import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilit
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export default function SignInScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session, authError, clearAuthError, continueAsGuest, sendEmailAuth, startProvider } = useAuth();
   const { t } = useI18n();
@@ -140,7 +142,7 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   content: { alignSelf: 'center', maxWidth: 520, width: '100%' },

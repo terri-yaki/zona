@@ -7,8 +7,10 @@ import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useThemedStyles } from '@/theme-preference';
 
 export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
   const unread = !item.read_at;
@@ -58,7 +60,7 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: '#E9EEEB', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   avatar: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 13, borderWidth: 1, height: 44, justifyContent: 'center', position: 'relative', width: 44 },

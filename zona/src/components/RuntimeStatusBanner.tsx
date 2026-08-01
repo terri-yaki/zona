@@ -8,8 +8,10 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export function RuntimeStatusBanner() {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const { session } = useAuth();
   const { snapshot } = useRuntimeConfig();
@@ -102,7 +104,7 @@ export function RuntimeStatusBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   banner: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginBottom: 8, marginHorizontal: 16, marginTop: 6, padding: 12 },
   warning: { backgroundColor: colors.accentSoft },
   critical: { backgroundColor: colors.dangerSoft },

@@ -23,6 +23,7 @@ import type { AuthProviderName } from '@/lib/auth-transactions';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 const providerNames: Record<string, string> = {
   apple: 'Apple',
@@ -38,6 +39,7 @@ function identityHint(identity: UserIdentity) {
 }
 
 export default function AccountScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session, sendEmailAuth, startProvider } = useAuth();
   const { t } = useI18n();
@@ -292,10 +294,11 @@ export default function AccountScreen() {
 }
 
 function AccountAction({ danger = false, label, onPress }: { danger?: boolean; label: string; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   return <Pressable accessibilityRole="button" onPress={onPress} style={styles.actionRow}><Text style={[styles.actionText, danger && styles.dangerText]}>{label}</Text><AppIcon color={danger ? colors.danger : colors.primary} fallback="›" name="chevron.right" size={17} /></Pressable>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: { backgroundColor: colors.background, flex: 1 },
   page: { alignSelf: 'center', maxWidth: 680, padding: 18, paddingBottom: 42, width: '100%' },
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', padding: 18 },

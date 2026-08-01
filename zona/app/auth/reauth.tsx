@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -44,6 +45,7 @@ function proofEmailFromSession(session: Session | null | undefined) {
 }
 
 export default function ReauthScreen() {
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams();
   const router = useRouter();
   const { session, sendEmailAuth, startProvider } = useAuth();
@@ -231,7 +233,7 @@ export default function ReauthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 24 },
   card: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, maxWidth: 440, padding: 26, width: '100%' },
   icon: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },

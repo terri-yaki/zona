@@ -39,6 +39,7 @@ import { previewNotificationSound } from '@/lib/notification-sounds';
 import { runtimeNumber } from '@/lib/runtime-controls';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import type { ApiKey, Source } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
@@ -66,6 +67,7 @@ function recentlyActive(lastSeenAt: string | null, windowMilliseconds: number) {
 }
 
 export default function SourcesScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { t } = useI18n();
   const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
@@ -399,6 +401,7 @@ function RenameSourceModal({ busy, error, onChange, onClose, onSubmit, value, vi
   value: string;
   visible: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   return (
@@ -447,6 +450,7 @@ function SoundPickerModal({
   onClose: () => void;
   onSelect: (sound: SoundName) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
 
@@ -516,7 +520,7 @@ function SoundPickerModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -41,9 +41,11 @@ import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { languageAutonym, type LanguagePreference } from '@/i18n';
 import { runtimeString, type FeatureKey } from '@/lib/runtime-controls';
 import { colors, radius } from '@/theme';
+import { setActiveThemePreset, themePresets, useThemePreferenceId, useThemedStyles } from '@/theme-preference';
 import type { AppOptions } from '@/types';
 
 export default function SettingsScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session } = useAuth();
   const { languageName, preference, setPreference, t, tc } = useI18n();
@@ -63,6 +65,9 @@ export default function SettingsScreen() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [liveActivityCapability, setLiveActivityCapability] = useState<LiveActivityCapability | null>(null);
   const [languageModal, setLanguageModal] = useState(false);
+  const [themeModal, setThemeModal] = useState(false);
+  const activeThemeId = useThemePreferenceId();
+  const activeTheme = themePresets.find((preset) => preset.id === activeThemeId) ?? themePresets[0];
   const [cacheBytes, setCacheBytes] = useState(0);
   const [cacheOwnerUserId, setCacheOwnerUserId] = useState<string | null>(null);
   const visibleOptions = optionsOwnerUserId === userId ? options : null;
@@ -446,14 +451,21 @@ export default function SettingsScreen() {
           <Text numberOfLines={1} style={styles.languageValue}>{languageValue}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable> : null}
-        {isVisible('settings.whats_new') ? <>{isVisible('settings.language') ? <View style={styles.divider} /> : null}
+        {isVisible('settings.language') ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" onPress={() => setThemeModal(true)} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="◐" name="paintpalette" size={17} /></View>
+          <Text style={styles.link}>{t('settings.theme')}</Text>
+          <Text numberOfLines={1} style={styles.languageValue}>{t(activeTheme.nameKey)}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable>
+        {isVisible('settings.whats_new') ? <><View style={styles.divider} />
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.whats_new') }} disabled={!isEnabled('settings.whats_new')} onPress={() => router.push('/whats-new')} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.whats_new') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="+" name="sparkles" size={17} /></View>
           <Text style={styles.link}>{t('settings.whatsNew')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{t('settings.whatsNewValue')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
-        {isVisible('settings.manual_update') ? <>{isVisible('settings.language') || isVisible('settings.whats_new') ? <View style={styles.divider} /> : null}
+        {isVisible('settings.manual_update') ? <><View style={styles.divider} />
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: checkingUpdate || !isEnabled('settings.manual_update') }}
@@ -468,7 +480,7 @@ export default function SettingsScreen() {
           <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
-        {isVisible('settings.user_guide') ? <>{isVisible('settings.language') || isVisible('settings.whats_new') || isVisible('settings.manual_update') ? <View style={styles.divider} /> : null}
+        {isVisible('settings.user_guide') ? <><View style={styles.divider} />
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: !isEnabled('settings.user_guide') }}
@@ -516,6 +528,12 @@ export default function SettingsScreen() {
         preference={preference}
         visible={languageModal}
       />
+      <ThemeModal
+        activeThemeId={activeThemeId}
+        onClose={() => setThemeModal(false)}
+        onSelect={(id) => { void setActiveThemePreset(id); setThemeModal(false); }}
+        visible={themeModal}
+      />
     </TabScreen>
   );
 }
@@ -532,6 +550,7 @@ function LanguageModal({ onClose, onSelect, preference, visible }: {
   preference: LanguagePreference;
   visible: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { languageName, t } = useI18n();
   const bottomPadding = useBottomSafePadding(14);
   const choices: { label: string; value: LanguagePreference }[] = [
@@ -564,9 +583,45 @@ function LanguageModal({ onClose, onSelect, preference, visible }: {
   );
 }
 
+function ThemeModal({ activeThemeId, onClose, onSelect, visible }: {
+  activeThemeId: string;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+  visible: boolean;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const { t } = useI18n();
+  const bottomPadding = useBottomSafePadding(14);
+  return (
+    <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
+      <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable accessibilityViewIsModal onPress={() => undefined} style={[styles.modalSheet, { paddingBottom: bottomPadding }]}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>{t('settings.themeTitle')}</Text>
+              <Text style={styles.modalBody}>{t('settings.themeBody')}</Text>
+            </View>
+            <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.modalClose}>
+              <AppIcon color={colors.textSoft} fallback="×" name="xmark" size={16} />
+            </Pressable>
+          </View>
+          {themePresets.map((preset) => (
+            <Pressable key={preset.id} accessibilityRole="radio" accessibilityState={{ checked: activeThemeId === preset.id }} onPress={() => onSelect(preset.id)} style={({ pressed }) => [styles.languageChoice, pressed && styles.pressed]}>
+              <View style={[styles.themeDot, { backgroundColor: preset.colors.primary }]} />
+              <Text style={styles.languageChoiceText}>{t(preset.nameKey)}</Text>
+              {activeThemeId === preset.id ? <AppIcon color={colors.primary} fallback="✓" name="checkmark.circle.fill" size={20} /> : null}
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 type SettingIcon = 'person' | 'clock' | 'bell' | 'antenna.radiowaves.left.and.right';
 
 function SettingRow({ icon, label, value }: { icon: SettingIcon; label: string; value: string }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="•" name={icon} size={17} /></View>
@@ -583,6 +638,7 @@ function OptionRow({ description, disabled, label, onChange, value }: {
   onChange: (value: boolean) => void;
   value: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.optionRow}>
       <View style={styles.optionCopy}>
@@ -601,7 +657,7 @@ function OptionRow({ description, disabled, label, onChange, value }: {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   scroll: { backgroundColor: colors.background, flex: 1 },
   page: { backgroundColor: colors.background, flexGrow: 1, paddingHorizontal: 16, paddingTop: 8 },
   profile: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', marginBottom: 7, padding: 17 },
@@ -629,6 +685,7 @@ const styles = StyleSheet.create({
   cacheCopy: { flex: 1, paddingRight: 8 },
   cacheDescription: { color: colors.muted, fontSize: 10, lineHeight: 14, marginTop: 2 },
   languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },
+  themeDot: { borderRadius: 999, height: 18, marginRight: 10, width: 18 },
   modalBackdrop: { backgroundColor: 'rgba(18, 35, 29, 0.3)', flex: 1, justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingHorizontal: 18, paddingTop: 18 },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },

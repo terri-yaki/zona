@@ -4,8 +4,10 @@ import { AppIcon } from '@/components/AppIcon';
 import { userMessage } from '@/lib/errors';
 import { colors, radius } from '@/theme';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useThemedStyles } from '@/theme-preference';
 
 export function ErrorState({ error, onRetry, compact = false }: { error: unknown; onRetry: () => void; compact?: boolean }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   return (
     <View accessibilityLiveRegion="polite" style={[styles.container, compact && styles.compact]}>
@@ -21,7 +23,7 @@ export function ErrorState({ error, onRetry, compact = false }: { error: unknown
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   container: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: '#EECFCD', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, margin: 16, padding: 14 },
   compact: { marginBottom: 8, marginTop: 4 },
   icon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, height: 34, justifyContent: 'center', width: 34 },

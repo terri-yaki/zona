@@ -14,9 +14,11 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import type { CreatedSource } from '@/types';
 
 export default function NewSourceScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session, loading } = useAuth();
   const { t } = useI18n();
@@ -155,7 +157,7 @@ export default function NewSourceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 22 },
   sourceIcon: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 19, height: 58, justifyContent: 'center', marginBottom: 20, width: 58 },
   successMark: { alignItems: 'center', backgroundColor: colors.successSoft, borderRadius: 27, height: 54, justifyContent: 'center', marginBottom: 18, width: 54 },

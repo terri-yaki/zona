@@ -2,10 +2,12 @@ import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import { useBottomSafePadding } from '@/components/TabScreen';
 import { useI18n } from '@/providers/LocalizationProvider';
 
 export default function PrivacyScreen() {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const bottomPadding = useBottomSafePadding(18);
   return (
@@ -25,10 +27,11 @@ export default function PrivacyScreen() {
 }
 
 function PrivacySection({ title, body }: { title: string; body: string }) {
+  const styles = useThemedStyles(createStyles);
   return <View style={styles.card}><Text style={styles.sectionTitle}>{title}</Text><Text style={styles.body}>{body}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 18 },
   title: { color: colors.text, fontSize: 27, fontWeight: '800', letterSpacing: -0.5 },
   intro: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 20, marginTop: 8 },

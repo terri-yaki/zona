@@ -9,8 +9,10 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export default function PushOnboardingScreen() {
+  const styles = useThemedStyles(createStyles);
   const { session } = useAuth();
   const { t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
@@ -70,10 +72,11 @@ export default function PushOnboardingScreen() {
 }
 
 function Feature({ icon, text }: { icon: 'desktopcomputer' | 'clock'; text: string }) {
+  const styles = useThemedStyles(createStyles);
   return <View style={styles.featureRow}><View style={styles.featureIcon}><AppIcon color={colors.primary} name={icon} size={19} /></View><Text style={styles.featureText}>{text}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safeArea: { backgroundColor: colors.background, flex: 1 },
   page: { alignItems: 'stretch', flexGrow: 1, justifyContent: 'center', padding: 26 },
   illustration: { alignSelf: 'center', marginBottom: 26, position: 'relative' },

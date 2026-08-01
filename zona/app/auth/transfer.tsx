@@ -20,8 +20,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export default function AccountTransferScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session } = useAuth();
   const { t } = useI18n();
@@ -186,10 +188,11 @@ export default function AccountTransferScreen() {
 }
 
 function PreviewRow({ label, value }: { label: string; value: number }) {
+  const styles = useThemedStyles(createStyles);
   return <View style={styles.previewRow}><Text style={styles.previewLabel}>{label}</Text><Text style={styles.previewValue}>{value}</Text></View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   card: { alignItems: 'center', alignSelf: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, maxWidth: 460, padding: 26, width: '100%' },
