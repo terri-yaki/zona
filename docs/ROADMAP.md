@@ -27,7 +27,25 @@ The complete account lifecycle and rollout contract is in
 [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
 [ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md).
 
-## v0.0.9 — Zona Plus beta
+## v0.0.9 — Trust and visibility
+
+**User story:** understand how much Zona is doing and whether an alert reached
+the phone service, without opening a developer console.
+
+- Show account usage for sources, active keys, phones, retained alerts,
+  attachments, and recent alert volume.
+- Show a clear delivery state on each notification while staying honest that a
+  push-service receipt does not prove the person saw the alert.
+- Add automated database, RLS, migration, and Edge Function contract gates to
+  every pull request.
+- Complete a physical-iPhone TestFlight matrix before release.
+
+Architecture work: an owner-scoped delivery summary over the private queue,
+sanitized failure reasons, usage presentation over the existing server-owned
+counters, and a disposable local Supabase stack in CI. Passkeys, MFA, and
+protected-account merge remain outside this release.
+
+## v0.0.10 — Zona Plus beta
 
 **User story:** unlock more room and restore the purchase on any signed-in
 phone.
@@ -43,22 +61,6 @@ phone.
 Architecture work: one entitlement service fed by App Store and Play Store
 events, an append-only purchase-event record, idempotent webhook handling, and
 support tools that can explain why an account has access.
-
-## v0.0.10 — Make Plus worth keeping
-
-**User story:** spend less time watching systems and more time acting on the
-alerts that matter.
-
-- Add source groups and saved inbox views.
-- Add quiet schedules with clear exceptions for important alerts.
-- Add escalation rules that surface an alert again when it still needs
-  attention.
-- Polish upgrade, trial, cancellation, privacy, support, and first-run flows
-  for a public paid beta.
-
-Architecture work: a small rules engine with allowlisted actions, timezone-safe
-schedules, auditable rule execution, and analytics limited to product health
-and consented usage.
 
 ## Working Free and Plus shape
 

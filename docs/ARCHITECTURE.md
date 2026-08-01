@@ -149,11 +149,19 @@ per-source and per-account rate checks, updates last activity, and inserts the
 durable notification.
 
 After acceptance, the function enqueues durable push-delivery jobs for the
-owner’s active registrations and returns `pushQueued` (also mirrored on
-compatibility fields `pushAttempted` / `pushAccepted`). The
+owner’s active registrations and returns `pushQueued`. Compatibility
+`pushAttempted` mirrors that queue count, while `pushAccepted` remains zero
+because ticket and receipt work is asynchronous. The
 `push-delivery-worker` claims jobs in batches, sends Expo tickets, retries
 transient failures with backoff, and polls receipts. Ticket acceptance is not
 device delivery proof.
+
+The app reads one notification's delivery state only through
+`get_notification_delivery_summary()`. That owner-checked RPC reduces private
+jobs to safe counts and one of `not_sent`, `queued`, `sent`, or
+`needs_attention`; it never exposes push tokens, ticket IDs, worker leases, or
+raw provider messages. `sent` means APNs or FCM accepted at least one delivery,
+not that a person saw it.
 
 ### Database
 
@@ -170,6 +178,8 @@ device delivery proof.
 | `private.notification_ingest_requests` | Rolling source/account rate evidence | Service/database function only |
 | `private.account_rate_limit_events` | Hourly account operation rate evidence | Service/database function only |
 | `private.push_delivery_attempts` | Expo ticket attempt diagnostics | Service/database function only |
+| `private.push_delivery_jobs` | Durable per-phone queue, ticket, receipt, retry, and terminal state | Worker/database function only; owner sees only the sanitized summary RPC |
+| `private.account_usage_counters` / `private.account_usage_daily` | Server-owned account and recent-volume usage | Owner-checked aggregate RPC only |
 | `private.client_event_logs` | Redacted mobile lifecycle and failure diagnostics | Authenticated write RPC; private reads |
 | `private.server_event_logs` | Redacted relay/database outcomes with latency and request IDs | Service/database function only |
 | `private.daily_usage_stats` | HKT service and per-user operational aggregates | Service/database function only |

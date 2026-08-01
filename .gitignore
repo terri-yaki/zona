@@ -12,5 +12,6 @@ supabase/.temp/
 zona/ios/
 zona/android/
 zona/dist-web/
+zona/dist-ios/
 zona/google-services.json
 graphify-out/

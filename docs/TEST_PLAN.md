@@ -34,19 +34,33 @@ npx expo-doctor
 npx expo export --platform ios --output-dir dist
 ```
 
-Backend gates must run in a pinned Deno/Supabase CLI environment:
+Backend gates run in pinned Deno and Supabase CLI environments. CI starts a
+disposable local stack, rebuilds it from migrations, then tests and lints the
+result:
 
 ```sh
-deno fmt --check supabase/functions
-deno lint supabase/functions
-deno check supabase/functions/*/index.ts
-deno test supabase/functions
-supabase db reset
+deno fmt --config supabase/functions/deno.json --check supabase/functions
+deno lint --config supabase/functions/deno.json supabase/functions
+deno test --config supabase/functions/deno.json supabase/functions/_shared
+supabase start
+supabase db reset --local --no-seed
+supabase test db
+supabase db lint --local --level error --fail-on error
+npx --yes @redocly/cli@2.43.2 lint docs/openapi.yaml
+node scripts/check-openapi-contract.mjs
 ```
 
-Add repository scripts or CI jobs for database/RLS tests, Edge Function
-contract tests, an SDK-56-compatible dependency audit, secret scanning, and
-migration drift. Generated output and credentials must not be committed.
+CI also serves the functions against that disposable stack and runs
+`scripts/test-local-edge-contract.mjs`. The live smoke test signs in a fresh
+anonymous account, binds its installation, creates a source, verifies a new
+`notify` response and idempotent replay, then reads the zero-device delivery
+summary. No production secret or production row is used.
+
+The OpenAPI lint plus response-field drift check is the secret-free contract
+gate. Full local HTTP behavior tests remain required release evidence. Add
+secret scanning and linked migration-drift checks once their credentials and
+ownership are configured; generated output and credentials must not be
+committed.
 
 ## Test layers
 
@@ -112,9 +126,12 @@ stack traces, SQL details, tokens, or notification content.
 - metadata must be an object and no more than 4 KiB serialized;
 - caller-supplied owner/source fields cannot change attribution;
 - HTTP 202 is returned only after the durable row exists;
-- forced Expo timeout, non-JSON response, non-2xx response, partial ticket
-  errors, and zero-device behavior;
-- failed push retains the inbox row and records a bounded diagnostic;
+- zero-device behavior and a queue-count response that matches the durable jobs
+  created for eligible phones;
+- worker Expo timeout, non-JSON response, non-2xx response, partial ticket
+  errors, retry exhaustion, and receipt success/permanent/unknown outcomes;
+- failed push retains the inbox row and records a bounded diagnostic, while
+  `pushAccepted` remains a zero-valued compatibility field on `/notify`;
 - HTTP 429 includes `Retry-After`;
 - revoked token and token for another source fail without information leakage;
 - multipart accepts one PNG/JPEG/WebP image up to 5 MiB and rejects spoofed
@@ -126,7 +143,7 @@ stack traces, SQL details, tokens, or notification content.
   and retains the inbox row.
 - disabled ingestion returns `503` with `Retry-After`; disabled attachments or
   critical severity return the documented `403` without weakening token checks;
-- disabling push still accepts and stores the inbox row with no Expo attempt.
+- disabling push still accepts and stores the inbox row with no queued job.
 
 User-authenticated functions require two-user tests for cross-account rename,
 revoke, push registration, token conflict, and deletion. Gateway JWT checking is

@@ -8,6 +8,7 @@ import { clearPrivateUserState } from '@/cache/private-state';
 import { AppIcon } from '@/components/AppIcon';
 import {
   bindCurrentInstallation,
+  getAccountUsage,
   getAccountSummary,
   listAccountInstallations,
   revokeAccountInstallation,
@@ -16,6 +17,7 @@ import {
   type AccountSummary,
 } from '@/data/account';
 import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { formatAccountUsageBytes, type AccountUsage } from '@/lib/account-usage';
 import { relativeTime } from '@/lib/format';
 import { unregisterThisInstallation } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
@@ -42,13 +44,16 @@ export default function AccountScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session, sendEmailAuth, startProvider } = useAuth();
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [identities, setIdentities] = useState<UserIdentity[]>([]);
   const [installations, setInstallations] = useState<AccountInstallation[]>([]);
   const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
+  const [usage, setUsage] = useState<AccountUsage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const userId = session?.user.id;
@@ -79,9 +84,23 @@ export default function AccountScreen() {
     setLoading(false);
   }, [t, userId]);
 
+  const refreshUsage = useCallback(async () => {
+    if (!userId) return;
+    setUsageLoading(true);
+    setUsageError(null);
+    try {
+      setUsage(await getAccountUsage());
+    } catch {
+      setUsageError(t('account.usageLoadError'));
+    } finally {
+      setUsageLoading(false);
+    }
+  }, [t, userId]);
+
   useFocusEffect(useCallback(() => {
     void refresh();
-  }, [refresh]));
+    void refreshUsage();
+  }, [refresh, refreshUsage]));
 
   const isAnonymous = summary?.isAnonymous ?? session?.user.is_anonymous ?? true;
   const linkedProviders = useMemo(() => new Set(identities.map((identity) => identity.provider)), [identities]);
@@ -219,6 +238,35 @@ export default function AccountScreen() {
 
         {loadError ? <View style={styles.errorBox}><Text style={styles.errorText}>{loadError}</Text><Pressable onPress={() => void refresh()}><Text style={styles.retry}>{t('common.retry')}</Text></Pressable></View> : null}
 
+        <Text style={styles.section}>{t('account.usage')}</Text>
+        <View style={styles.card}>
+          {usageLoading && !usage ? (
+            <View accessibilityLabel={t('account.usageLoading')} style={styles.usageLoading}>
+              <ActivityIndicator color={colors.primary} size="small" />
+              <Text style={styles.usageLoadingText}>{t('account.usageLoading')}</Text>
+            </View>
+          ) : usage ? (
+            <>
+              <View style={styles.usageRecentRow}>
+                <UsageMetric emphasized label={t('account.usageLast24Hours')} value={formatUsageCount(usage.alertsLast24Hours, language)} />
+                <UsageMetric emphasized label={t('account.usageLast7Days')} value={formatUsageCount(usage.alertsLast7Days, language)} />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.usageGrid}>
+                <UsageMetric label={t('account.usageSources')} value={formatUsageValue(usage.sources, usage.limits.maxSourceKeys, language, t)} />
+                <UsageMetric label={t('account.usageActiveKeys')} value={formatUsageCount(usage.activeKeys, language)} />
+                <UsageMetric label={t('account.usagePhones')} value={formatUsageValue(usage.phones, usage.limits.maxPushDevices, language, t)} />
+                <UsageMetric label={t('account.usageRetainedAlerts')} value={formatUsageCount(usage.retainedAlerts, language)} />
+                <UsageMetric label={t('account.usageAttachments')} value={formatUsageCount(usage.attachments, language)} />
+                <UsageMetric label={t('account.usageAttachmentStorage')} value={formatAccountUsageBytes(usage.attachmentBytes)} />
+              </View>
+              {usageError ? <UsageRetry error={usageError} loading={usageLoading} onRetry={refreshUsage} /> : null}
+            </>
+          ) : (
+            <UsageRetry error={usageError ?? t('account.usageLoadError')} loading={usageLoading} onRetry={refreshUsage} />
+          )}
+        </View>
+
         <Text style={styles.section}>{t('account.signInMethods')}</Text>
         <View style={styles.card}>
           {identities.length ? identities.map((identity, index) => (
@@ -293,6 +341,49 @@ export default function AccountScreen() {
   );
 }
 
+function formatUsageCount(value: number, language: string) {
+  try {
+    return value.toLocaleString(language);
+  } catch {
+    return String(value);
+  }
+}
+
+function formatUsageValue(
+  value: number,
+  limit: number | null,
+  language: string,
+  t: ReturnType<typeof useI18n>['t'],
+) {
+  const count = formatUsageCount(value, language);
+  return limit === null
+    ? count
+    : t('account.usageOfLimit', { count, limit: formatUsageCount(limit, language) });
+}
+
+function UsageMetric({ emphasized = false, label, value }: { emphasized?: boolean; label: string; value: string }) {
+  const styles = useThemedStyles(createStyles);
+  return (
+    <View style={[styles.usageMetric, emphasized && styles.usageMetricEmphasized]}>
+      <Text style={[styles.usageValue, emphasized && styles.usageValueEmphasized]}>{value}</Text>
+      <Text style={styles.usageLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function UsageRetry({ error, loading, onRetry }: { error: string; loading: boolean; onRetry: () => Promise<void> }) {
+  const styles = useThemedStyles(createStyles);
+  const { t } = useI18n();
+  return (
+    <View style={styles.usageError}>
+      <Text style={styles.usageErrorText}>{error}</Text>
+      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void onRetry()} style={styles.usageRetry}>
+        {loading ? <ActivityIndicator color={colors.danger} size="small" /> : <Text style={styles.retry}>{t('common.retry')}</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
 function AccountAction({ danger = false, label, onPress }: { danger?: boolean; label: string; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   return <Pressable accessibilityRole="button" onPress={onPress} style={styles.actionRow}><Text style={[styles.actionText, danger && styles.dangerText]}>{label}</Text><AppIcon color={danger ? colors.danger : colors.primary} fallback="›" name="chevron.right" size={17} /></Pressable>;
@@ -337,4 +428,16 @@ const createStyles = () => StyleSheet.create({
   errorText: { color: colors.danger, flex: 1, fontSize: 11 },
   retry: { color: colors.danger, fontSize: 11, fontWeight: '800' },
   disabled: { opacity: 0.55 },
+  usageLoading: { alignItems: 'center', flexDirection: 'row', gap: 9, justifyContent: 'center', minHeight: 92 },
+  usageLoadingText: { color: colors.muted, fontSize: 12 },
+  usageRecentRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 },
+  usageGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingBottom: 7, paddingTop: 5 },
+  usageMetric: { flexBasis: '48%', minHeight: 64, paddingHorizontal: 5, paddingVertical: 9 },
+  usageMetricEmphasized: { backgroundColor: colors.primarySoft, borderRadius: radius.small, flex: 1, minHeight: 76, paddingHorizontal: 12 },
+  usageValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  usageValueEmphasized: { color: colors.primary, fontSize: 23 },
+  usageLabel: { color: colors.muted, fontSize: 10, lineHeight: 14, marginTop: 4 },
+  usageError: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 58, paddingVertical: 8 },
+  usageErrorText: { color: colors.danger, flex: 1, fontSize: 11, lineHeight: 16 },
+  usageRetry: { alignItems: 'center', minWidth: 48, paddingHorizontal: 6, paddingVertical: 8 },
 });

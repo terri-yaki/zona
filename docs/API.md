@@ -356,8 +356,8 @@ retrying the same event with the same payload and attachment.
 
 | Request | Result |
 | --- | --- |
-| First request with key `build-1842` | `202`; a new inbox record is stored and best-effort push processing runs (possibly targeting zero devices). |
-| Same source, same key, same content | `200`; the original record is returned with `idempotentReplay: true`. No new push is attempted. |
+| First request with key `build-1842` | `202`; a new inbox record is stored and one durable delivery job is queued for each eligible phone (possibly zero). |
+| Same source, same key, same content | `200`; the original record is returned with `idempotentReplay: true`. No new delivery job is queued. |
 | Same source, same key, different content or image | `409 IDEMPOTENCY_CONFLICT`; nothing new is stored. |
 | Different source, same key | Independent event; idempotency is scoped to the authenticated source. |
 
@@ -477,7 +477,8 @@ A newly accepted event returns HTTP `202`:
   "attachmentAccepted": false,
   "attachmentError": null,
   "pushAttempted": 1,
-  "pushAccepted": 1
+  "pushAccepted": 0,
+  "pushQueued": 1
 }
 ```
 
@@ -506,13 +507,50 @@ An identical replay returns HTTP `200` and the original identifiers/time:
 | `idempotentReplay` | `true` when this response returned an existing record. |
 | `attachmentAccepted` | Whether the image is stored. It is `false` when no image was sent. |
 | `attachmentError` | `UPLOAD_FAILED` when image storage failed after inbox acceptance; otherwise `null`. |
-| `pushAttempted` | Number of active iOS or Android push registrations targeted during this request. |
-| `pushAccepted` | Number of Expo push tickets accepted during this request. This is not APNs display confirmation. |
+| `pushQueued` | Number of durable delivery jobs created for eligible phones. Present on a newly accepted event; omitted on an idempotent replay. |
+| `pushAttempted` | Compatibility alias. On a new event it currently equals `pushQueued`; on a replay it is `0`. It does not mean that a provider request already ran. |
+| `pushAccepted` | Compatibility field retained for older clients. `/notify` returns `0` because Expo ticket and receipt processing happens asynchronously after this response. |
 
 `202` means the seven-day inbox record exists. It does not guarantee an iOS
-banner appeared. A valid accepted response can have `pushAttempted: 0` when
-push is disabled, no iPhone is registered, or all registrations are disabled.
-It can also have `pushAccepted: 0` after best-effort delivery failure.
+banner appeared. A valid accepted response can have `pushQueued: 0` when push
+is disabled, no phone is registered, or all registrations are disabled. The
+worker later sends queued jobs, retries transient failures with bounded
+backoff, and checks Expo receipts. A receipt reports the push provider's result;
+it is not proof that the user saw the alert.
+
+## Delivery status used by the Zona app
+
+Sender scripts do not call this endpoint. The authenticated Zona app reads one
+owned notification through:
+
+```http
+POST /rest/v1/rpc/get_notification_delivery_summary
+Authorization: Bearer <SUPABASE_USER_ACCESS_TOKEN>
+apikey: <SUPABASE_PUBLISHABLE_KEY>
+Content-Type: application/json
+
+{"p_notification_id":"87c4215a-03e3-4c96-af7c-e4043120a514"}
+```
+
+```json
+{
+  "state": "sent",
+  "targetedPhones": 2,
+  "providerAccepted": 1,
+  "failed": 1,
+  "pending": 0,
+  "updatedAt": "2026-08-01T12:00:00Z",
+  "reason": null
+}
+```
+
+`not_sent` means no eligible phone was targeted, `queued` includes retries and
+receipt polling, `sent` means at least one phone service accepted the push, and
+`needs_attention` means every targeted job ended without provider acceptance.
+Mixed outcomes lead with `sent` and remain visible in the counters. The RPC
+returns the same bounded `NOT_FOUND` failure for a missing, expired, or
+different owner's notification and never exposes tokens, tickets, leases, or
+raw provider messages.
 
 ## Delivery behavior controlled in Zona
 
@@ -583,9 +621,10 @@ failures and `5xx`. Do not automatically retry other `4xx` responses except
 
 Accepted notifications and attachments are retained for the configured
 retention window (seven days for standard accounts by default). The inbox
-record is inserted before the one best-effort Expo push request. Notification
-`data`, title, body, source name, and image may reach the iPhone and should not
-contain credentials or secrets.
+record and eligible delivery jobs are committed before `/notify` responds. A
+worker sends queued jobs, performs bounded retries, and checks Expo receipts.
+Notification `data`, title, body, source name, and image may reach the phone and
+should not contain credentials or secrets.
 
 All traffic must use HTTPS. Never call the database directly from a sender and
 never distribute a Supabase secret key to PCs or local applications.

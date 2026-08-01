@@ -193,7 +193,9 @@ async function processSends(workerId: string) {
       return { claimed: jobs.length, tickets: accepted, failed, skipped };
     }
 
-    const accepted = typeof batchResult?.accepted === 'number' ? batchResult.accepted : outcomes.filter((row) => row.kind === 'accept').length;
+    const accepted = typeof batchResult?.accepted === 'number'
+      ? batchResult.accepted
+      : outcomes.filter((row) => row.kind === 'accept').length;
     failed += typeof batchResult?.failed === 'number' ? batchResult.failed : outcomes.filter((row) => row.kind === 'fail').length;
     return { claimed: jobs.length, tickets: accepted, failed };
   } catch (sendError) {

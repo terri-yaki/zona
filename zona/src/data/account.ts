@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import type { PostgrestError } from '@supabase/supabase-js';
 
 import { claimInstallationForUser, getInstallationId } from '@/lib/installation';
+import { parseAccountUsage, type AccountUsage } from '@/lib/account-usage';
 import { supabase } from '@/lib/supabase';
 
 export type AccountSummary = {
@@ -70,6 +71,12 @@ export async function getAccountSummary(): Promise<AccountSummary> {
     recoveryEmail: stringOrNull(user.recoveryEmail ?? user.recovery_email),
     status: stringOrNull(account.status) ?? 'active',
   };
+}
+
+export async function getAccountUsage(): Promise<AccountUsage> {
+  const { data, error } = await rpc('get_account_usage');
+  if (error) throw error;
+  return parseAccountUsage(data);
 }
 
 export async function bindCurrentInstallation(userId: string) {

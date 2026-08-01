@@ -24,9 +24,11 @@ in the private operator system. Do not place access tokens in this document.
 
 - HTTP 202 from `notify` means the database accepted the inbox record.
 - `pushQueued` (and compatibility `pushAttempted`) counts durable jobs enqueued
-  for the worker; Expo ticket acceptance is not APNs display proof.
+  for the worker. Compatibility `pushAccepted` remains zero on `/notify`
+  because ticket and receipt work happens after the API response.
 - Push is delivered by `push-delivery-worker` with bounded retries and receipt
-  polling; the inbox remains authoritative if push is degraded.
+  polling; an Expo receipt is provider feedback, not proof that the phone
+  displayed the alert. The inbox remains authoritative if push is degraded.
 - Users can recover an accepted alert through inbox synchronization.
 - Notification rows, attachments, and associated push logs expire after seven days.
 - Rate-limit request rows expire after one day.
@@ -46,7 +48,8 @@ Before release, configure structured, redacted events and dashboards for:
 
 - Edge Function requests by function, status, latency, and request ID;
 - notify acceptance, invalid-token, payload rejection, and rate-limit counts;
-- Expo request status and per-ticket accepted/error counts;
+- delivery-job age/status, Expo request/ticket results, receipt outcomes, and
+  permanent-failure counts;
 - database/API errors and realtime connection health;
 - oldest expired notification and last successful cleanup time;
 - expired attachment objects and last successful Storage cleanup time;

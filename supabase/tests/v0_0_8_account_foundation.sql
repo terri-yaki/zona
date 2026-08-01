@@ -1,6 +1,8 @@
 -- Run with `supabase test db` after applying local migrations.
 begin;
 
+select plan(1);
+
 do $$
 begin
   if to_regclass('private.accounts') is null
@@ -53,5 +55,8 @@ begin
   ) then raise exception 'personal-account backfill parity failed'; end if;
 end;
 $$;
+
+select pass('v0.0.8 account foundation security contract holds');
+select * from finish();
 
 rollback;

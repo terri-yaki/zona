@@ -87,48 +87,63 @@ Deno.test('reauthenticate grant-issuance proof contracts', () => {
     { identity_id: 'fresh', last_sign_in_at: new Date(now - 30_000).toISOString() },
   ], now);
   assertEquals(recent?.identity_id, 'fresh');
-  assertEquals(reauthRequestValid({
-    action: 'identity.unlink',
-    target: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
-    proofToken: 'a'.repeat(40),
-    actorUserId: 'user-a',
-    proofUserId: 'user-a',
-    proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
-    actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
-    proofIdentityId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
-  }), null);
-  assertEquals(reauthRequestValid({
-    action: 'identity.unlink',
-    target: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
-    proofToken: 'a'.repeat(40),
-    actorUserId: 'user-a',
-    proofUserId: 'user-a',
-    proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
-    actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
-    proofIdentityId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
-  }), 'REMAINING_IDENTITY_PROOF_REQUIRED');
-  assertEquals(reauthRequestValid({
-    action: 'sessions.revoke.others',
-    target: '',
-    proofToken: null,
-    actorUserId: 'user-a',
-    proofUserId: 'user-a',
-    proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
-    actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
-    proofIdentityId: 'id',
-  }), 'INVALID_REAUTH_REQUEST');
+  assertEquals(
+    reauthRequestValid({
+      action: 'identity.unlink',
+      target: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
+      proofToken: 'a'.repeat(40),
+      actorUserId: 'user-a',
+      proofUserId: 'user-a',
+      proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
+      actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
+      proofIdentityId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
+    }),
+    null,
+  );
+  assertEquals(
+    reauthRequestValid({
+      action: 'identity.unlink',
+      target: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
+      proofToken: 'a'.repeat(40),
+      actorUserId: 'user-a',
+      proofUserId: 'user-a',
+      proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
+      actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
+      proofIdentityId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f13',
+    }),
+    'REMAINING_IDENTITY_PROOF_REQUIRED',
+  );
+  assertEquals(
+    reauthRequestValid({
+      action: 'sessions.revoke.others',
+      target: '',
+      proofToken: null,
+      actorUserId: 'user-a',
+      proofUserId: 'user-a',
+      proofSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f12',
+      actorSessionId: '53bf5cb8-57ea-4b7b-82ee-209ed59e3f11',
+      proofIdentityId: 'id',
+    }),
+    'INVALID_REAUTH_REQUEST',
+  );
 });
 
 Deno.test('account-security pre-consume unlink validation', () => {
   assertEquals(identityUnlinkPrecheck([{ identity_id: 'only' }], 'only'), 'FINAL_IDENTITY');
-  assertEquals(identityUnlinkPrecheck(
-    [{ identity_id: 'a' }, { identity_id: 'b' }],
-    'missing',
-  ), 'IDENTITY_NOT_FOUND');
-  assertEquals(identityUnlinkPrecheck(
-    [{ identity_id: 'a' }, { identity_id: 'b' }],
-    'b',
-  ), null);
+  assertEquals(
+    identityUnlinkPrecheck(
+      [{ identity_id: 'a' }, { identity_id: 'b' }],
+      'missing',
+    ),
+    'IDENTITY_NOT_FOUND',
+  );
+  assertEquals(
+    identityUnlinkPrecheck(
+      [{ identity_id: 'a' }, { identity_id: 'b' }],
+      'b',
+    ),
+    null,
+  );
 });
 
 Deno.test('auth-transaction and account-transfer uuid contracts', () => {

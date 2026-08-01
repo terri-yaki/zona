@@ -140,6 +140,10 @@ The user must be able to:
   best-effort like push, and shares the seven-day retention.
 - **NOTI-10** Severity participates in idempotency and changes presentation,
   not delivery priority. Null severity uses a neutral white inbox card.
+- **NOTI-11** Notification detail shows an owner-scoped delivery summary. It
+  distinguishes no targeted phone, queued work, provider acceptance, and
+  terminal failure without exposing private delivery internals or claiming
+  that a provider receipt proves the phone displayed the alert.
 
 ### Mobile push registration
 
