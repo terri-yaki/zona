@@ -1,6 +1,8 @@
 -- Run with `supabase test db` after applying local migrations.
 begin;
 
+select plan(1);
+
 do $$
 begin
   if to_regclass('private.push_delivery_jobs') is null
@@ -49,5 +51,8 @@ begin
   ) then raise exception 'durable session denylist trigger is missing'; end if;
 end;
 $$;
+
+select pass('v0.0.8 push queue and usage security contract holds');
+select * from finish();
 
 rollback;

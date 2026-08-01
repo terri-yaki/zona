@@ -1,6 +1,8 @@
 -- Run with `supabase test db` after applying local migrations.
 begin;
 
+select plan(1);
+
 do $$
 begin
   -- assert-only reauth grant check (no used_at write) exists with exact signature
@@ -30,16 +32,25 @@ begin
     raise exception 'service_role grant missing on assert/batch push RPCs';
   end if;
 
-  -- notifications broadcast trigger must be statement-level (bulk updates emit one
-  -- realtime.send per statement, not per row)
-  if not exists (
-    select 1 from information_schema.triggers
-    where trigger_name = 'notifications_broadcast_user_change'
+  -- Each operation has its own transition-table trigger. All three must remain
+  -- statement-level so bulk changes emit one broadcast per affected user.
+  if (
+    select pg_catalog.count(*)
+    from information_schema.triggers
+    where event_object_schema = 'public'
       and event_object_table = 'notifications'
+      and trigger_name in (
+        'notifications_broadcast_insert',
+        'notifications_broadcast_update',
+        'notifications_broadcast_delete'
+      )
       and action_orientation = 'STATEMENT'
-  ) then
-    raise exception 'notifications_broadcast_user_change is not STATEMENT oriented';
+  ) <> 3 then
+    raise exception 'notification broadcast triggers are not STATEMENT oriented';
   end if;
 end $$;
+
+select pass('v0.0.8 reauth, push batch, and broadcast contract holds');
+select * from finish();
 
 rollback;

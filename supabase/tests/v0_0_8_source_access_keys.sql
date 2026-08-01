@@ -1,6 +1,8 @@
 -- Run with `supabase test db` after applying local migrations.
 begin;
 
+select plan(1);
+
 do $$
 declare
   v_user_id uuid := extensions.gen_random_uuid();
@@ -79,5 +81,8 @@ begin
   end if;
 end;
 $$;
+
+select pass('v0.0.8 source access-key security contract holds');
+select * from finish();
 
 rollback;
