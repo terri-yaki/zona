@@ -1,4 +1,5 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import type { SFSymbol } from 'expo-symbols';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,7 +8,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { ImageLightbox } from '@/components/ImageLightbox';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useBottomSafePadding } from '@/components/TabScreen';
-import { deleteNotification, getNotification, markNotificationRead } from '@/data/notifications';
+import { deleteNotification, getNotification, getNotificationDeliverySummary, markNotificationRead } from '@/data/notifications';
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { severityAppearance } from '@/lib/notification-severity';
@@ -19,6 +20,7 @@ import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
 import { useThemedStyles } from '@/theme-preference';
 import type { InboxNotification } from '@/types';
+import type { NotificationDeliveryState, NotificationDeliverySummary } from '@/lib/notification-delivery';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -34,6 +36,7 @@ export default function NotificationDetailScreen() {
   const id = candidateId && uuidPattern.test(candidateId) ? candidateId : null;
   const userId = session?.user.id;
   const generation = useRef(0);
+  const deliveryGeneration = useRef(0);
   const [item, setItem] = useState<InboxNotification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -41,6 +44,9 @@ export default function NotificationDetailScreen() {
   const [markingRead, setMarkingRead] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [delivery, setDelivery] = useState<NotificationDeliverySummary | null>(null);
+  const [deliveryError, setDeliveryError] = useState(false);
+  const [deliveryLoading, setDeliveryLoading] = useState(true);
   const [attachment, setAttachment] = useState<{ path: string; url: string | null } | null>(null);
 
   // Reset detail state when navigating to a different notification id.
@@ -50,8 +56,25 @@ export default function NotificationDetailScreen() {
     setItem(null);
     setError(null);
     setReadError(null);
+    setDelivery(null);
+    setDeliveryError(false);
+    setDeliveryLoading(true);
     setLoading(true);
   }
+
+  const loadDelivery = useCallback(async (notificationId: string, showSpinner = false) => {
+    const request = ++deliveryGeneration.current;
+    if (showSpinner) setDeliveryLoading(true);
+    setDeliveryError(false);
+    try {
+      const summary = await getNotificationDeliverySummary(notificationId);
+      if (request === deliveryGeneration.current) setDelivery(summary);
+    } catch {
+      if (request === deliveryGeneration.current) setDeliveryError(true);
+    } finally {
+      if (request === deliveryGeneration.current) setDeliveryLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     if (!userId || !id) return;
@@ -61,6 +84,7 @@ export default function NotificationDetailScreen() {
       if (request !== generation.current) return;
       setItem(notification);
       setLoading(false);
+      if (notification) void loadDelivery(notification.id);
 
       if (notification && !notification.read_at) {
         const readAt = new Date().toISOString();
@@ -85,7 +109,7 @@ export default function NotificationDetailScreen() {
     } finally {
       if (request === generation.current) setLoading(false);
     }
-  }, [id, t, userId]);
+  }, [id, loadDelivery, t, userId]);
 
   useEffect(() => {
     if (!userId || !id) return;
@@ -93,8 +117,15 @@ export default function NotificationDetailScreen() {
     return () => {
       clearTimeout(timer);
       generation.current += 1;
+      deliveryGeneration.current += 1;
     };
   }, [id, load, userId]);
+
+  useEffect(() => {
+    if (!id || delivery?.state !== 'queued') return;
+    const timer = setInterval(() => void loadDelivery(id), 15_000);
+    return () => clearInterval(timer);
+  }, [delivery?.state, id, loadDelivery]);
 
   useEffect(() => {
     const path = item?.attachment_path;
@@ -224,6 +255,13 @@ export default function NotificationDetailScreen() {
         <Text style={styles.body}>{item.body}</Text>
       </View>
 
+      <DeliveryCard
+        error={deliveryError}
+        loading={deliveryLoading}
+        onRetry={() => void loadDelivery(item.id, true)}
+        summary={delivery}
+      />
+
       {item.attachment_path && isVisible('notification.attachments') && isEnabled('notification.attachments') ? (
         <>
           <Text style={styles.attachmentLabel}>{t('notification.attachment')}</Text>
@@ -287,6 +325,94 @@ export default function NotificationDetailScreen() {
   );
 }
 
+const deliveryIcons: Record<NotificationDeliveryState, SFSymbol> = {
+  needs_attention: 'exclamationmark.triangle.fill',
+  not_sent: 'bell.slash.fill',
+  queued: 'clock.fill',
+  sent: 'checkmark.circle.fill',
+};
+
+const deliveryTitleKeys = {
+  needs_attention: 'notification.delivery.needsAttention.title',
+  not_sent: 'notification.delivery.notSent.title',
+  queued: 'notification.delivery.queued.title',
+  sent: 'notification.delivery.sent.title',
+} as const;
+
+const deliveryBodyKeys = {
+  needs_attention: 'notification.delivery.needsAttention.body',
+  not_sent: 'notification.delivery.notSent.body',
+  queued: 'notification.delivery.queued.body',
+  sent: 'notification.delivery.sent.body',
+} as const;
+
+function deliveryBodyKey(summary: NotificationDeliverySummary) {
+  switch (summary.reason) {
+    case 'device_unavailable': return 'notification.delivery.reason.deviceUnavailable' as const;
+    case 'message_too_big': return 'notification.delivery.reason.messageTooBig' as const;
+    case 'provider_unavailable': return 'notification.delivery.reason.providerUnavailable' as const;
+    case 'push_configuration': return 'notification.delivery.reason.pushConfiguration' as const;
+    case 'unconfirmed': return 'notification.delivery.reason.unconfirmed' as const;
+    default: return deliveryBodyKeys[summary.state];
+  }
+}
+
+function DeliveryCard({
+  error,
+  loading,
+  onRetry,
+  summary,
+}: {
+  error: boolean;
+  loading: boolean;
+  onRetry: () => void;
+  summary: NotificationDeliverySummary | null;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const { t } = useI18n();
+  if (!loading && !error && !summary) return null;
+
+  const state = summary?.state ?? 'queued';
+  const danger = state === 'needs_attention';
+  const muted = state === 'not_sent';
+  const tint = danger ? colors.danger : muted ? colors.muted : colors.primary;
+  return (
+    <View accessibilityLiveRegion="polite" style={[styles.deliveryCard, danger && styles.deliveryCardDanger]}>
+      <View style={[styles.deliveryIcon, danger && styles.deliveryIconDanger]}>
+        {loading && !summary
+          ? <ActivityIndicator color={tint} size="small" />
+          : <AppIcon color={tint} fallback="•" name={deliveryIcons[state]} size={18} />}
+      </View>
+      <View style={styles.deliveryCopy}>
+        <Text style={styles.deliveryLabel}>{t('notification.delivery.label')}</Text>
+        <Text style={[styles.deliveryTitle, danger && styles.deliveryTitleDanger]}>
+          {error && !summary ? t('notification.delivery.unavailable') : t(deliveryTitleKeys[state])}
+        </Text>
+        {summary ? (
+          <Text style={styles.deliveryBody}>
+            {t(deliveryBodyKey(summary), { accepted: summary.providerAccepted, count: summary.targetedPhones })}
+          </Text>
+        ) : null}
+        {summary && summary.targetedPhones > 1 ? (
+          <Text style={styles.deliveryMeta}>
+            {t('notification.delivery.summary', {
+              accepted: summary.providerAccepted,
+              count: summary.targetedPhones,
+              failed: summary.failed,
+              pending: summary.pending,
+            })}
+          </Text>
+        ) : null}
+      </View>
+      {error ? (
+        <Pressable accessibilityRole="button" disabled={loading} onPress={onRetry} style={styles.deliveryRetry}>
+          {loading ? <ActivityIndicator color={colors.primary} size="small" /> : <Text style={styles.deliveryRetryText}>{t('common.retry')}</Text>}
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 function UnavailableState({ message, onPress }: { message: string; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
@@ -321,6 +447,18 @@ const createStyles = () => StyleSheet.create({
   messageCard: { ...shadows.card, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, padding: 19 },
   title: { color: colors.text, fontSize: 25, fontWeight: '800', letterSpacing: -0.4, lineHeight: 30, marginBottom: 13 },
   body: { color: colors.textSoft, fontSize: 16, lineHeight: 25 },
+  deliveryCard: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 11, marginTop: 14, padding: 13 },
+  deliveryCardDanger: { backgroundColor: colors.dangerSoft, borderColor: '#EECFCD' },
+  deliveryIcon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
+  deliveryIconDanger: { backgroundColor: '#FFF8F7' },
+  deliveryCopy: { flex: 1 },
+  deliveryLabel: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },
+  deliveryTitle: { color: colors.primary, fontSize: 13, fontWeight: '800', marginTop: 2 },
+  deliveryTitleDanger: { color: colors.danger },
+  deliveryBody: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  deliveryMeta: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  deliveryRetry: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.small, justifyContent: 'center', minHeight: 42, minWidth: 58, paddingHorizontal: 10 },
+  deliveryRetryText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   readError: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: '#EECFCD', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: 16, padding: 12 },
   readErrorCopy: { flex: 1 },
   readErrorTitle: { color: colors.danger, fontSize: 12, fontWeight: '700' },

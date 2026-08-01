@@ -44,4 +44,54 @@ jobs:
       - run: deno fmt --config functions/deno.json --check functions
       - run: deno lint --config functions/deno.json functions
       - run: deno test --config functions/deno.json functions/_shared
-      - run: deno check --config functions/deno.json functions/create-source/index.ts functions/create-source-key/index.ts functions/manage-source/index.ts functions/manage-source-key/index.ts functions/notify/index.ts functions/register-push-token/index.ts functions/delete-account/index.ts functions/cleanup-expired/index.ts functions/test-source/index.ts functions/daily-stats-report/index.ts
+      - name: Type-check every Edge Function entry point
+        run: find functions -mindepth 2 -maxdepth 2 -name index.ts -print0 | xargs -0 deno check --config functions/deno.json
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npx --yes @redocly/cli@2.43.2 lint docs/openapi.yaml --format=github-actions
+      - run: node scripts/check-openapi-contract.mjs
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
+      - name: Start disposable Supabase stack
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,realtime,postgres-meta
+      - name: Rebuild database from migrations
+        run: supabase db reset --local --no-seed
+      - name: Run database and RLS tests
+        run: supabase test db
+      - name: Lint database functions
+        run: supabase db lint --local --level error --fail-on error
+      - name: Exercise local Edge Function contracts
+        shell: bash
+        run: |
+          supabase status -o env > /tmp/zona-supabase.env
+          set -a
+          source /tmp/zona-supabase.env
+          set +a
+          export SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
+          export SUPABASE_PUBLISHABLE_KEY="${PUBLISHABLE_KEY:-${ANON_KEY}}"
+          supabase functions serve > /tmp/zona-functions.log 2>&1 &
+          functions_pid=$!
+          trap 'kill "$functions_pid" 2>/dev/null || true; rm -f /tmp/zona-supabase.env' EXIT
+          for attempt in {1..30}; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              "$SUPABASE_URL/functions/v1/create-source" || true)
+            if [ "$status" != "000" ]; then break; fi
+            sleep 1
+          done
+          node scripts/test-local-edge-contract.mjs
+      - name: Stop disposable Supabase stack
+        if: always()
+        run: supabase stop --no-backup

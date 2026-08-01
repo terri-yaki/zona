@@ -1,6 +1,7 @@
 import { dataError } from '@/lib/errors';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
+import { parseNotificationDeliverySummary } from '@/lib/notification-delivery';
 import type { InboxNotification } from '@/types';
 import type { Json } from '@/types/database';
 
@@ -88,6 +89,28 @@ function snapshotRpcUnavailable(error: { code?: string; message?: string }) {
   return error.code === '42883'
     || error.code === 'PGRST202'
     || /get_inbox_snapshot|schema cache/i.test(error.message ?? '');
+}
+
+function deliveryRpcUnavailable(error: { code?: string; message?: string }) {
+  return error.code === '42883'
+    || error.code === 'PGRST202'
+    || /get_notification_delivery_summary|schema cache/i.test(error.message ?? '');
+}
+
+export async function getNotificationDeliverySummary(notificationId: string) {
+  const rpc = supabase.rpc as unknown as (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
+  const { data, error } = await rpc('get_notification_delivery_summary', {
+    p_notification_id: notificationId,
+  });
+  if (error) {
+    // Keep a new binary compatible while the additive RPC reaches production.
+    if (deliveryRpcUnavailable(error)) return null;
+    throw dataError(error, translate('error.loadTitle'));
+  }
+  return parseNotificationDeliverySummary(data);
 }
 
 export async function getInboxSnapshot(

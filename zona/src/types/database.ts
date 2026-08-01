@@ -549,6 +549,14 @@ export type Database = {
       };
     };
     Functions: {
+      get_account_usage: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      get_notification_delivery_summary: {
+        Args: { p_notification_id: string };
+        Returns: Json;
+      };
       record_client_event: {
         Args: {
           p_app_version: string;

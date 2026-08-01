@@ -9,8 +9,9 @@ info:
     invoked by the authenticated iPhone app.
 
     A 202 response from `notify` means the durable, retention-bounded inbox
-    record exists. Push delivery is best effort and `pushAccepted` is not
-    APNs/FCM display proof.
+    record exists. `pushQueued` counts durable delivery jobs. A background
+    worker sends them with bounded retries and checks Expo receipts; neither a
+    queue entry nor a provider receipt proves that the phone displayed an alert.
 
     Every JSON request has a 16 KiB transport limit. `notify.data` has an
     additional 4 KiB UTF-8 serialized limit. These byte limits are normative
@@ -38,8 +39,8 @@ paths:
       summary: Accept a notification from the authenticated source.
       description: |
         The source and owner are derived from the Bearer credential. Callers
-        cannot provide or override source/owner identity. Acceptance is
-        durable before the best-effort push attempt.
+        cannot provide or override source/owner identity. The inbox record and
+        eligible delivery jobs are durable before the response is returned.
 
         `Idempotency-Key` is required. Re-sending the same key with an
         identical payload returns the stored notification with
@@ -96,7 +97,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotifyAccepted'
         '202':
-          description: Inbox record accepted; push may or may not have been attempted/accepted.
+          description: Inbox record accepted and eligible push delivery jobs durably queued.
           headers:
             Cache-Control:
               schema:
@@ -416,8 +417,9 @@ paths:
       summary: Create and push a test alert for one owned source.
       description: |
         Creates the durable inbox record first, then makes one best-effort push
-        using the source's selected notification sound. The source must be
-        active and owned by the authenticated user.
+        using the source's selected notification sound. Unlike sender
+        `notify`, this authenticated test helper still reports its immediate
+        Expo ticket result. The source must be active and owned by the user.
       security:
         - userBearer: []
       requestBody:
@@ -530,6 +532,37 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /rest/v1/rpc/get_notification_delivery_summary:
+    post:
+      operationId: getNotificationDeliverySummary
+      tags: [Mobile]
+      summary: Read a safe delivery summary for one owned notification.
+      description: |
+        This mobile-only RPC aggregates the private per-phone delivery queue.
+        It never returns push tokens, Expo ticket IDs, worker leases, raw
+        provider errors, or another owner's state. `sent` means at least one
+        push receipt confirms APNs or FCM accepted the notification; it does
+        not prove that the phone displayed it.
+      security:
+        - userBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeliverySummaryRequest'
+      responses:
+        '200':
+          description: Owner-scoped delivery summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDeliverySummary'
+        '400':
+          description: Notification is missing, expired, or belongs to another owner.
+        '401':
+          $ref: '#/components/responses/UnauthorizedUser'
+
 components:
   securitySchemes:
     sourceBearer:
@@ -567,6 +600,43 @@ components:
       properties:
         error:
           type: string
+
+    DeliverySummaryRequest:
+      type: object
+      additionalProperties: false
+      required: [p_notification_id]
+      properties:
+        p_notification_id:
+          type: string
+          format: uuid
+
+    NotificationDeliverySummary:
+      type: object
+      additionalProperties: false
+      required: [state, targetedPhones, providerAccepted, failed, pending, updatedAt, reason]
+      properties:
+        state:
+          type: string
+          enum: [not_sent, queued, sent, needs_attention]
+        targetedPhones:
+          type: integer
+          minimum: 0
+        providerAccepted:
+          type: integer
+          minimum: 0
+          description: Provider-receipt successes, not proof of display on a phone.
+        failed:
+          type: integer
+          minimum: 0
+        pending:
+          type: integer
+          minimum: 0
+        updatedAt:
+          type: string
+          format: date-time
+        reason:
+          type: [string, 'null']
+          enum: [device_unavailable, message_too_big, push_configuration, provider_unavailable, unconfirmed, null]
 
     NotifyRequest:
       type: object
@@ -637,10 +707,22 @@ components:
         pushAttempted:
           type: integer
           minimum: 0
+          description: |
+            Compatibility alias. For a newly accepted notification this equals
+            `pushQueued`; for an idempotent replay it is zero. It does not mean
+            that an Expo request has already run.
         pushAccepted:
           type: integer
           minimum: 0
-          description: Expo ticket successes, not confirmed APNs display.
+          description: |
+            Compatibility field retained for older clients. `notify` returns
+            zero because Expo ticket and receipt processing is asynchronous.
+        pushQueued:
+          type: integer
+          minimum: 0
+          description: |
+            Durable delivery jobs created for eligible phones. Present on a
+            newly accepted notification and omitted on an idempotent replay.
 
     NotifyMultipartRequest:
       type: object
@@ -930,9 +1012,13 @@ components:
         pushAttempted:
           type: integer
           minimum: 0
+          description: Phones targeted synchronously by this test request.
         pushAccepted:
           type: integer
           minimum: 0
+          description: |
+            Expo tickets accepted during this test request. This is provider
+            acceptance, not proof that the phone displayed the alert.
 
     RegisterPushRequest:
       type: object
