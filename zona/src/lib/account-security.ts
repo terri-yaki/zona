@@ -1,5 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 
+import { translate } from '../i18n';
+import { functionError } from './errors';
 import { getInstallationId } from './installation';
 import { supabase } from './supabase';
 
@@ -37,7 +39,7 @@ async function invokeWithSecondary(
     body,
     headers: { 'x-reauth-token': `Bearer ${secondarySession.access_token}` },
   });
-  if (error) throw error;
+  if (error) throw await functionError(error, translate('error.default'));
   if (!record(data)) throw new Error('INVALID_SECURITY_RESPONSE');
   return data;
 }
@@ -65,7 +67,7 @@ export async function performAccountSecurityAction(
   const { data, error } = await supabase.functions.invoke('account-security', {
     body: { action, target, grant },
   });
-  if (error) throw error;
+  if (error) throw await functionError(error, translate('error.default'));
   if (!record(data)) throw new Error('INVALID_SECURITY_RESPONSE');
   return data;
 }

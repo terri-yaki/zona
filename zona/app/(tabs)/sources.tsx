@@ -53,7 +53,7 @@ const soundGlyphs: Partial<Record<SoundName, SoundGlyph>> = {
   silent: { name: 'speaker.slash.fill', fallback: '∅' },
 };
 
-const iosToneGlyph: SoundGlyph = { name: 'applelogo', fallback: '♪' };
+const iosToneGlyph: SoundGlyph = { name: 'apple.logo', fallback: '♪' };
 
 function soundGlyph(choice: SoundName): SoundGlyph {
   if (soundGlyphs[choice]) return soundGlyphs[choice];

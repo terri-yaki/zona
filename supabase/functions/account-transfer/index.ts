@@ -39,16 +39,21 @@ async function stageAttachments(sourceUserId: string, destinationUserId: string)
   const names = await listAttachmentNames(sourceUserId);
   const staged: string[] = [];
   try {
-    for (const name of names) {
-      const { data: blob, error: downloadError } = await bucket.download(`${sourceUserId}/${name}`);
-      if (downloadError) throw downloadError;
-      const destinationPath = `${destinationUserId}/${name}`;
-      const { error: uploadError } = await bucket.upload(destinationPath, blob, {
-        contentType: blob.type || undefined,
-        upsert: true,
-      });
-      if (uploadError) throw uploadError;
-      staged.push(destinationPath);
+    // Bounded concurrency: serial staging made transfer latency grow linearly.
+    const concurrency = 4;
+    for (let index = 0; index < names.length; index += concurrency) {
+      const slice = names.slice(index, index + concurrency);
+      await Promise.all(slice.map(async (name) => {
+        const { data: blob, error: downloadError } = await bucket.download(`${sourceUserId}/${name}`);
+        if (downloadError) throw downloadError;
+        const destinationPath = `${destinationUserId}/${name}`;
+        const { error: uploadError } = await bucket.upload(destinationPath, blob, {
+          contentType: blob.type || undefined,
+          upsert: true,
+        });
+        if (uploadError) throw uploadError;
+        staged.push(destinationPath);
+      }));
     }
     return { names, staged };
   } catch (error) {

@@ -71,7 +71,20 @@ function rememberPage(
   fetchedAt = Date.now(),
 ) {
   const bounded = { ...value, items: value.items.slice(0, maxCachedInboxItems) };
-  pageCache.set(memoryCacheKey(ownerUserId, variant), { ...bounded, fetchedAt, variant });
+  const freshKey = memoryCacheKey(ownerUserId, variant);
+  pageCache.set(freshKey, { ...bounded, fetchedAt, variant });
+  // Bound the in-memory map: timestamp-based filter variants would otherwise
+  // add a new entry on every toggle with nothing ever removing them.
+  const maxPageCacheEntriesPerUser = 8;
+  const prefix = `${ownerUserId}|`;
+  const userKeys = [...pageCache.keys()].filter((key) => key.startsWith(prefix));
+  let removed = 0;
+  for (const key of userKeys) {
+    if (removed >= userKeys.length - maxPageCacheEntriesPerUser) break;
+    if (key === freshKey) continue;
+    pageCache.delete(key);
+    removed += 1;
+  }
   unreadCountByUser.set(ownerUserId, value.unreadCount);
   void writeCache(ownerUserId, 'inbox', variant, bounded, {
     fetchedAt,
@@ -126,6 +139,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
   const [error, setError] = useState<Error | null>(null);
   const [hasEverLoaded, setHasEverLoaded] = useState(() => Boolean(cachedPage) || userHasAnyCache(userId));
   const generation = useRef(0);
+  // Per-flow counters for spinner clearing: the shared `generation` guards
+  // result staleness, but a loadMore bump must not block load's finally from
+  // clearing refreshing/bootstrapping (and vice versa for loadingMore).
+  const loadGeneration = useRef(0);
+  const loadMoreGeneration = useRef(0);
   const cacheKeyRef = useRef(cacheKey);
   const cacheVariantRef = useRef(cacheVariant);
 
@@ -158,6 +176,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
     const request = ++generation.current;
+    const loadRequest = ++loadGeneration.current;
     const key = cacheKeyRef.current;
     const variant = cacheVariantRef.current;
     let memory = pageCache.get(key);
@@ -190,7 +209,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
         setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
       }
     } finally {
-      if (request === generation.current && key === cacheKeyRef.current) {
+      if (loadRequest === loadGeneration.current && key === cacheKeyRef.current) {
         setBootstrapping(false);
         setFilterLoading(false);
         setRefreshing(false);
@@ -201,6 +220,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
   const loadMore = useCallback(async () => {
     if (!hasMore || !cursor || loadingMore) return;
     const request = ++generation.current;
+    const moreRequest = ++loadMoreGeneration.current;
     const key = cacheKeyRef.current;
     setLoadingMore(true);
     try {
@@ -222,7 +242,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
         setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
       }
     } finally {
-      if (request === generation.current && key === cacheKeyRef.current) setLoadingMore(false);
+      if (moreRequest === loadMoreGeneration.current && key === cacheKeyRef.current) setLoadingMore(false);
     }
   }, [cursor, filters, hasMore, items, loadingMore, pageSize, unreadCount, userId]);
 
@@ -256,6 +276,13 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     void load(pageCache.has(cacheKeyRef.current) || hasEverLoaded ? 'soft' : 'initial');
   }, [hasEverLoaded, load]));
 
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
+  // Stable subscription: loadRef keeps the channel alive across filter changes
+  // instead of tearing down and re-subscribing on every toggle.
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -266,7 +293,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
         timer = setTimeout(() => {
           markMemoryPagesDirty(userId);
           void markCacheDirty(userId, 'inbox').catch(() => undefined);
-          void load('realtime');
+          void loadRef.current('realtime');
         }, 200);
       })
       .subscribe();
@@ -274,7 +301,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
-  }, [load, userId]);
+  }, [userId]);
 
   return {
     bootstrapping,

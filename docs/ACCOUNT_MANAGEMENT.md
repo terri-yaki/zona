@@ -1,7 +1,8 @@
 # Zona account management design
 
-Status: proposed for v0.0.8. This is an implementation contract, not a record
-of functionality already shipped.
+Status: shipped in v0.0.8 (migrations, Edge Functions, and client account
+flows). This document is the contract those features implement; the baseline
+section below records the pre-v0.0.8 state it replaced.
 
 ## Product outcome
 
@@ -49,18 +50,21 @@ different security principals and must never share credentials.
   allow it, but v0.0.8 only transfers an unprotected guest into a protected
   account after proving both sessions.
 
-## Current baseline and migration hazards
+## Pre-v0.0.8 baseline and migration hazards
 
-- The shipping sign-in screen calls only `signInAnonymously()`.
-- The Supabase client uses PKCE and `detectSessionInUrl=false`, but the app has
-  no `/auth/callback` route or code-exchange handler. The existing `zona` URL
-  scheme therefore cannot complete email/OAuth recovery by itself.
+- The sign-in screen called only `signInAnonymously()` (it now also ships
+  passwordless email, Apple, Google, and GitHub).
+- The Supabase client used PKCE and `detectSessionInUrl=false`, but the app had
+  no `/auth/callback` route or code-exchange handler, so the `zona` URL scheme
+  could not complete email/OAuth recovery by itself (an `/auth/callback` route
+  with code exchange now ships).
 - Owner caches and Realtime topics are keyed by the Auth user UUID. A same-UUID
   guest upgrade is safe; an unplanned provider sign-in to another UUID clears
   local state and leaves the guest's server data behind.
 - The persistent installation ID and Expo token can conflict when switching
   users unless the server atomically transfers/unregisters that installation.
-- Current local sign-out does not provide a session list or remote revocation.
+- Local sign-out did not provide a session list or remote revocation (the
+  account screen now lists installations and revokes sessions remotely).
 - Current deletion spans Storage, Postgres, and Auth in separate steps. The new
   job/tombstone model is required before presenting it as resumable.
 - SecureStore is device-only by design. Recovery must come from authenticating

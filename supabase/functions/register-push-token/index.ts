@@ -16,6 +16,17 @@ Deno.serve(async (req) => {
     if (deviceId.length < 8) return json({ error: 'INVALID_DEVICE' }, 400);
 
     if (body.action === 'unregister') {
+      // Unregister also mutates delivery state, so enforce the session denylist
+      // here too — a revoked session must not disable push delivery.
+      const { error: sessionError } = await service.rpc('assert_account_session_active_internal', {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+      });
+      if (sessionError) {
+        if (sessionError.message.includes('ACCOUNT_INACTIVE')) throw new Error('ACCOUNT_INACTIVE');
+        if (sessionError.message.includes('INVALID_SESSION')) throw new Error('UNAUTHORIZED');
+        throw sessionError;
+      }
       const { error } = await service.rpc('unregister_push_device_internal', {
         p_user_id: user.id,
         p_device_id: deviceId,

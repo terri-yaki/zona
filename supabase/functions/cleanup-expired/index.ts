@@ -118,6 +118,28 @@ async function resumeAccountDeletions() {
   return completed;
 }
 
+async function finishTransferredGuestCleanup() {
+  const { data, error } = await service.rpc('list_transfer_auth_cleanup_internal', { p_limit: 25 });
+  if (error) throw error;
+  let completed = 0;
+  for (const row of (data ?? []) as { source_user_id: string; transfer_id: string }[]) {
+    const { error: deleteError } = await service.auth.admin.deleteUser(row.source_user_id, false);
+    if (deleteError && !isMissingUser(deleteError)) {
+      console.error('transfer auth cleanup failed', row.transfer_id, deleteError);
+      // Durable tracking: the row stays listed for the next run, and the job
+      // records attempts + last error for operator visibility.
+      const { error: markError } = await service.rpc('mark_transfer_auth_cleanup_failed_internal', {
+        p_transfer_id: row.transfer_id,
+        p_error: deleteError.message ?? String(deleteError),
+      });
+      if (markError) console.error('transfer auth cleanup mark failed', row.transfer_id, markError);
+      continue;
+    }
+    completed += 1;
+  }
+  return completed;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
   if (!await authorized(req)) return json({ error: 'UNAUTHORIZED' }, 401);
@@ -126,7 +148,10 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const attachments = await removeExpiredAttachments(now);
     const accountDeletions = await resumeAccountDeletions();
-    return json({ attachments, accountDeletions }, 200, { 'Cache-Control': 'no-store' });
+    const transferredGuests = await finishTransferredGuestCleanup();
+    const { data: security, error: securityError } = await service.rpc('cleanup_account_security_internal');
+    if (securityError) throw securityError;
+    return json({ attachments, accountDeletions, transferredGuests, security }, 200, { 'Cache-Control': 'no-store' });
   } catch (error) {
     console.error('cleanup-expired', error);
     return json({ error: 'INTERNAL_ERROR' }, 500);

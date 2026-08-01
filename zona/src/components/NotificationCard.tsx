@@ -17,6 +17,8 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
   const accessibilityLabel = [
     item.source_name_snapshot,
     item.title,
+    item.body,
+    relativeTime(item.created_at),
     unread ? t('inbox.unreadA11y') : null,
   ].filter(Boolean).join(', ');
 

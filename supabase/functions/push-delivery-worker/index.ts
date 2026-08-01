@@ -164,13 +164,16 @@ async function processSends(workerId: string) {
       // Fallback path: per-job RPCs when batch helper is unavailable.
       const fallback = await Promise.all(outcomes.map(async (outcome) => {
         if (outcome.kind === 'accept') {
-          const { error: ticketError } = await service.rpc('accept_push_delivery_ticket_internal', {
+          const { data: ticketApplied, error: ticketError } = await service.rpc('accept_push_delivery_ticket_internal', {
             p_job_id: outcome.jobId,
             p_worker_id: workerId,
             p_ticket_id: outcome.ticketId,
             p_http_status: outcome.httpStatus ?? null,
           });
           if (ticketError) throw ticketError;
+          // Lease/status race: the accept was not applied — count it as skipped,
+          // not accepted, so the mismatch is visible instead of silent.
+          if (ticketApplied === false) return { accepted: 0, failed: 0, skipped: 1 };
           return { accepted: 1, failed: 0 };
         }
         const job = valid.find((entry) => entry.job.job_id === outcome.jobId)?.job;
@@ -186,7 +189,8 @@ async function processSends(workerId: string) {
       }));
       const accepted = fallback.reduce((sum, row) => sum + row.accepted, 0);
       failed += fallback.reduce((sum, row) => sum + row.failed, 0);
-      return { claimed: jobs.length, tickets: accepted, failed };
+      const skipped = fallback.reduce((sum, row) => sum + (row.skipped ?? 0), 0);
+      return { claimed: jobs.length, tickets: accepted, failed, skipped };
     }
 
     const accepted = typeof batchResult?.accepted === 'number' ? batchResult.accepted : outcomes.filter((row) => row.kind === 'accept').length;
@@ -341,6 +345,7 @@ async function processReceipts(workerId: string) {
       p_worker_id: workerId,
       p_outcomes: outcomes,
     });
+    let deferredCount = jobs.length;
     if (batchError) {
       const deferred = await Promise.all(jobs.map((job) =>
         service.rpc('defer_push_receipt_internal', {
@@ -350,9 +355,14 @@ async function processReceipts(workerId: string) {
           p_http_status: null,
         })
       ));
-      for (const result of deferred) if (result.error) console.error('push receipt defer failed', result.error);
+      deferredCount = 0;
+      for (const result of deferred) {
+        if (result.error) console.error('push receipt defer failed', result.error);
+        else deferredCount += 1;
+      }
     }
-    return { claimed: jobs.length, delivered: 0, deferred: jobs.length, failed: 0 };
+    // Report only successful defers so stuck jobs are visible instead of silent.
+    return { claimed: jobs.length, delivered: 0, deferred: deferredCount, failed: jobs.length - deferredCount };
   }
 }
 

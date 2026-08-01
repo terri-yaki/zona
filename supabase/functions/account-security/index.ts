@@ -101,19 +101,22 @@ Deno.serve(async (req) => {
     }
 
     const scope = action === 'sessions.revoke.all' ? 'all' : 'others';
+    // Consume before revoking: scope 'all' revokes the actor session itself, and the
+    // consume RPC requires a still-active actor session.
+    await consumeGrant(actor.user.id, actor.sessionId, action, target, grant);
+    // Kill Auth refresh tokens up front; the Zona-side revocation below runs on the
+    // service role and is unaffected by the actor's Auth session dying.
+    const { error: signOutError } = await service.auth.admin.signOut(
+      actor.accessToken,
+      scope === 'all' ? 'global' : 'others',
+    );
+    if (signOutError) console.error('account-security signOut', signOutError);
     const { data, error } = await service.rpc('revoke_account_sessions_internal', {
       p_user_id: actor.user.id,
       p_actor_session_id: actor.sessionId,
       p_scope: scope,
     });
     if (error) throw error;
-    await consumeGrant(actor.user.id, actor.sessionId, action, target, grant);
-    const { error: signOutError } = await service.auth.admin.signOut(
-      actor.accessToken,
-      scope === 'all' ? 'global' : 'others',
-    );
-    // Sessions are already denied in Zona after the RPC; Auth signOut is best-effort.
-    if (signOutError) console.error('account-security signOut', signOutError);
     return json(data, 200, { 'Cache-Control': 'no-store' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'UNKNOWN';

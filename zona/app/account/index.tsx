@@ -55,9 +55,9 @@ export default function AccountScreen() {
     if (!userId) return;
     setLoading(true);
     setLoadError(null);
-    if (Platform.OS !== 'web') {
-      await bindCurrentInstallation(userId).catch(() => undefined);
-    }
+    // Bind on every platform, including web: account security flows require an
+    // active installation_sessions row.
+    await bindCurrentInstallation(userId).catch(() => undefined);
     const [summaryResult, identityResult, installationResult, capabilityResult] = await Promise.allSettled([
       getAccountSummary(),
       supabase.auth.getUserIdentities(),

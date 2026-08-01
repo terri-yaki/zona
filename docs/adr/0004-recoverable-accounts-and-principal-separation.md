@@ -1,6 +1,6 @@
 # ADR 0004: Recoverable accounts and separate security principals
 
-- Status: Proposed for v0.0.8
+- Status: Accepted — implemented in v0.0.8
 - Date: 2026-07-29
 - Owners: Product and engineering owner to be assigned before implementation
 - Supersedes: the recovery decision in ADR 0002; guest start remains supported

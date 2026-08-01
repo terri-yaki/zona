@@ -77,7 +77,7 @@ export default function CheckEmailScreen() {
           textContentType="oneTimeCode"
           value={code}
         />
-        <Pressable accessibilityRole="button" disabled={busy || code.trim().length < 6} onPress={() => void verify()} style={({ pressed }) => [styles.button, (busy || code.trim().length < 6) && styles.disabled, pressed && styles.pressed]}>
+        <Pressable accessibilityRole="button" disabled={busy || code.trim().length < 6 || !transactionId} onPress={() => void verify()} style={({ pressed }) => [styles.button, (busy || code.trim().length < 6 || !transactionId) && styles.disabled, pressed && styles.pressed]}>
           {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>{t('auth.verifyCode')}</Text>}
         </Pressable>
         <Text style={styles.magicLinkHint}>{t('auth.magicLinkHint')}</Text>

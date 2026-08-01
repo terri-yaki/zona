@@ -3,6 +3,7 @@ import { assertEquals } from '@std/assert';
 import { accountActions, bearerValue, isUuid, mostRecentProofIdentity, parseAccountAction, parseActionTarget } from './account-actions.ts';
 import { resolveDeviceSound, resolveSound } from './push.ts';
 import { classifyExpoFailure, receiptError } from './push-delivery.ts';
+import { reauthGrantPattern } from './validation.ts';
 import { sessionIdFromVerifiedJwt } from './verified-session.ts';
 
 /**
@@ -144,8 +145,8 @@ Deno.test('auth-transaction and account-transfer uuid contracts', () => {
 
 Deno.test('delete-account protected reauth grant shape', () => {
   const valid = `zona_reauth_${'ab'.repeat(32)}`;
-  assertEquals(/^zona_reauth_[0-9a-f]{64}$/.test(valid), true);
-  assertEquals(/^zona_reauth_[0-9a-f]{64}$/.test('zona_reauth_short'), false);
+  assertEquals(reauthGrantPattern.test(valid), true);
+  assertEquals(reauthGrantPattern.test('zona_reauth_short'), false);
 });
 
 Deno.test('notify ingest token and error-status contracts', () => {

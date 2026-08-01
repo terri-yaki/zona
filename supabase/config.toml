@@ -15,7 +15,7 @@ major_version = 17
 [auth]
 enabled = true
 site_url = "zona://auth/callback"
-additional_redirect_urls = ["zona://**", "exp://**"]
+additional_redirect_urls = ["zona://auth/callback", "exp://**"]
 enable_signup = true
 enable_anonymous_sign_ins = true
 enable_manual_linking = true
@@ -42,6 +42,21 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.cleanup-expired]
+verify_jwt = false
+
+[functions.push-delivery-worker]
+verify_jwt = false
+
+[functions.reauthenticate]
+verify_jwt = false
+
+[functions.account-security]
+verify_jwt = false
+
+[functions.account-transfer]
+verify_jwt = false
+
+[functions.auth-transaction]
 verify_jwt = false
 
 [functions.test-source]

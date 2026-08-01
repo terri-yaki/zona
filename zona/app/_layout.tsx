@@ -39,6 +39,9 @@ function NotificationNavigation() {
       if (!response || !active) return;
       const responseKey = `${response.notification.request.identifier}:${response.actionIdentifier}`;
       if (handledResponses.current.has(responseKey)) return;
+      // Bound the dedupe set; keys are response-unique so an occasional full
+      // reset is harmless.
+      if (handledResponses.current.size >= 500) handledResponses.current.clear();
       handledResponses.current.add(responseKey);
       const id = response?.notification.request.content.data?.notificationId;
       if (!isUuid(id)) return;
@@ -64,7 +67,7 @@ function NotificationNavigation() {
     let active = true;
     void takePendingNotificationId().then((id) => {
       if (active && id) router.push({ pathname: '/notification/[id]', params: { id } });
-    });
+    }).catch((error) => console.warn('Could not restore the pending notification deep link.', error));
     return () => { active = false; };
   }, [loading, router, session]);
 

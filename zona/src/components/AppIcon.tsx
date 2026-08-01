@@ -20,9 +20,12 @@ type SymbolViewComponent = (props: {
 
 const androidSymbols = {
   'antenna.radiowaves.left.and.right': 'cell_tower',
+  // NOTE: no Apple-branded glyph exists in Material Symbols; apple.logo keeps
+  // its text fallback on Android.
   'arrow.clockwise': 'refresh',
   'arrow.down.circle': 'download',
   'arrow.right': 'arrow_forward',
+  'arrow.triangle.2.circlepath': 'autorenew',
   'bell.badge.fill': 'notifications_active',
   bell: 'notifications',
   'bell.fill': 'notifications',
@@ -30,6 +33,7 @@ const androidSymbols = {
   book: 'menu_book',
   checkmark: 'check',
   'checkmark.circle.fill': 'check_circle',
+  'checkmark.shield.fill': 'verified_user',
   'chevron.right': 'chevron_right',
   clock: 'schedule',
   desktopcomputer: 'computer',
@@ -43,6 +47,7 @@ const androidSymbols = {
   internaldrive: 'storage',
   iphone: 'smartphone',
   'list.bullet.rectangle.fill': 'view_list',
+  'lock.fill': 'lock',
   pencil: 'edit',
   person: 'person',
   'person.crop.circle.fill': 'account_circle',

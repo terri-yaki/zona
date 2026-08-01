@@ -25,6 +25,30 @@ function isFresh(entry: PreferenceCacheEntry) {
   return Date.now() - entry.fetchedAt <= cachePolicies.preferences.freshForMs;
 }
 
+/** Validate RPC preference payloads field-by-field before caching. */
+function sanitizeAppOptions(value: unknown): AppOptions {
+  const record = typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  const text = (v: unknown) => (typeof v === 'string' ? v : null);
+  return {
+    created_at: text(record.created_at) ?? new Date(0).toISOString(),
+    is_premium: record.is_premium === true,
+    live_activity_enabled: record.live_activity_enabled === true,
+    play_sound: record.play_sound !== false,
+    premium_customer_id: text(record.premium_customer_id),
+    premium_expires_at: text(record.premium_expires_at),
+    premium_plan: text(record.premium_plan),
+    premium_product_id: text(record.premium_product_id),
+    premium_status: text(record.premium_status),
+    premium_store: text(record.premium_store),
+    push_enabled: record.push_enabled !== false,
+    show_preview: record.show_preview !== false,
+    updated_at: text(record.updated_at) ?? new Date(0).toISOString(),
+    user_id: text(record.user_id) ?? '',
+  };
+}
+
 export async function getCachedAppOptions(userId: string): Promise<AppOptions | null> {
   const memory = preferenceCache.get(userId);
   if (memory) return memory.value;
@@ -53,7 +77,7 @@ export async function getAppOptions(userId: string, force = false): Promise<AppO
   const request = (async () => {
     const { data, error } = await supabase.rpc('get_user_notification_preferences');
     if (error) throw dataError(error, translate('settings.optionsLoadError'));
-    const value = data as unknown as AppOptions;
+    const value = sanitizeAppOptions(data);
     if (!isCacheLeaseCurrent(lease)) return value;
     const fetchedAt = Date.now();
     preferenceCache.set(userId, { fetchedAt, value });
@@ -85,7 +109,7 @@ export async function updateAppOptions(
     p_live_activity_enabled: changes.live_activity_enabled ?? null,
   });
   if (error) throw dataError(error, translate('settings.optionSaveError'));
-  const value = data as unknown as AppOptions;
+  const value = sanitizeAppOptions(data);
   if (isCacheLeaseCurrent(lease)) {
     const fetchedAt = Date.now();
     preferenceCache.set(userId, { fetchedAt, value });

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { AppIcon } from '@/components/AppIcon';
 import { useAuth } from '@/providers/AuthProvider';
@@ -13,10 +13,13 @@ export function RuntimeStatusBanner() {
   const { t } = useI18n();
   const { session } = useAuth();
   const { snapshot } = useRuntimeConfig();
-  const [dismissedAnnouncementKey, setDismissedAnnouncementKey] = useState<string | null>(null);
-  const candidate = snapshot.announcements[0] ?? null;
-  const candidateKey = candidate && session?.user.id ? `${session.user.id}.${candidate.id}` : null;
-  const announcement = candidateKey === dismissedAnnouncementKey ? null : candidate;
+  const [dismissedKeys, setDismissedKeys] = useState<string[]>([]);
+  const ownerUserId = session?.user.id;
+  const keyFor = useCallback((id: string) => `${ownerUserId}.${id}`, [ownerUserId]);
+  // First non-dismissed announcement wins, so dismissing one reveals the next.
+  const announcement = ownerUserId
+    ? snapshot.announcements.find((item) => !dismissedKeys.includes(keyFor(item.id))) ?? null
+    : snapshot.announcements[0] ?? null;
   const maintenance = snapshot.releasePolicy.maintenanceMode;
   const buildNumber = Number.parseInt(Constants.nativeBuildVersion ?? '0', 10) || 0;
   const updateRequired = snapshot.releasePolicy.updateMode === 'hard'
@@ -26,16 +29,16 @@ export function RuntimeStatusBanner() {
   const updateAvailable = updateRequired || updateRecommended;
 
   useEffect(() => {
-    if (!candidate?.isDismissible) return;
-    const ownerUserId = session?.user.id;
-    if (!ownerUserId) return;
-    const key = `zona.runtime-announcement.dismissed.${ownerUserId}.${candidate.id}`;
+    if (!announcement?.isDismissible || !ownerUserId) return;
+    const key = `zona.runtime-announcement.dismissed.${ownerUserId}.${announcement.id}`;
     void AsyncStorage.getItem(key)
       .then((value) => {
-        if (value === '1') setDismissedAnnouncementKey(`${ownerUserId}.${candidate.id}`);
+        if (value === '1') {
+          setDismissedKeys((prev) => (prev.includes(keyFor(announcement.id)) ? prev : [...prev, keyFor(announcement.id)]));
+        }
       })
       .catch((error) => console.warn('Could not read the dismissed announcement.', error));
-  }, [candidate?.id, candidate?.isDismissible, session?.user.id]);
+  }, [announcement?.id, announcement?.isDismissible, ownerUserId, keyFor]);
 
   if (!maintenance && !updateAvailable && !announcement) return null;
 
@@ -55,9 +58,8 @@ export function RuntimeStatusBanner() {
   const actionLabel = maintenance || updateAvailable ? null : announcement?.actionLabel;
 
   async function dismissAnnouncement() {
-    const ownerUserId = session?.user.id;
     if (!announcement?.isDismissible || !ownerUserId) return;
-    setDismissedAnnouncementKey(`${ownerUserId}.${announcement.id}`);
+    setDismissedKeys((prev) => [...prev, keyFor(announcement.id)]);
     try {
       await AsyncStorage.setItem(`zona.runtime-announcement.dismissed.${ownerUserId}.${announcement.id}`, '1');
     } catch (error) {

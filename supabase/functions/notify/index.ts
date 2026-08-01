@@ -3,20 +3,9 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { json, readBodyBytes, readJson } from '../_shared/http.ts';
 import { sniffImageMime } from '../_shared/image.ts';
 import { FALLBACK_ATTACHMENT_MAX_BYTES, MULTIPART_OVERHEAD_BYTES, type SenderLimits } from '../_shared/limits.ts';
-import {
-  assertPushPayloadFits,
-  byteLength,
-  chunk,
-  createPushMessage,
-  type ExpoTicket,
-  MAX_EXPO_MESSAGE_BYTES,
-  resolveDeviceChannelId,
-  resolveDeviceSound,
-  resolveSound,
-  ticketError,
-} from '../_shared/push.ts';
+import { assertPushPayloadFits } from '../_shared/push.ts';
 import { service } from '../_shared/supabase.ts';
-import { type NotificationSeverity, parseSeverity, severityColor } from '../_shared/severity.ts';
+import { type NotificationSeverity, parseSeverity } from '../_shared/severity.ts';
 import { idempotencyKey, optionalString, requiredString } from '../_shared/validation.ts';
 import { elapsedMs, recordServerEvent } from '../_shared/server-telemetry.ts';
 
@@ -30,16 +19,6 @@ type IngestResult = {
   attachment_path: string | null;
 };
 
-type PushDevice = { id: string; expo_push_token: string; platform: 'android' | 'ios' };
-
-type AppOptions = {
-  push_enabled: boolean;
-  play_sound: boolean;
-  show_preview: boolean;
-};
-
-type SourceOptions = { sound_name: string };
-
 type NotifyPayload = {
   title: string;
   body: string;
@@ -49,8 +28,6 @@ type NotifyPayload = {
   attachment: { bytes: Uint8Array; mime: string } | null;
 };
 
-const expoEndpoint = 'https://exp.host/--/api/v2/push/send';
-const expoTimeoutMs = 5_000;
 type IngestPolicy = SenderLimits & {
   acceptNotifications: boolean;
   allowAttachments: boolean;
@@ -94,52 +71,6 @@ function sourceToken(req: Request): string {
   const token = authorization.slice(7);
   if (!/^zona_live_[A-Za-z0-9_-]{43}$/.test(token)) throw new Error('INVALID_TOKEN');
   return token;
-}
-
-function expoHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  };
-  const accessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  return headers;
-}
-
-async function recordDelivery(
-  notificationId: string,
-  pushDeviceId: string | null,
-  httpStatus: number | null,
-  response: unknown,
-  errorMessage: string | null,
-): Promise<void> {
-  try {
-    const { error } = await service.rpc('record_push_delivery_internal', {
-      p_notification_id: notificationId,
-      p_push_device_id: pushDeviceId,
-      p_http_status: httpStatus,
-      p_response: response,
-      p_error_message: errorMessage,
-    });
-    if (error) console.error('push delivery log failed', error);
-  } catch (error) {
-    // Delivery logging is observability only. It must never turn a durably
-    // accepted notification into an ambiguous 5xx response.
-    console.error('push delivery log unavailable', error);
-  }
-}
-
-async function disableUnregisteredDevice(deviceId: string, ownerUserId: string): Promise<void> {
-  try {
-    const { error } = await service
-      .from('push_registrations')
-      .update({ disabled_at: new Date().toISOString() })
-      .eq('id', deviceId)
-      .eq('user_id', ownerUserId);
-    if (error) console.error('could not disable unregistered push device', error);
-  } catch (error) {
-    console.error('could not disable unregistered push device', error);
-  }
 }
 
 function metadataOrThrow(value: unknown): Record<string, unknown> {
@@ -245,6 +176,7 @@ Deno.serve(async (req) => {
       if (error.message.includes('INVALID_IDEMPOTENCY_KEY')) throw new Error('INVALID_IDEMPOTENCY_KEY');
       if (error.message.includes('ACCOUNT_RATE_LIMITED')) throw new Error('ACCOUNT_RATE_LIMITED');
       if (error.message.includes('RATE_LIMITED')) throw new Error('RATE_LIMITED');
+      if (error.message.includes('ACCOUNT_INACTIVE')) throw new Error('ACCOUNT_INACTIVE');
       if (error.message.includes('NOTIFICATION_INGESTION_DISABLED')) throw new Error('SERVICE_UNAVAILABLE');
       if (error.message.includes('CRITICAL_SEVERITY_DISABLED')) throw new Error('CRITICAL_SEVERITY_DISABLED');
       if (error.message.includes('INVALID_PAYLOAD')) throw new Error('INVALID_PAYLOAD');
@@ -318,140 +250,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    const [optionsResult, sourceOptionsResult] = await Promise.all([
-      service
-        .from('user_notification_preferences')
-        .select('push_enabled, play_sound, show_preview')
-        .eq('user_id', accepted.owner_user_id)
-        .maybeSingle(),
-      service
-        .from('source_access_keys')
-        .select('sound_name')
-        .eq('user_id', accepted.owner_user_id)
-        .eq('source_id', accepted.source_id)
-        .maybeSingle(),
-    ]);
-
-    if (optionsResult.error) console.error('app options lookup', optionsResult.error);
-    if (sourceOptionsResult.error) console.error('source options lookup', sourceOptionsResult.error);
-    const appOptions = (optionsResult.data as AppOptions | null) ?? {
-      push_enabled: true,
-      play_sound: true,
-      show_preview: true,
-    };
-    const soundName = resolveSound(
-      appOptions.play_sound,
-      (sourceOptionsResult.data as SourceOptions | null)?.sound_name,
+    const { data: queueCount, error: queueError } = await service.rpc(
+      'get_notification_push_queue_count_internal',
+      { p_user_id: accepted.owner_user_id, p_notification_id: accepted.notification_id },
     );
-    // Help diagnose “always default” reports: confirm which tone the payload will request.
-    console.log('notify push sound', {
-      sourceId: accepted.source_id,
-      stored: (sourceOptionsResult.data as SourceOptions | null)?.sound_name ?? null,
-      resolved: soundName,
-    });
-
-    const { data: pushDevices, error: devicesError } = appOptions.push_enabled && policy.deliverPush
-      ? await service
-        .from('push_registrations')
-        .select('id, expo_push_token, platform')
-        .eq('user_id', accepted.owner_user_id)
-        .is('disabled_at', null)
-        .order('updated_at', { ascending: false })
-        .limit(policy.maxPushDevices)
-      : { data: [], error: null };
-
-    if (devicesError) {
-      console.error('push device lookup', devicesError);
-      await recordDelivery(accepted.notification_id, null, null, null, 'PUSH_DEVICE_LOOKUP_FAILED');
-    }
-
-    let pushAccepted = 0;
-    const devices = (pushDevices ?? []) as PushDevice[];
-    for (const deviceBatch of chunk(devices)) {
-      const messages = deviceBatch.map((device) => {
-        const deviceSound = resolveDeviceSound(device.platform, soundName);
-        return createPushMessage(
-          device.expo_push_token,
-          payload.title,
-          payload.body,
-          accepted.source_name,
-          accepted.notification_id,
-          accepted.source_id,
-          {
-            channelId: resolveDeviceChannelId(device.platform, accepted.source_id, deviceSound),
-            color: device.platform === 'android' ? severityColor(payload.severity) : undefined,
-            severity: payload.severity,
-            soundName: deviceSound,
-            showPreview: appOptions.show_preview,
-          },
-        );
-      });
-
-      // The conservative pre-ingest check should make this unreachable, but
-      // retain a final check against actual source/token values as defense in depth.
-      if (messages.some((message) => byteLength(message) > MAX_EXPO_MESSAGE_BYTES)) {
-        await Promise.all(deviceBatch.map((device) =>
-          recordDelivery(
-            accepted.notification_id,
-            device.id,
-            null,
-            null,
-            'MESSAGE_TOO_BIG',
-          )
-        ));
-        continue;
-      }
-
-      try {
-        const response = await fetch(expoEndpoint, {
-          method: 'POST',
-          headers: expoHeaders(),
-          body: JSON.stringify(messages),
-          signal: AbortSignal.timeout(expoTimeoutMs),
-        });
-        const responseBody: unknown = await response.json().catch(() => null);
-        const ticketData = responseBody && typeof responseBody === 'object' && 'data' in responseBody
-          ? (responseBody as { data?: unknown }).data
-          : null;
-        const tickets: ExpoTicket[] = Array.isArray(ticketData)
-          ? ticketData as ExpoTicket[]
-          : ticketData && typeof ticketData === 'object'
-          ? [ticketData as ExpoTicket]
-          : [];
-
-        await Promise.all(deviceBatch.map(async (device, index) => {
-          const ticket = tickets[index] ?? null;
-          const deliveryError = ticketError(ticket, response.ok);
-          if (!deliveryError) pushAccepted += 1;
-          await recordDelivery(
-            accepted.notification_id,
-            device.id,
-            response.status,
-            ticket ?? responseBody,
-            deliveryError,
-          );
-          if (deliveryError === 'DeviceNotRegistered') {
-            await disableUnregisteredDevice(device.id, accepted.owner_user_id);
-          }
-        }));
-      } catch (pushError) {
-        const errorMessage = pushError instanceof DOMException && pushError.name === 'TimeoutError'
-          ? 'EXPO_TIMEOUT'
-          : pushError instanceof Error
-          ? pushError.message.slice(0, 500)
-          : 'UNKNOWN_PUSH_ERROR';
-        console.error('best-effort push failed', pushError);
-        await Promise.all(deviceBatch.map((device) =>
-          recordDelivery(
-            accepted.notification_id,
-            device.id,
-            null,
-            null,
-            errorMessage,
-          )
-        ));
-      }
-    }
+    if (queueError) console.error('push queue count unavailable', queueError);
+    const pushQueued = typeof queueCount === 'number' ? queueCount : 0;
 
     await recordServerEvent({
       requestId,
@@ -465,8 +269,9 @@ Deno.serve(async (req) => {
       context: {
         attachmentAccepted,
         attachmentRequested: payload.attachment !== null,
-        pushAccepted,
-        pushAttempted: devices.length,
+        pushAccepted: 0,
+        pushAttempted: pushQueued,
+        pushQueued,
         severity: payload.severity,
       },
     });
@@ -479,8 +284,9 @@ Deno.serve(async (req) => {
         idempotentReplay: false,
         attachmentAccepted,
         attachmentError,
-        pushAttempted: devices.length,
-        pushAccepted,
+        pushAttempted: pushQueued,
+        pushAccepted: 0,
+        pushQueued,
       },
       202,
       { 'Cache-Control': 'no-store' },
@@ -497,6 +303,8 @@ Deno.serve(async (req) => {
       ? 413
       : code === 'SERVICE_UNAVAILABLE'
       ? 503
+      : code === 'ACCOUNT_INACTIVE'
+      ? 423
       : ['ATTACHMENTS_DISABLED', 'CRITICAL_SEVERITY_DISABLED'].includes(code)
       ? 403
       : ['INVALID_PAYLOAD', 'INVALID_IDEMPOTENCY_KEY', 'CONTENT_TYPE', 'INVALID_JSON'].includes(code)
@@ -521,6 +329,7 @@ Deno.serve(async (req) => {
     }
     if (code === 'PAYLOAD_TOO_LARGE') return json({ error: code }, 413);
     if (code === 'SERVICE_UNAVAILABLE') return json({ error: code }, 503, { 'Retry-After': '60' });
+    if (code === 'ACCOUNT_INACTIVE') return json({ error: code }, 423);
     if (['ATTACHMENTS_DISABLED', 'CRITICAL_SEVERITY_DISABLED'].includes(code)) {
       return json({ error: code }, 403);
     }

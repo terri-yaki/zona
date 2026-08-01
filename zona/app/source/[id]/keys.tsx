@@ -201,11 +201,11 @@ export default function SourceKeysScreen() {
                 </View>
                 {!revoked ? (
                   <View style={styles.actions}>
-                    <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} onPress={() => openRename(key)} style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
+                    <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} hitSlop={8} onPress={() => openRename(key)} style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
                       <AppIcon color={colors.primary} fallback="E" name="pencil" size={13} />
                       <Text style={styles.actionText}>{t('sources.rename')}</Text>
                     </Pressable>
-                    <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} onPress={() => askRevoke(key)} style={({ pressed }) => [styles.action, styles.dangerAction, pressed && styles.pressed]}>
+                    <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} hitSlop={8} onPress={() => askRevoke(key)} style={({ pressed }) => [styles.action, styles.dangerAction, pressed && styles.pressed]}>
                       <AppIcon color={colors.danger} fallback="X" name="xmark.circle" size={13} />
                       <Text style={styles.dangerText}>{t('sources.revoke')}</Text>
                     </Pressable>

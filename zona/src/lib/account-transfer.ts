@@ -1,6 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import * as Crypto from 'expo-crypto';
 
+import { translate } from '../i18n';
+import { functionError } from './errors';
 import { getInstallationId } from './installation';
 import { supabase } from './supabase';
 
@@ -57,7 +59,7 @@ async function invokeTransfer(body: Record<string, unknown>, destination: Sessio
     body,
     headers: { 'x-destination-token': `Bearer ${destination.access_token}` },
   });
-  if (error) throw error;
+  if (error) throw await functionError(error, translate('error.default'));
   return data;
 }
 
@@ -76,13 +78,15 @@ export async function commitGuestTransfer(transferId: string, destination: Sessi
     transferId,
     installationId,
   }, destination);
-  if (!record(data) || data.status !== 'completed') throw new Error('INVALID_TRANSFER_RESPONSE');
-  return data;
+  if (!record(data) || data.status !== 'completed' || typeof data.transferId !== 'string') {
+    throw new Error('INVALID_TRANSFER_RESPONSE');
+  }
+  return { status: 'completed' as const, transferId: data.transferId };
 }
 
 export async function cancelGuestTransfer(transferId: string) {
   const { error } = await supabase.functions.invoke('account-transfer', {
     body: { action: 'cancel', transferId },
   });
-  if (error) throw error;
+  if (error) throw await functionError(error, translate('error.default'));
 }

@@ -83,8 +83,8 @@ export default function SettingsScreen() {
       setCacheBytes(bytes);
       setCacheOwnerUserId(userId);
     }).catch(() => undefined);
-    setHealth(await getPushRegistrationHealth(userId));
     try {
+      setHealth(await getPushRegistrationHealth(userId));
       await migrateLegacyLiveActivityPreference(userId);
       const nextOptions = await getAppOptions(userId);
       setOptions(nextOptions);
@@ -541,8 +541,8 @@ function LanguageModal({ onClose, onSelect, preference, visible }: {
   ];
   return (
     <Modal animationType="slide" onRequestClose={onClose} transparent visible={visible}>
-      <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalBackdrop}>
-        <Pressable onPress={() => undefined} style={[styles.modalSheet, { paddingBottom: bottomPadding }]}>
+      <Pressable accessibilityLabel={t('common.close')} accessibilityRole="button" onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable accessibilityViewIsModal onPress={() => undefined} style={[styles.modalSheet, { paddingBottom: bottomPadding }]}>
           <View style={styles.modalHeader}>
             <View>
               <Text style={styles.modalTitle}>{t('settings.languageTitle')}</Text>

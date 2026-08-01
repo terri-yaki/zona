@@ -54,6 +54,8 @@ declare
   v_entry jsonb;
   v_accepted integer := 0;
   v_failed integer := 0;
+  v_skipped integer := 0;
+  v_applied boolean;
   v_result jsonb;
 begin
   if p_worker_id is null or p_outcomes is null or pg_catalog.jsonb_typeof(p_outcomes) <> 'array'
@@ -64,13 +66,18 @@ begin
   for v_entry in select value from pg_catalog.jsonb_array_elements(p_outcomes)
   loop
     if coalesce(v_entry ->> 'kind', '') = 'accept' then
-      perform public.accept_push_delivery_ticket_internal(
+      -- count only truly applied accepts; a lease/status race returns false
+      v_applied := public.accept_push_delivery_ticket_internal(
         (v_entry ->> 'jobId')::uuid,
         p_worker_id,
         v_entry ->> 'ticketId',
         nullif(v_entry ->> 'httpStatus', '')::integer
       );
-      v_accepted := v_accepted + 1;
+      if coalesce(v_applied, false) then
+        v_accepted := v_accepted + 1;
+      else
+        v_skipped := v_skipped + 1;
+      end if;
     elsif coalesce(v_entry ->> 'kind', '') = 'fail' then
       v_result := public.fail_push_delivery_job_internal(
         (v_entry ->> 'jobId')::uuid,
@@ -87,7 +94,7 @@ begin
     end if;
   end loop;
 
-  return pg_catalog.jsonb_build_object('accepted', v_accepted, 'failed', v_failed);
+  return pg_catalog.jsonb_build_object('accepted', v_accepted, 'failed', v_failed, 'skipped', v_skipped);
 end;
 $$;
 

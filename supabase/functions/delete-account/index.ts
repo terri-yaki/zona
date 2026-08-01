@@ -1,8 +1,9 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { json, readJson } from '../_shared/http.ts';
 import { requireUserSession, service } from '../_shared/supabase.ts';
+import { reauthGrantPattern } from '../_shared/validation.ts';
 
-type DeleteBody = { confirmation?: unknown; expectedUserId?: unknown };
+type DeleteBody = { confirmation?: unknown; expectedUserId?: unknown; reauthGrant?: unknown };
 
 function isMissingUser(error: unknown) {
   if (!error || typeof error !== 'object') return false;
@@ -42,17 +43,26 @@ Deno.serve(async (req) => {
 
   let jobId: string | null = null;
   try {
-    const { user } = await requireUserSession(req);
+    const { user, sessionId } = await requireUserSession(req);
     const body = await readJson(req, 1_024) as DeleteBody;
     if (body.confirmation !== 'DELETE') return json({ error: 'CONFIRMATION_REQUIRED' }, 400);
     if (body.expectedUserId !== undefined && body.expectedUserId !== user.id) {
       return json({ error: 'ACCOUNT_MISMATCH' }, 409);
     }
     if (!user.is_anonymous) {
-      const lastSignInAt = Date.parse(user.last_sign_in_at ?? '');
-      if (!Number.isFinite(lastSignInAt) || Date.now() - lastSignInAt > 10 * 60 * 1_000) {
+      if (typeof body.reauthGrant !== 'string' || !reauthGrantPattern.test(body.reauthGrant)) {
         return json({ error: 'REAUTH_REQUIRED' }, 403, { 'Cache-Control': 'no-store' });
       }
+      // Prove the grant is valid without burning it; consume only after the
+      // deletion job exists so a failed begin leaves the grant reusable.
+      const { error: reauthError } = await service.rpc('assert_account_reauth_grant_internal', {
+        p_user_id: user.id,
+        p_actor_session_id: sessionId,
+        p_action: 'account.delete',
+        p_target: '',
+        p_grant: body.reauthGrant,
+      });
+      if (reauthError) return json({ error: 'REAUTH_REQUIRED' }, 403, { 'Cache-Control': 'no-store' });
     }
 
     const { data: deletion, error: beginError } = await service.rpc('begin_account_deletion_internal', {
@@ -63,6 +73,17 @@ Deno.serve(async (req) => {
     jobId = typeof deletion?.jobId === 'string' ? deletion.jobId : null;
     const accountId = typeof deletion?.accountId === 'string' ? deletion.accountId : null;
     if (!jobId || !accountId) throw new Error('DELETE_JOB_INVALID');
+
+    if (!user.is_anonymous) {
+      const { error: consumeError } = await service.rpc('consume_account_reauth_grant_internal', {
+        p_user_id: user.id,
+        p_actor_session_id: sessionId,
+        p_action: 'account.delete',
+        p_target: '',
+        p_grant: body.reauthGrant!,
+      });
+      if (consumeError) throw consumeError;
+    }
 
     const attachments = await removeAccountAttachments(user.id);
     const { data: cleanup, error: cleanupError } = await service.rpc('delete_account_data_internal', {
@@ -107,10 +128,16 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     if (jobId) {
-      await service.rpc('fail_account_deletion_internal', {
-        p_job_id: jobId,
-        p_error_code: 'DELETE_STEP_FAILED',
-      });
+      // Best-effort checkpoint: a secondary failure must not mask the
+      // original error or skip the mapped responses below.
+      try {
+        await service.rpc('fail_account_deletion_internal', {
+          p_job_id: jobId,
+          p_error_code: 'DELETE_STEP_FAILED',
+        });
+      } catch (failError) {
+        console.error('delete-account fail-checkpoint', failError);
+      }
     }
     const code = error instanceof Error ? error.message : 'UNKNOWN';
     if (code === 'UNAUTHORIZED') return json({ error: code }, 401);

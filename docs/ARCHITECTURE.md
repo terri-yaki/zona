@@ -118,13 +118,25 @@ protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
 
 - `create-source`: verifies a user JWT, generates a credential, stores its hash
   through a service-only database function, and returns the secret once.
+- `create-source-key` / `manage-source-key`: issues and manages per-source
+  access keys server-side (v0.0.8 multi-key rotation).
 - `manage-source`: verifies owner scope before rename or revoke.
 - `register-push-token`: registers or removes one iOS or Android installation while
   preventing cross-account token reassignment.
+- `reauthenticate`: issues one-time reauth grants from a fresh secondary proof.
+- `account-security`: consumes reauth grants for identity, installation, and
+  session actions.
+- `account-transfer`: previews, commits, and cancels guest-account transfers.
+- `delete-account`: runs the durable account-deletion job with reauth.
+- `auth-transaction`: binds auth flows (protect_guest, link_method) to the
+  current installation.
+- `test-source`: verifies a source credential with a queued test notification.
 
 Supabase gateway JWT verification is intentionally disabled in configuration;
 these functions call Supabase Auth to validate the Bearer user token. This is a
-security-sensitive invariant and needs endpoint tests in CI.
+security-sensitive invariant; handler contract tests live in
+`supabase/functions/_shared` and CI runs `deno test` + `deno check` (full
+endpoint tests need live secrets and are not yet present).
 
 ### Notification ingestion
 
@@ -160,7 +172,7 @@ device delivery proof.
 | `private.push_delivery_attempts` | Expo ticket attempt diagnostics | Service/database function only |
 | `private.client_event_logs` | Redacted mobile lifecycle and failure diagnostics | Authenticated write RPC; private reads |
 | `private.server_event_logs` | Redacted relay/database outcomes with latency and request IDs | Service/database function only |
-| `private.daily_usage_stats` | UTC service and per-user operational aggregates | Service/database function only |
+| `private.daily_usage_stats` | HKT service and per-user operational aggregates | Service/database function only |
 | `private.daily_report_runs` | Idempotent daily-pulse delivery ledger | Service/database function only |
 | `private.app_feature_controls` | Targeted show/hide/disable/read-only rules | Evaluated only by authenticated bootstrap RPC |
 | `private.app_runtime_settings` | Typed, targeted client display values | Evaluated only by authenticated bootstrap RPC |
@@ -186,9 +198,9 @@ permission is revoked from public, anonymous, and authenticated roles.
 
 An hourly `pg_cron` job deletes expired notification rows and rate-limit rows.
 The v0.0.7 observability job retains redacted raw events for 30 days and daily
-aggregates for 400 days. A separate 00:05 UTC job invokes the daily-report Edge
-Function, which renders a seven-day PNG locally and sends the previous day's
-service pulse through an operator-owned Zona source. See
+aggregates for 400 days. A separate 00:05 HKT (16:05 UTC) job invokes the
+daily-report Edge Function, which renders a seven-day PNG locally and sends the
+previous day's service pulse through an operator-owned Zona source. See
 [OBSERVABILITY.md](OBSERVABILITY.md).
 Rate-limit evidence older than one day is removed. Delivery log rows cascade
 when their notification expires.

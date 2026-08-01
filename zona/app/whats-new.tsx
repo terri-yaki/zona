@@ -79,7 +79,7 @@ export default function WhatsNewScreen() {
 
             <View style={styles.items}>
               {release.items.map((item, index) => (
-                <View key={item.title} style={[styles.item, index > 0 && styles.itemBorder]}>
+                <View key={item.key ?? item.title} style={[styles.item, index > 0 && styles.itemBorder]}>
                   <View style={styles.itemIcon}>
                     <AppIcon color={index % 2 === 0 ? colors.primary : colors.accent} fallback="•" name={item.icon} size={18} />
                   </View>
