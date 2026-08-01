@@ -145,17 +145,19 @@ export default function SourceKeysScreen() {
       <Stack.Screen options={{ title: sourceName || t('sourceKeys.title') }} />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
-        refreshControl={<RefreshControl onRefresh={() => void refresh()} refreshing={refreshing} tintColor={colors.primary} />}
+        refreshControl={isVisible('source_keys.pull_to_refresh') && isEnabled('source_keys.pull_to_refresh')
+          ? <RefreshControl onRefresh={() => void refresh()} refreshing={refreshing} tintColor={colors.primary} />
+          : undefined}
       >
         <View style={styles.introRow}>
           <View style={styles.introCopy}>
             <Text style={styles.title}>{t('sourceKeys.title')}</Text>
             <Text style={styles.subtitle}>{t('sourceKeys.subtitle')}</Text>
           </View>
-          <Pressable accessibilityRole="button" disabled={sourceRevoked} onPress={openAdd} style={({ pressed }) => [styles.addButton, sourceRevoked && styles.disabled, pressed && styles.pressed]}>
+          {isVisible('source_keys.create') ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: sourceRevoked || !isEnabled('source_keys.create') }} disabled={sourceRevoked || !isEnabled('source_keys.create')} onPress={openAdd} style={({ pressed }) => [styles.addButton, (sourceRevoked || !isEnabled('source_keys.create')) && styles.disabled, pressed && styles.pressed]}>
             <AppIcon color={colors.white} fallback="+" name="plus" size={17} />
             <Text style={styles.addText}>{t('sourceKeys.add')}</Text>
-          </Pressable>
+          </Pressable> : null}
         </View>
 
         {sourceRevoked ? <Text style={styles.revokedNotice}>{t('sourceKeys.sourceRevoked')}</Text> : null}
@@ -203,10 +205,10 @@ export default function SourceKeysScreen() {
                 </View>
                 {!revoked ? (
                   <View style={styles.actions}>
-                    <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} hitSlop={8} onPress={() => openRename(key)} style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
+                    {isVisible('source_keys.rename') ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: Boolean(busyKeyId) || !isEnabled('source_keys.rename') }} disabled={Boolean(busyKeyId) || !isEnabled('source_keys.rename')} hitSlop={8} onPress={() => openRename(key)} style={({ pressed }) => [styles.action, !isEnabled('source_keys.rename') && styles.disabled, pressed && styles.pressed]}>
                       <AppIcon color={colors.primary} fallback="E" name="pencil" size={13} />
                       <Text style={styles.actionText}>{t('sources.rename')}</Text>
-                    </Pressable>
+                    </Pressable> : null}
                     <Pressable accessibilityRole="button" disabled={Boolean(busyKeyId)} hitSlop={8} onPress={() => askRevoke(key)} style={({ pressed }) => [styles.action, styles.dangerAction, pressed && styles.pressed]}>
                       <AppIcon color={colors.danger} fallback="X" name="xmark.circle" size={13} />
                       <Text style={styles.dangerText}>{t('sources.revoke')}</Text>
@@ -328,8 +330,8 @@ const createStyles = () => StyleSheet.create({
   keyName: { color: colors.text, flexShrink: 1, fontSize: 16, fontWeight: '700' },
   prefix: { color: colors.primary, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 12, marginTop: 4 },
   meta: { color: colors.muted, fontSize: 12, marginTop: 5 },
-  revokedPill: { backgroundColor: colors.dangerSoft, borderRadius: radius.full, color: colors.danger, fontSize: 9, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3 },
-  pausedPill: { backgroundColor: colors.surfaceMuted, borderRadius: radius.full, color: colors.muted, fontSize: 9, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3 },
+  revokedPill: { backgroundColor: colors.dangerSoft, borderRadius: radius.full, color: colors.danger, fontSize: 11, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3 },
+  pausedPill: { backgroundColor: colors.surfaceMuted, borderRadius: radius.full, color: colors.muted, fontSize: 11, fontWeight: '800', paddingHorizontal: 7, paddingVertical: 3 },
   actions: { flexDirection: 'row', gap: 9, justifyContent: 'flex-end', marginTop: 13 },
   action: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: radius.full, flexDirection: 'row', gap: 6, minHeight: 34, paddingHorizontal: 12 },
   dangerAction: { backgroundColor: colors.dangerSoft },

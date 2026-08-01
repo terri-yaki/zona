@@ -1,7 +1,7 @@
 # Runtime controls operator guide
 
-Zona v0.0.6 can change safe app behavior from Supabase without publishing a
-new binary. Controls are evaluated by `public.get_app_bootstrap(...)`, cached
+Zona v0.0.6 introduced safe app behavior controls from Supabase; v0.0.10
+expands and catalogs them. Controls are evaluated by `public.get_app_bootstrap(...)`, cached
 on the device, and refreshed in the background. Security decisions remain in
 RLS, database functions, and Edge Functions.
 
@@ -11,6 +11,7 @@ The model deliberately separates presentation from enforcement:
 
 | Table | Purpose | Client access |
 | --- | --- | --- |
+| `private.app_control_catalog` | Operator labels, descriptions, types, defaults, safe bounds, and supported values for every compiled control | Service role only; never sent directly to clients |
 | `private.app_feature_controls` | Show, hide, disable, or make an allowlisted UI feature read-only | Evaluated through bootstrap only |
 | `private.app_runtime_settings` | Typed display values such as guide URL, page size, and timing windows | Evaluated through bootstrap only |
 | `private.service_switches` | Fail-closed server kill switches for ingestion, source creation, tests, push, attachments, and critical severity | Service code only |
@@ -44,13 +45,38 @@ safe to draft a rule before publishing it.
 
 | Area | Keys |
 | --- | --- |
-| Inbox | `inbox.filters`, `inbox.mark_all_read`, `inbox.show_revoked_filters` |
-| Notification detail | `notification.attachments`, `notification.metadata`, `notification.severity` |
-| Sources | `sources.create`, `sources.rename`, `sources.pause`, `sources.test`, `sources.sound` |
-| Settings | `settings.push`, `settings.push_registration`, `settings.sound`, `settings.preview`, `settings.live_activity`, `settings.language`, `settings.whats_new`, `settings.manual_update`, `settings.user_guide` |
-| Onboarding/background | `onboarding.push`, `background.live_activity`, `background.ota_updates`, `background.push_registration` |
+| Inbox | `inbox.summary`, `inbox.filters`, `inbox.source_filter`, `inbox.unread_filter`, `inbox.time_filter`, `inbox.mark_all_read`, `inbox.show_revoked_filters`, `inbox.pull_to_refresh`, `inbox.pagination`, `inbox.category_badges`, `inbox.attachment_badges`, `inbox.relative_time` |
+| Notification detail | `notification.attachments`, `notification.category`, `notification.metadata`, `notification.severity`, `notification.delivery_status`, `notification.copy`, `notification.share`, `notification.absolute_time` |
+| Sources | `sources.create`, `sources.search`, `sources.pull_to_refresh`, `sources.status_badges`, `sources.hostname`, `sources.last_seen`, `sources.rename`, `sources.pause`, `sources.test`, `sources.sound` |
+| Source keys | `source_keys.create`, `source_keys.rename`, `source_keys.pull_to_refresh` |
+| Settings/account | `settings.account_summary`, `settings.delivery_status`, `settings.push`, `settings.push_registration`, `settings.sound`, `settings.preview`, `settings.live_activity`, `settings.language`, `settings.theme`, `settings.whats_new`, `settings.manual_update`, `settings.user_guide`, `settings.offline_cache`, `settings.app_status`, `account.usage` |
+| App Status | `status.control_summary`, `status.plan_limits`, `status.configuration_details`, `status.support_link` |
+| Onboarding/background | `onboarding.push`, `background.live_activity`, `background.ota_updates`, `background.push_registration`, `background.client_telemetry` |
 
 Source revocation and the Privacy/account controls are intentionally absent.
+
+### Typed setting catalog
+
+The v0.0.10 catalog documents 17 settings. They cover safe HTTPS help links,
+bootstrap refresh timing, inbox page/filter/card presentation, source online,
+search and spacing behavior, delivery polling, short-lived attachment links,
+App Status freshness and diagnostic detail, and the allowlisted `comfortable`
+or `compact` density preset. Numeric values include operator-visible minimum
+and maximum bounds. The client also clamps every value, so a mistaken override
+degrades to a safe range.
+
+Query the private dashboard with a service-role SQL session:
+
+```sql
+select control_key, control_kind, operator_label, default_value,
+       active_rule_count, active_override_count
+from private.app_control_dashboard
+order by category, sort_order, control_key;
+```
+
+The dashboard is inventory, not the client API. Add an override to
+`private.app_feature_controls` or `private.app_runtime_settings`; do not edit a
+mobile app to read the dashboard and do not expose the `private` schema.
 
 ## Targeting and precedence
 

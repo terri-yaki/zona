@@ -1,8 +1,8 @@
 # Zona roadmap to a paid product
 
 Zona should earn trust before it asks for money. The path from v0.0.8 to
-v0.0.10 makes accounts recoverable, proves the paid-access plumbing, and then
-adds time-saving features that are worth subscribing to. The core promise—an
+v0.0.10 makes accounts recoverable, proves the paid-access plumbing, and gives
+the product a safe control surface before paid features arrive. The core promise—an
 alert reaches the right phone from the right source—remains useful for free.
 
 ## v0.0.8 — Keep your Zona
@@ -45,7 +45,25 @@ sanitized failure reasons, usage presentation over the existing server-owned
 counters, and a disposable local Supabase stack in CI. Passkeys, MFA, and
 protected-account merge remain outside this release.
 
-## v0.0.10 — Zona Plus beta
+## v0.0.10 — Control Room
+
+**User story:** find what I need faster and know whether Zona is ready, while
+the operator can adapt the experience safely without another store build.
+
+- Search sources by name, hostname, key label, or safe key prefix.
+- Copy or share a notification summary without private metadata or internal IDs.
+- Add App Status for feature availability, account capacity, configuration
+  freshness, app version, and support.
+- Expand the allowlisted presentation controls across inbox, details, sources,
+  keys, settings, account, status, onboarding, and background behavior.
+- Finish a focused UI audit for readable labels, 44-point targets, responsive
+  actions, and safe conditional dividers.
+
+Architecture work: a private operator catalog documents every compiled control,
+safe value bounds, and override counts. Existing apps continue to consume only
+their evaluated bootstrap snapshot; client controls never grant permissions.
+
+## v0.0.11 — Zona Plus beta
 
 **User story:** unlock more room and restore the purchase on any signed-in
 phone.

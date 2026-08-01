@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabase';
 import type { AuthProviderName } from '@/lib/auth-transactions';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
 import { useThemedStyles } from '@/theme-preference';
 
@@ -45,6 +46,7 @@ export default function AccountScreen() {
   const router = useRouter();
   const { session, sendEmailAuth, startProvider } = useAuth();
   const { language, t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [identities, setIdentities] = useState<UserIdentity[]>([]);
   const [installations, setInstallations] = useState<AccountInstallation[]>([]);
@@ -57,6 +59,8 @@ export default function AccountScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const userId = session?.user.id;
+  const showUsage = isVisible('account.usage');
+  const enableUsage = isEnabled('account.usage');
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -85,7 +89,10 @@ export default function AccountScreen() {
   }, [t, userId]);
 
   const refreshUsage = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !showUsage || !enableUsage) {
+      setUsageLoading(false);
+      return;
+    }
     setUsageLoading(true);
     setUsageError(null);
     try {
@@ -95,7 +102,7 @@ export default function AccountScreen() {
     } finally {
       setUsageLoading(false);
     }
-  }, [t, userId]);
+  }, [enableUsage, showUsage, t, userId]);
 
   useFocusEffect(useCallback(() => {
     void refresh();
@@ -238,9 +245,11 @@ export default function AccountScreen() {
 
         {loadError ? <View style={styles.errorBox}><Text style={styles.errorText}>{loadError}</Text><Pressable onPress={() => void refresh()}><Text style={styles.retry}>{t('common.retry')}</Text></Pressable></View> : null}
 
+        {showUsage ? <>
         <Text style={styles.section}>{t('account.usage')}</Text>
-        <View style={styles.card}>
-          {usageLoading && !usage ? (
+        <View style={[styles.card, !enableUsage && styles.disabled]}>
+          {!enableUsage ? <View style={styles.usageLoading}><Text style={styles.usageLoadingText}>{t('common.unavailable')}</Text></View> :
+          usageLoading && !usage ? (
             <View accessibilityLabel={t('account.usageLoading')} style={styles.usageLoading}>
               <ActivityIndicator color={colors.primary} size="small" />
               <Text style={styles.usageLoadingText}>{t('account.usageLoading')}</Text>
@@ -266,6 +275,7 @@ export default function AccountScreen() {
             <UsageRetry error={usageError ?? t('account.usageLoadError')} loading={usageLoading} onRetry={refreshUsage} />
           )}
         </View>
+        </> : null}
 
         <Text style={styles.section}>{t('account.signInMethods')}</Text>
         <View style={styles.card}>
@@ -398,8 +408,8 @@ const createStyles = () => StyleSheet.create({
   heroTitle: { color: colors.white, fontSize: 16, fontWeight: '800' },
   heroBody: { color: '#D8EAE4', fontSize: 12, lineHeight: 17, marginTop: 3 },
   protectedBadge: { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: radius.full, marginLeft: 8, paddingHorizontal: 9, paddingVertical: 5 },
-  protectedText: { color: colors.white, fontSize: 9, fontWeight: '800' },
-  section: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginBottom: 7, marginLeft: 4, marginTop: 20 },
+  protectedText: { color: colors.white, fontSize: 11, fontWeight: '800' },
+  section: { color: colors.muted, fontSize: 12, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginLeft: 4, marginTop: 20 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 5 },
   row: { alignItems: 'center', flexDirection: 'row', minHeight: 66, paddingVertical: 9 },
   rowCopy: { flex: 1, marginLeft: 11 },
@@ -411,7 +421,7 @@ const createStyles = () => StyleSheet.create({
   rowAction: { borderRadius: radius.small, paddingHorizontal: 8, paddingVertical: 7 },
   rowActionText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   dangerActionText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
-  revoked: { color: colors.mutedLight, fontSize: 10, fontWeight: '700' },
+  revoked: { color: colors.mutedLight, fontSize: 11, fontWeight: '700' },
   divider: { backgroundColor: colors.border, height: 1 },
   emptyText: { color: colors.muted, fontSize: 13, paddingVertical: 17, textAlign: 'center' },
   linkCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, marginTop: 9, padding: 15 },
@@ -436,7 +446,7 @@ const createStyles = () => StyleSheet.create({
   usageMetricEmphasized: { backgroundColor: colors.primarySoft, borderRadius: radius.small, flex: 1, minHeight: 76, paddingHorizontal: 12 },
   usageValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
   usageValueEmphasized: { color: colors.primary, fontSize: 23 },
-  usageLabel: { color: colors.muted, fontSize: 10, lineHeight: 14, marginTop: 4 },
+  usageLabel: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
   usageError: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 58, paddingVertical: 8 },
   usageErrorText: { color: colors.danger, flex: 1, fontSize: 11, lineHeight: 16 },
   usageRetry: { alignItems: 'center', minWidth: 48, paddingHorizontal: 6, paddingVertical: 8 },

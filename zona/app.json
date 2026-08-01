@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zona",
     "slug": "zona",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

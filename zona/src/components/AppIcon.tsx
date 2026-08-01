@@ -25,6 +25,7 @@ const androidSymbols = {
   'arrow.clockwise': 'refresh',
   'arrow.down.circle': 'download',
   'arrow.right': 'arrow_forward',
+  'arrow.up.right': 'open_in_new',
   'arrow.triangle.2.circlepath': 'autorenew',
   'bell.badge.fill': 'notifications_active',
   bell: 'notifications',
@@ -48,9 +49,12 @@ const androidSymbols = {
   'info.circle.fill': 'info',
   internaldrive: 'storage',
   iphone: 'smartphone',
+  lifepreserver: 'support',
   'list.bullet.rectangle.fill': 'view_list',
   'lock.fill': 'lock',
   pencil: 'edit',
+  magnifyingglass: 'search',
+  paintpalette: 'palette',
   person: 'person',
   'person.crop.circle.fill': 'account_circle',
   'paintpalette.fill': 'palette',
@@ -61,6 +65,7 @@ const androidSymbols = {
   'rectangle.portrait.and.arrow.right': 'logout',
   'speaker.slash.fill': 'volume_off',
   'speaker.wave.2.fill': 'volume_up',
+  'square.and.arrow.up': 'share',
   sparkles: 'auto_awesome',
   'shield.lefthalf.filled': 'security',
   'switch.2': 'tune',
@@ -70,6 +75,8 @@ const androidSymbols = {
   'tray.full.fill': 'inbox',
   xmark: 'close',
   'xmark.circle': 'cancel',
+  'xmark.circle.fill': 'cancel',
+  'waveform.path.ecg': 'monitor_heart',
 } satisfies Partial<Record<SFSymbol, AndroidSymbol>>;
 
 function crossPlatformName(name: SFSymbol) {

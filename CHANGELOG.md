@@ -6,6 +6,21 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
+### Added
+
+- Find a sender by its source name, computer name, key name, or key prefix.
+- Copy or share the useful parts of an alert without exposing its private
+  metadata or internal identifiers.
+- Open App Status to see whether Zona is ready, which features are available,
+  and how much room the account has.
+
+### Changed
+
+- Important labels are easier to read, small controls are easier to tap, and
+  source actions adapt more naturally to narrow phones and larger text.
+- Zona can tune more of the inbox, notification, source, key, settings, and
+  background experience without waiting for another store download.
+
 ## [0.0.8] - 2026-07-30
 
 ### Added

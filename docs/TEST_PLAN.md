@@ -317,6 +317,32 @@ Copy this table into the release ticket. Blank evidence is a failed gate.
 | Migration/function deployment parity |  |  |  |  |
 | Monitoring and rollback rehearsal |  |  |  |  |
 
+## v0.0.10 Control Room matrix
+
+- Compare the 57 compiled feature keys with `private.app_control_catalog` and
+  assert that every key has one safe global baseline without duplicating the
+  existing v0.0.6 rows.
+- Exercise `enabled`, `disabled`, `hidden`, and `read_only` on one control in
+  every app area. A hidden filter must stop affecting its query immediately.
+- Verify priority, platform, channel, locale, tier, build, schedule, and rollout
+  targeting still select exactly one evaluated rule.
+- Enter values below and above every numeric catalog bound. Database metadata
+  must explain the supported range and the client must clamp unsafe values.
+- Confirm `anon` and `authenticated` cannot read the private catalog or
+  dashboard, while bootstrap returns only the evaluated app-safe snapshot.
+- Search sources by display name, hostname, key label, and key prefix; confirm
+  case-insensitive matching, blank-query behavior, duplicate hostnames, and a
+  useful no-results state.
+- Copy and share an alert with and without category/severity. The result must
+  contain useful title/body/source/time text and exclude metadata, credentials,
+  database IDs, and attachment URLs.
+- Check App Status for fresh, saved/stale, limited, maintenance, offline, and
+  refresh states. Only validated HTTPS support links may open.
+- At 320, 375, and 430 point widths, and with the largest supported text size,
+  verify source actions wrap cleanly, settings never show orphan dividers,
+  labels remain legible, and every primary/icon control has a 44-point target.
+- Run the same matrix in English and Traditional Chinese on iOS and Android.
+
 ## Exit criteria
 
 - Every PRD acceptance row is linked to current evidence.

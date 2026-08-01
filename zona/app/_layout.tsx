@@ -129,7 +129,7 @@ function RootNavigator() {
     <>
       <CacheLifecycleSync />
           <AccountSessionSync />
-          <ClientTelemetrySync />
+          {isVisible('background.client_telemetry') && isEnabled('background.client_telemetry') ? <ClientTelemetrySync /> : null}
           {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}
@@ -152,6 +152,7 @@ function RootNavigator() {
             <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
             <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
             <Stack.Screen name="whats-new" options={{ title: t('nav.whatsNew') }} />
+            <Stack.Screen name="app-status" options={{ title: t('nav.appStatus') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
             <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />

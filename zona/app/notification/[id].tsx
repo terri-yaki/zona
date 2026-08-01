@@ -1,7 +1,8 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import type { SFSymbol } from 'expo-symbols';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { ErrorState } from '@/components/ErrorState';
@@ -12,6 +13,8 @@ import { deleteNotification, getNotification, getNotificationDeliverySummary, ma
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { severityAppearance } from '@/lib/notification-severity';
+import { notificationActionText } from '@/lib/notification-actions';
+import { runtimeNumber } from '@/lib/runtime-controls';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -28,7 +31,7 @@ export default function NotificationDetailScreen() {
   const styles = useThemedStyles(createStyles);
   const { session, loading: authLoading } = useAuth();
   const { language, t } = useI18n();
-  const { isEnabled, isVisible } = useRuntimeConfig();
+  const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
   const { id: idParameter } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
   const bottomPadding = useBottomSafePadding(24);
@@ -48,6 +51,11 @@ export default function NotificationDetailScreen() {
   const [deliveryError, setDeliveryError] = useState(false);
   const [deliveryLoading, setDeliveryLoading] = useState(true);
   const [attachment, setAttachment] = useState<{ path: string; url: string | null } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deliveryVisible = isVisible('notification.delivery_status') && isEnabled('notification.delivery_status');
+  const deliveryPollMilliseconds = runtimeNumber(snapshot, 'notification.delivery_poll_seconds', 15, 5, 300) * 1_000;
+  const attachmentUrlTtlSeconds = runtimeNumber(snapshot, 'notification.attachment_url_ttl_seconds', 3600, 60, 86400);
 
   // Reset detail state when navigating to a different notification id.
   const [prevId, setPrevId] = useState(id);
@@ -84,7 +92,8 @@ export default function NotificationDetailScreen() {
       if (request !== generation.current) return;
       setItem(notification);
       setLoading(false);
-      if (notification) void loadDelivery(notification.id);
+      if (notification && deliveryVisible) void loadDelivery(notification.id);
+      else setDeliveryLoading(false);
 
       if (notification && !notification.read_at) {
         const readAt = new Date().toISOString();
@@ -109,7 +118,7 @@ export default function NotificationDetailScreen() {
     } finally {
       if (request === generation.current) setLoading(false);
     }
-  }, [id, loadDelivery, t, userId]);
+  }, [deliveryVisible, id, loadDelivery, t, userId]);
 
   useEffect(() => {
     if (!userId || !id) return;
@@ -122,10 +131,10 @@ export default function NotificationDetailScreen() {
   }, [id, load, userId]);
 
   useEffect(() => {
-    if (!id || delivery?.state !== 'queued') return;
-    const timer = setInterval(() => void loadDelivery(id), 15_000);
+    if (!deliveryVisible || !id || delivery?.state !== 'queued') return;
+    const timer = setInterval(() => void loadDelivery(id), deliveryPollMilliseconds);
     return () => clearInterval(timer);
-  }, [delivery?.state, id, loadDelivery]);
+  }, [delivery?.state, deliveryPollMilliseconds, deliveryVisible, id, loadDelivery]);
 
   useEffect(() => {
     const path = item?.attachment_path;
@@ -133,7 +142,7 @@ export default function NotificationDetailScreen() {
     let active = true;
     supabase.storage
       .from('notification-attachments')
-      .createSignedUrl(path, 3600)
+      .createSignedUrl(path, attachmentUrlTtlSeconds)
       .then(({ data, error }) => {
         if (!active) return;
         setAttachment({ path, url: error ? null : data.signedUrl });
@@ -144,7 +153,11 @@ export default function NotificationDetailScreen() {
     return () => {
       active = false;
     };
-  }, [isEnabled, isVisible, item?.attachment_path]);
+  }, [attachmentUrlTtlSeconds, isEnabled, isVisible, item?.attachment_path]);
+
+  useEffect(() => () => {
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+  }, []);
 
   const attachmentPath = item?.attachment_path ?? null;
   const attachmentReady = Boolean(attachmentPath) && attachment?.path === attachmentPath;
@@ -200,6 +213,30 @@ export default function NotificationDetailScreen() {
     );
   }
 
+  async function copyNotification() {
+    if (!item) return;
+    try {
+      await Clipboard.setStringAsync(notificationActionText(item, getLocaleTag(language)));
+      setCopied(true);
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+      copyResetTimer.current = setTimeout(() => setCopied(false), 2_000);
+    } catch (caught) {
+      Alert.alert(t('notification.copyError'), userMessage(caught));
+    }
+  }
+
+  async function shareNotification() {
+    if (!item) return;
+    try {
+      await Share.share({
+        message: notificationActionText(item, getLocaleTag(language)),
+        title: item.title,
+      });
+    } catch (caught) {
+      Alert.alert(t('notification.shareError'), userMessage(caught));
+    }
+  }
+
   if (authLoading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
   if (!id) {
@@ -246,21 +283,25 @@ export default function NotificationDetailScreen() {
         </View>
         <View style={styles.sourceCopy}>
           <Text numberOfLines={1} style={styles.source}>{item.source_name_snapshot}</Text>
-          <Text style={styles.time}>{new Date(item.created_at).toLocaleString(getLocaleTag(language))} · {relativeTime(item.created_at)}</Text>
+          <Text style={styles.time}>
+            {isVisible('notification.absolute_time') && isEnabled('notification.absolute_time')
+              ? `${new Date(item.created_at).toLocaleString(getLocaleTag(language))} · ${relativeTime(item.created_at)}`
+              : relativeTime(item.created_at)}
+          </Text>
         </View>
       </View>
-      {item.category ? <Text style={styles.category}>{item.category.toUpperCase()}</Text> : null}
+      {item.category && isVisible('notification.category') && isEnabled('notification.category') ? <Text style={styles.category}>{item.category.toUpperCase()}</Text> : null}
       <View style={styles.messageCard}>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.body}>{item.body}</Text>
       </View>
 
-      <DeliveryCard
-        error={deliveryError}
-        loading={deliveryLoading}
-        onRetry={() => void loadDelivery(item.id, true)}
-        summary={delivery}
-      />
+      {deliveryVisible ? <DeliveryCard
+          error={deliveryError}
+          loading={deliveryLoading}
+          onRetry={() => void loadDelivery(item.id, true)}
+          summary={delivery}
+        /> : null}
 
       {item.attachment_path && isVisible('notification.attachments') && isEnabled('notification.attachments') ? (
         <>
@@ -308,6 +349,36 @@ export default function NotificationDetailScreen() {
           <Text style={styles.metadataLabel}>{t('notification.metadata')}</Text>
           <View style={styles.codeBox}><Text selectable style={styles.code}>{JSON.stringify(item.data, null, 2)}</Text></View>
         </>
+      ) : null}
+      {isVisible('notification.copy') || isVisible('notification.share') ? (
+        <View style={styles.quickActions}>
+          {isVisible('notification.copy') ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !isEnabled('notification.copy') }}
+              disabled={!isEnabled('notification.copy')}
+              onPress={() => void copyNotification()}
+              style={({ pressed }) => [styles.quickAction, pressed && styles.pressed, !isEnabled('notification.copy') && styles.disabled]}
+            >
+              <AppIcon color={colors.primary} fallback="C" name={copied ? 'checkmark' : 'doc.on.doc'} size={16} />
+              <Text accessibilityLiveRegion="polite" numberOfLines={1} style={styles.quickActionText}>
+                {copied ? t('notification.copied') : t('notification.copy')}
+              </Text>
+            </Pressable>
+          ) : null}
+          {isVisible('notification.share') ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !isEnabled('notification.share') }}
+              disabled={!isEnabled('notification.share')}
+              onPress={() => void shareNotification()}
+              style={({ pressed }) => [styles.quickAction, pressed && styles.pressed, !isEnabled('notification.share') && styles.disabled]}
+            >
+              <AppIcon color={colors.primary} fallback="S" name="square.and.arrow.up" size={16} />
+              <Text numberOfLines={1} style={styles.quickActionText}>{t('notification.share')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
       <Pressable
         accessibilityRole="button"
@@ -443,7 +514,7 @@ const createStyles = () => StyleSheet.create({
   sourceCopy: { flex: 1 },
   source: { color: colors.text, fontSize: 16, fontWeight: '700' },
   time: { color: colors.muted, fontSize: 11, marginTop: 3 },
-  category: { alignSelf: 'flex-start', backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 9, fontWeight: '800', letterSpacing: 0.7, marginBottom: 10, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
+  category: { alignSelf: 'flex-start', backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.6, marginBottom: 10, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
   messageCard: { ...shadows.card, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, padding: 19 },
   title: { color: colors.text, fontSize: 25, fontWeight: '800', letterSpacing: -0.4, lineHeight: 30, marginBottom: 13 },
   body: { color: colors.textSoft, fontSize: 16, lineHeight: 25 },
@@ -452,11 +523,11 @@ const createStyles = () => StyleSheet.create({
   deliveryIcon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
   deliveryIconDanger: { backgroundColor: '#FFF8F7' },
   deliveryCopy: { flex: 1 },
-  deliveryLabel: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },
+  deliveryLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
   deliveryTitle: { color: colors.primary, fontSize: 13, fontWeight: '800', marginTop: 2 },
   deliveryTitleDanger: { color: colors.danger },
   deliveryBody: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginTop: 3 },
-  deliveryMeta: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  deliveryMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
   deliveryRetry: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.small, justifyContent: 'center', minHeight: 42, minWidth: 58, paddingHorizontal: 10 },
   deliveryRetryText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
   readError: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: '#EECFCD', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: 16, padding: 12 },
@@ -465,13 +536,16 @@ const createStyles = () => StyleSheet.create({
   readErrorMessage: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginTop: 2 },
   retryRead: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.small, justifyContent: 'center', minHeight: 44, minWidth: 64, paddingHorizontal: 12 },
   retryReadText: { color: colors.danger, fontSize: 12, fontWeight: '700' },
-  metadataLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginTop: 30 },
-  attachmentLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginTop: 18 },
+  metadataLabel: { color: colors.muted, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 7, marginTop: 30 },
+  attachmentLabel: { color: colors.muted, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 7, marginTop: 18 },
   attachmentCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, justifyContent: 'center', minHeight: 120, overflow: 'hidden', padding: 8 },
   attachment: { alignSelf: 'center', height: 320, width: '100%' },
   attachmentError: { color: colors.muted, fontSize: 12, padding: 20, textAlign: 'center' },
   codeBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 14 },
   code: { color: '#E7ECE9', fontSize: 11, lineHeight: 17 },
+  quickActions: { flexDirection: 'row', gap: 10, marginTop: 22 },
+  quickAction: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.medium, flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
+  quickActionText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   delete: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 28, minHeight: 52, padding: 14 },
   deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.65 },

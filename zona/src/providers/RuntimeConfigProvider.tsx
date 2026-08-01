@@ -30,6 +30,7 @@ type RuntimeConfigContextValue = {
   snapshot: RuntimeSnapshot;
   loading: boolean;
   error: string | null;
+  fetchedAt: number | null;
   refresh: () => Promise<void>;
   isVisible: (key: FeatureKey) => boolean;
   isEnabled: (key: FeatureKey) => boolean;
@@ -53,6 +54,7 @@ const RuntimeConfigContext = createContext<RuntimeConfigContextValue>({
   snapshot: defaultRuntimeSnapshot,
   loading: false,
   error: null,
+  fetchedAt: null,
   refresh: async () => undefined,
   isVisible: () => true,
   isEnabled: () => true,
@@ -204,10 +206,11 @@ export function RuntimeConfigProvider({ children }: PropsWithChildren) {
     snapshot,
     loading,
     error,
+    fetchedAt: fetchedAt || null,
     refresh,
     isVisible: (feature) => featureVisible(snapshot, feature),
     isEnabled: (feature) => featureEnabled(snapshot, feature),
-  }), [error, loading, refresh, snapshot]);
+  }), [error, fetchedAt, loading, refresh, snapshot]);
 
   return <RuntimeConfigContext.Provider value={value}>{children}</RuntimeConfigContext.Provider>;
 }

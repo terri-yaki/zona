@@ -5,6 +5,8 @@ import {
   featureEnabled,
   featureVisible,
   parseRuntimeSnapshot,
+  runtimeBoolean,
+  runtimeChoice,
   runtimeNumber,
   runtimeString,
 } from '../lib/runtime-controls';
@@ -44,6 +46,14 @@ describe('parseRuntimeSnapshot', () => {
     const parsed = parseRuntimeSnapshot({ features: { 'inbox.filters': { mode: 'hidden' } } });
     expect(parsed.features['inbox.filters'].mode).toBe('hidden');
     expect(defaultRuntimeSnapshot.features['inbox.filters'].mode).toBe('enabled');
+  });
+
+  it('reads only valid boolean and allowlisted choice settings', () => {
+    const snapshot = parseRuntimeSnapshot({ settings: { enabled: true, density: 'compact', invented: 'spacious' } });
+    expect(runtimeBoolean(snapshot, 'enabled', false)).toBe(true);
+    expect(runtimeBoolean(snapshot, 'missing', false)).toBe(false);
+    expect(runtimeChoice(snapshot, 'density', ['comfortable', 'compact'] as const, 'comfortable')).toBe('compact');
+    expect(runtimeChoice(snapshot, 'invented', ['comfortable', 'compact'] as const, 'comfortable')).toBe('comfortable');
   });
 
   it('parses localized release policy and safe announcements', () => {

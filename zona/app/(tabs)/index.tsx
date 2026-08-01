@@ -30,26 +30,36 @@ export default function InboxScreen() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   // Stores the cutoff timestamp when the chip is toggled on; null when off.
   const [since, setSince] = useState<string | null>(null);
-  const last24Hours = since !== null;
+  const filtersVisible = isVisible('inbox.filters');
+  const filtersEnabled = isEnabled('inbox.filters');
+  const sourceFilterVisible = filtersVisible && isVisible('inbox.source_filter');
+  const unreadFilterVisible = filtersVisible && isVisible('inbox.unread_filter');
+  const timeFilterVisible = filtersVisible && isVisible('inbox.time_filter');
+  const effectiveSource = sourceFilterVisible ? selectedSource : null;
+  const effectiveUnreadOnly = unreadFilterVisible && unreadOnly;
+  const effectiveSince = timeFilterVisible ? since : null;
+  const last24Hours = effectiveSince !== null;
   const filters = useMemo(() => ({
-    since,
-    sourceId: selectedSource,
-    unreadOnly,
-  }), [selectedSource, since, unreadOnly]);
+    since: effectiveSince,
+    sourceId: effectiveSource,
+    unreadOnly: effectiveUnreadOnly,
+  }), [effectiveSource, effectiveSince, effectiveUnreadOnly]);
 
   const pageSize = runtimeNumber(snapshot, 'inbox.page_size', 30, 10, 100);
   const inbox = useInbox(session?.user.id ?? '', filters, pageSize);
   const sourceState = useSources(true);
   const timeFilterMilliseconds = runtimeNumber(snapshot, 'inbox.time_filter_hours', 24, 1, 720) * 60 * 60 * 1_000;
+  const maxSourceFilters = runtimeNumber(snapshot, 'inbox.max_source_filters', 50, 1, 200);
   const sourceOptions = useMemo(
     () => sourceState.sources
       .filter((source) => !source.revoked_at || (
         isVisible('inbox.show_revoked_filters') && isEnabled('inbox.show_revoked_filters')
       ))
-      .sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language))),
-    [isEnabled, isVisible, language, sourceState.sources],
+      .sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language)))
+      .slice(0, maxSourceFilters),
+    [isEnabled, isVisible, language, maxSourceFilters, sourceState.sources],
   );
-  const filtersActive = Boolean(selectedSource || unreadOnly || last24Hours);
+  const filtersActive = Boolean(effectiveSource || effectiveUnreadOnly || last24Hours);
   const emptyMessage = filtersActive
     ? t('inbox.filteredEmpty')
     : t('inbox.firstEmpty');
@@ -86,7 +96,7 @@ export default function InboxScreen() {
 
   return (
     <TabScreen>
-      <View style={styles.summary}>
+      {isVisible('inbox.summary') ? <View style={styles.summary}>
         <View style={[styles.summaryIcon, inbox.unreadCount === 0 && styles.summaryIconQuiet]}>
           <AppIcon
             color={inbox.unreadCount ? colors.accent : colors.primary}
@@ -121,9 +131,9 @@ export default function InboxScreen() {
         ) : (
           <Text style={styles.retention}>{t('common.sevenDays')}</Text>
         )}
-      </View>
+      </View> : null}
 
-      {isVisible('inbox.filters') ? <><View style={styles.filterLabelRow}>
+      {filtersVisible && (sourceFilterVisible || unreadFilterVisible || timeFilterVisible) ? <><View style={styles.filterLabelRow}>
         <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
         {filtersActive ? (
           <Pressable
@@ -141,28 +151,29 @@ export default function InboxScreen() {
         accessibilityLabel={t('inbox.filtersA11y')}
         contentContainerStyle={styles.filters}
         horizontal
-        pointerEvents={isEnabled('inbox.filters') ? 'auto' : 'none'}
+        pointerEvents={filtersEnabled ? 'auto' : 'none'}
         showsHorizontalScrollIndicator={false}
-        style={[styles.filtersScroll, !isEnabled('inbox.filters') && styles.disabled]}
+        style={[styles.filtersScroll, !filtersEnabled && styles.disabled]}
       >
-        <FilterChip active={!selectedSource} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" />
-        <FilterChip active={unreadOnly} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" />
-        <FilterChip active={last24Hours} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - timeFilterMilliseconds).toISOString())} tone="default" />
-        {sourceState.loading && sourceOptions.length === 0 ? (
+        {sourceFilterVisible ? <FilterChip active={!selectedSource} disabled={!filtersEnabled || !isEnabled('inbox.source_filter')} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" /> : null}
+        {unreadFilterVisible ? <FilterChip active={unreadOnly} disabled={!filtersEnabled || !isEnabled('inbox.unread_filter')} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" /> : null}
+        {timeFilterVisible ? <FilterChip active={last24Hours} disabled={!filtersEnabled || !isEnabled('inbox.time_filter')} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - timeFilterMilliseconds).toISOString())} tone="default" /> : null}
+        {sourceFilterVisible && sourceState.loading && sourceOptions.length === 0 ? (
           <View accessibilityLabel={t('inbox.loadingFilters')} accessible style={styles.filterLoading}>
             <ActivityIndicator color={colors.primary} size="small" />
           </View>
         ) : null}
-        {sourceOptions.map((source) => (
+        {sourceFilterVisible ? sourceOptions.map((source) => (
           <FilterChip
             active={selectedSource === source.id}
+            disabled={!filtersEnabled || !isEnabled('inbox.source_filter')}
             key={source.id}
             label={source.revoked_at ? `${source.display_name} · ${t('inbox.revokedSuffix')}` : source.display_name}
             muted={Boolean(source.revoked_at)}
             onPress={() => setSelectedSource(source.id)}
             tone="source"
           />
-        ))}
+        )) : null}
       </ScrollView></> : null}
 
       {sourceState.error ? <ErrorState compact error={sourceState.error} onRetry={() => void sourceState.load()} /> : null}
@@ -185,12 +196,12 @@ export default function InboxScreen() {
             <EmptyState title={t('inbox.emptyTitle')} message={emptyMessage} />
           )
         }
-        ListFooterComponent={inbox.hasMore ? (
+        ListFooterComponent={inbox.hasMore && isVisible('inbox.pagination') ? (
           <View style={styles.pagination}>
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: inbox.loadingMore }}
-              disabled={inbox.loadingMore}
+              accessibilityState={{ disabled: inbox.loadingMore || !isEnabled('inbox.pagination') }}
+              disabled={inbox.loadingMore || !isEnabled('inbox.pagination')}
               onPress={() => void inbox.loadMore()}
               style={({ pressed }) => [styles.loadMore, pressed && styles.pressed, inbox.loadingMore && styles.disabled]}
             >
@@ -200,13 +211,13 @@ export default function InboxScreen() {
             </Pressable>
           </View>
         ) : null}
-        refreshControl={(
+        refreshControl={isVisible('inbox.pull_to_refresh') && isEnabled('inbox.pull_to_refresh') ? (
           <RefreshControl
             onRefresh={() => void inbox.refresh()}
             refreshing={inbox.refreshing}
             tintColor={colors.primary}
           />
-        )}
+        ) : undefined}
         renderItem={({ item }) => (
           <NotificationCard
             item={item}
@@ -221,12 +232,14 @@ export default function InboxScreen() {
 
 function FilterChip({
   active,
+  disabled = false,
   label,
   muted = false,
   onPress,
   tone,
 }: {
   active: boolean;
+  disabled?: boolean;
   label: string;
   muted?: boolean;
   onPress: () => void;
@@ -236,13 +249,15 @@ function FilterChip({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ disabled, selected: active }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
         tone === 'source' && styles.chipSource,
         active && (tone === 'source' ? styles.chipSourceActive : styles.chipActive),
         muted && styles.chipMuted,
+        disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -280,7 +295,7 @@ const createStyles = () => StyleSheet.create({
   summaryCopy: { flex: 1, marginRight: 8 },
   summaryTitle: { color: colors.text, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   summaryCaption: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
-  retention: { backgroundColor: colors.surfaceMuted, borderRadius: radius.full, color: colors.muted, fontSize: 10, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5 },
+  retention: { backgroundColor: colors.surfaceMuted, borderRadius: radius.full, color: colors.muted, fontSize: 12, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5 },
   readAllButton: {
     alignItems: 'center',
     backgroundColor: colors.primarySoft,
@@ -292,7 +307,7 @@ const createStyles = () => StyleSheet.create({
   },
   readAllText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   filterLabelRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 36, paddingBottom: 2, paddingHorizontal: 18 },
-  filterLabel: { color: colors.mutedLight, fontSize: 9, fontWeight: '800', letterSpacing: 0.9 },
+  filterLabel: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.7 },
   clearButton: { alignItems: 'center', justifyContent: 'center', minHeight: 36, minWidth: 44 },
   clear: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   filtersScroll: { flexGrow: 0, marginBottom: 4, overflow: 'visible' },
