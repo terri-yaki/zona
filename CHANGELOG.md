@@ -15,6 +15,20 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Give scripts and agents their own labelled access keys, replace one safely,
   and keep the same source name, sound, filters, and history.
 - See and remove phones that should no longer have access to your Zona.
+- Pick a color theme that suits you — Meadow, Ocean, Sunset, or Violet —
+  from Settings.
+- Sensitive account changes, like unlinking a sign-in method or moving your
+  Zona to another phone, now ask for a recent sign-in proof before they go
+  through.
+
+### Changed
+
+- Opening Zona or coming back to it always checks the server for new alerts
+  and sources; saved copies still paint first while the refresh lands.
+- What's New now always asks the server for the latest content instead of
+  trusting a fresh-enough saved copy.
+- Push delivery runs through a durable queue, so a temporary hiccup retries
+  instead of dropping the alert.
 
 ## [0.0.7] - 2026-07-29
 
