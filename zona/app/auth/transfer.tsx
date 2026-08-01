@@ -110,14 +110,23 @@ export default function AccountTransferScreen() {
     setBusy(true);
     try {
       await commitGuestTransfer(transfer.transferId, destination);
+      // Server commit already moved data; mark complete so cancel/unmount cannot
+      // release destination proof or cancel a finished transfer job.
+      completedRef.current = true;
+      transferRef.current = null;
       const guestUserId = session.user.id;
       const { error } = await supabase.auth.setSession({
         access_token: destination.access_token,
         refresh_token: destination.refresh_token,
       });
-      if (error) throw error;
+      if (error) {
+        destinationRef.current = null;
+        Alert.alert(t('transfer.failedTitle'), error.message || t('auth.connectionError'));
+        router.replace('/sign-in');
+        return;
+      }
       await clearPrivateUserState(guestUserId).catch(() => undefined);
-      completedRef.current = true;
+      destinationRef.current = null;
       router.replace('/');
     } catch (error) {
       Alert.alert(t('transfer.failedTitle'), error instanceof Error ? error.message : t('auth.connectionError'));

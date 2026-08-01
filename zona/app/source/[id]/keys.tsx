@@ -29,6 +29,7 @@ import { userMessage } from '@/lib/errors';
 import { relativeTime } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius, shadows } from '@/theme';
 import type { CreatedSourceAccessKey, SourceAccessKey } from '@/types';
 
@@ -41,6 +42,7 @@ export default function SourceKeysScreen() {
   const sourceRevoked = params.revoked === 'true';
   const { loading: authLoading, session } = useAuth();
   const { t } = useI18n();
+  const { isEnabled, isVisible } = useRuntimeConfig();
   const bottomPadding = useBottomSafePadding(24);
   const { error, keys, load, loading, refresh, refreshing } = useSourceAccessKeys(sourceId);
   const [busyKeyId, setBusyKeyId] = useState<string | null>(null);
@@ -49,6 +51,8 @@ export default function SourceKeysScreen() {
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState<CreatedSourceAccessKey | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
+  const pauseVisible = isVisible('sources.pause');
+  const pauseEnabled = isEnabled('sources.pause');
 
   if (authLoading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
@@ -183,16 +187,17 @@ export default function SourceKeysScreen() {
                         : t('sourceKeys.neverUsed')}
                     </Text>
                   </View>
-                  {busy ? <ActivityIndicator color={colors.primary} size="small" /> : (
+                  {busy ? <ActivityIndicator color={colors.primary} size="small" /> : pauseVisible ? (
                     <Switch
                       accessibilityLabel={t('sourceKeys.activeA11y', { name: key.name })}
-                      disabled={revoked || Boolean(busyKeyId)}
+                      accessibilityState={{ disabled: revoked || Boolean(busyKeyId) || !pauseEnabled }}
+                      disabled={revoked || Boolean(busyKeyId) || !pauseEnabled}
                       onValueChange={(value) => void setActive(key, value)}
                       trackColor={{ false: colors.border, true: colors.primarySoft }}
                       thumbColor={key.is_active && !revoked ? colors.primary : colors.mutedLight}
                       value={key.is_active && !revoked}
                     />
-                  )}
+                  ) : null}
                 </View>
                 {!revoked ? (
                   <View style={styles.actions}>
@@ -224,7 +229,7 @@ export default function SourceKeysScreen() {
       <NewKeyModal
         copied={tokenCopied}
         created={created}
-        onClose={() => { if (tokenCopied) setCreated(null); }}
+        onClose={() => setCreated(null)}
         onCopy={() => void copyToken()}
       />
     </View>
@@ -277,6 +282,7 @@ function NewKeyModal({ copied, created, onClose, onCopy }: {
 }) {
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
+  // Token is selectable, so Done/onRequestClose stay available even if clipboard fails.
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible={Boolean(created)}>
       <View style={styles.modalRoot}>
@@ -289,7 +295,7 @@ function NewKeyModal({ copied, created, onClose, onCopy }: {
             <AppIcon color={colors.white} fallback="C" name="doc.on.doc" size={15} />
             <Text style={styles.submitText}>{copied ? t('sourceKeys.copied') : t('sourceKeys.copy')}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" disabled={!copied} onPress={onClose} style={[styles.done, !copied && styles.disabled]}>
+          <Pressable accessibilityRole="button" onPress={onClose} style={styles.done}>
             <Text style={styles.doneText}>{copied ? t('sourceKeys.done') : t('sourceKeys.copyFirst')}</Text>
           </Pressable>
         </View>

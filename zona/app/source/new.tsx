@@ -96,9 +96,11 @@ export default function NewSourceScreen() {
           category: 'test',
         }),
       });
-      const result = await response.json() as { error?: string; pushAccepted?: number; pushAttempted?: number };
+      const result = await response.json() as { error?: string; pushAccepted?: number; pushAttempted?: number; pushQueued?: number };
       if (!response.ok) throw new Error(result.error ?? t('sourceNew.requestFailed', { status: response.status }));
-      setTestMessage(result.pushAccepted
+      setTestMessage(result.pushQueued
+        ? t('sourceNew.testQueued')
+        : result.pushAccepted
         ? t('sourceNew.testAccepted')
         : result.pushAttempted
         ? t('sourceNew.testRejected')
@@ -111,9 +113,10 @@ export default function NewSourceScreen() {
   }
 
   if (created) {
+    // Token is selectable; keep back/Done available so a clipboard failure cannot trap the user.
     return (
       <>
-        <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false, title: t('sourceNew.saveHeader') }} />
+        <Stack.Screen options={{ title: t('sourceNew.saveHeader') }} />
         <ScrollView contentContainerStyle={[styles.page, { paddingBottom: bottomPadding }]}>
         <View style={styles.successMark}><AppIcon color={colors.success} fallback="✓" name="checkmark" size={25} /></View>
         <Text style={styles.title}>{t('sourceNew.saveTitle')}</Text>
@@ -128,7 +131,7 @@ export default function NewSourceScreen() {
         <Text style={styles.label}>{t('sourceNew.exampleRequest')}</Text>
         <View style={styles.codeBox}><Text selectable style={styles.code}>{curl}</Text></View>
         <Pressable accessibilityRole="button" onPress={() => void copy(curl, 'example')} style={styles.secondary}><AppIcon color={colors.primary} fallback="□" name="doc.on.doc" size={15} /><Text style={styles.secondaryText}>{t('sourceNew.copyCurl')}</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={!tokenCopied} onPress={() => router.back()} style={[styles.done, !tokenCopied && styles.disabled]}><Text style={styles.doneText}>{tokenCopied ? t('sourceNew.done') : t('sourceNew.copyToContinue')}</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.done}><Text style={styles.doneText}>{tokenCopied ? t('sourceNew.done') : t('sourceNew.copyToContinue')}</Text></Pressable>
         </ScrollView>
       </>
     );

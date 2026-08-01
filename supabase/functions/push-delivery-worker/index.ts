@@ -71,6 +71,7 @@ async function processSends(workerId: string) {
 
   const valid: { job: DeliveryJob; message: ReturnType<typeof createPushMessage> }[] = [];
   let failed = 0;
+  const preFailOutcomes: Record<string, unknown>[] = [];
   for (const job of jobs) {
     // SQL collapses play_sound=false (and source silent) to sound_name='silent'.
     // resolveSound maps that to null so muted alerts stay quiet on both platforms.
@@ -91,9 +92,32 @@ async function processSends(workerId: string) {
       },
     );
     if (byteLength(message) > MAX_EXPO_MESSAGE_BYTES) {
-      await failSend(job, workerId, 'MESSAGE_TOO_BIG', true);
+      preFailOutcomes.push({
+        kind: 'fail',
+        jobId: job.job_id,
+        errorCode: 'MESSAGE_TOO_BIG',
+        permanent: true,
+      });
       failed += 1;
     } else valid.push({ job, message });
+  }
+
+  if (preFailOutcomes.length) {
+    const { error: preFailError } = await service.rpc('apply_push_send_outcomes_internal', {
+      p_worker_id: workerId,
+      p_outcomes: preFailOutcomes,
+    });
+    if (preFailError) {
+      // Fallback if batch RPC is not deployed yet.
+      await Promise.all(preFailOutcomes.map((entry) =>
+        failSend(
+          jobs.find((job) => job.job_id === entry.jobId)!,
+          workerId,
+          String(entry.errorCode),
+          true,
+        )
+      ));
+    }
   }
 
   if (!valid.length) return { claimed: jobs.length, tickets: 0, failed };
@@ -109,29 +133,81 @@ async function processSends(workerId: string) {
       ? (responseBody as { data?: unknown }).data
       : null;
     const tickets = Array.isArray(raw) ? raw as ExpoTicket[] : raw && typeof raw === 'object' ? [raw as ExpoTicket] : [];
-    const outcomes = await Promise.all(valid.map(async (entry, index) => {
+    const outcomes: Record<string, unknown>[] = [];
+    for (let index = 0; index < valid.length; index += 1) {
+      const entry = valid[index];
       const ticket = tickets[index];
       if (response.ok && ticket?.status === 'ok' && typeof ticket.id === 'string') {
-        const { error: ticketError } = await service.rpc('accept_push_delivery_ticket_internal', {
-          p_job_id: entry.job.job_id,
-          p_worker_id: workerId,
-          p_ticket_id: ticket.id,
-          p_http_status: response.status,
+        outcomes.push({
+          kind: 'accept',
+          jobId: entry.job.job_id,
+          ticketId: ticket.id,
+          httpStatus: response.status,
         });
-        if (ticketError) throw ticketError;
-        return { accepted: 1, failed: 0 };
+      } else {
+        const classified = classifyExpoFailure(ticket?.details?.error, response.status);
+        outcomes.push({
+          kind: 'fail',
+          jobId: entry.job.job_id,
+          errorCode: classified.code,
+          permanent: classified.permanent,
+          httpStatus: response.status,
+        });
       }
-      const classified = classifyExpoFailure(ticket?.details?.error, response.status);
-      await failSend(entry.job, workerId, classified.code, classified.permanent, response.status);
-      return { accepted: 0, failed: 1 };
-    }));
-    const accepted = outcomes.reduce((sum, outcome) => sum + outcome.accepted, 0);
-    failed += outcomes.reduce((sum, outcome) => sum + outcome.failed, 0);
+    }
+
+    const { data: batchResult, error: batchError } = await service.rpc('apply_push_send_outcomes_internal', {
+      p_worker_id: workerId,
+      p_outcomes: outcomes,
+    });
+    if (batchError) {
+      // Fallback path: per-job RPCs when batch helper is unavailable.
+      const fallback = await Promise.all(outcomes.map(async (outcome) => {
+        if (outcome.kind === 'accept') {
+          const { error: ticketError } = await service.rpc('accept_push_delivery_ticket_internal', {
+            p_job_id: outcome.jobId,
+            p_worker_id: workerId,
+            p_ticket_id: outcome.ticketId,
+            p_http_status: outcome.httpStatus ?? null,
+          });
+          if (ticketError) throw ticketError;
+          return { accepted: 1, failed: 0 };
+        }
+        const job = valid.find((entry) => entry.job.job_id === outcome.jobId)?.job;
+        if (!job) return { accepted: 0, failed: 0 };
+        await failSend(
+          job,
+          workerId,
+          String(outcome.errorCode),
+          Boolean(outcome.permanent),
+          typeof outcome.httpStatus === 'number' ? outcome.httpStatus : undefined,
+        );
+        return { accepted: 0, failed: 1 };
+      }));
+      const accepted = fallback.reduce((sum, row) => sum + row.accepted, 0);
+      failed += fallback.reduce((sum, row) => sum + row.failed, 0);
+      return { claimed: jobs.length, tickets: accepted, failed };
+    }
+
+    const accepted = typeof batchResult?.accepted === 'number' ? batchResult.accepted : outcomes.filter((row) => row.kind === 'accept').length;
+    failed += typeof batchResult?.failed === 'number' ? batchResult.failed : outcomes.filter((row) => row.kind === 'fail').length;
     return { claimed: jobs.length, tickets: accepted, failed };
   } catch (sendError) {
     console.error('push send batch deferred', sendError);
     const classified = requestFailure(sendError);
-    await Promise.all(valid.map(({ job }) => failSend(job, workerId, classified.code, false)));
+    const outcomes = valid.map(({ job }) => ({
+      kind: 'fail',
+      jobId: job.job_id,
+      errorCode: classified.code,
+      permanent: false,
+    }));
+    const { error: batchError } = await service.rpc('apply_push_send_outcomes_internal', {
+      p_worker_id: workerId,
+      p_outcomes: outcomes,
+    });
+    if (batchError) {
+      await Promise.all(valid.map(({ job }) => failSend(job, workerId, classified.code, false)));
+    }
     return { claimed: jobs.length, tickets: 0, failed: failed + valid.length };
   }
 }
@@ -157,77 +233,125 @@ async function processReceipts(workerId: string) {
         (body as { data?: unknown }).data && typeof (body as { data?: unknown }).data === 'object'
       ? (body as { data: Record<string, unknown> }).data
       : {};
-    const outcomes = await Promise.all(jobs.map(async (job) => {
+    const outcomes: Record<string, unknown>[] = [];
+    for (const job of jobs) {
       const parsed = receiptError(receipts[job.expo_ticket_id]);
       if (response.ok && parsed?.delivered) {
-        const { error: completeError } = await service.rpc('complete_push_delivery_job_internal', {
-          p_job_id: job.job_id,
-          p_worker_id: workerId,
-          p_outcome: 'delivered',
-          p_error_code: null,
-          p_http_status: response.status,
+        outcomes.push({
+          kind: 'complete',
+          jobId: job.job_id,
+          outcome: 'delivered',
+          httpStatus: response.status,
         });
-        if (completeError) throw completeError;
-        return { delivered: 1, deferred: 0, failed: 0 };
+      } else if (response.ok && parsed && !parsed.delivered && parsed.permanent) {
+        outcomes.push({
+          kind: 'complete',
+          jobId: job.job_id,
+          outcome: 'permanent_failed',
+          errorCode: parsed.code,
+          httpStatus: response.status,
+        });
+      } else if (response.ok && parsed && !parsed.delivered && !parsed.permanent) {
+        outcomes.push({
+          kind: 'retry',
+          jobId: job.job_id,
+          errorCode: parsed.code,
+          httpStatus: response.status,
+        });
+      } else if (response.ok && parsed && !parsed.delivered) {
+        outcomes.push({
+          kind: 'complete',
+          jobId: job.job_id,
+          outcome: 'permanent_failed',
+          errorCode: 'UNKNOWN_EXPO_ERROR',
+          httpStatus: response.status,
+        });
+      } else {
+        outcomes.push({
+          kind: 'defer',
+          jobId: job.job_id,
+          errorCode: response.ok ? 'RECEIPT_PENDING' : 'RECEIPT_UNAVAILABLE',
+          httpStatus: response.status,
+        });
       }
-      if (response.ok && parsed && !parsed.delivered && parsed.permanent) {
-        const { error: completeError } = await service.rpc('complete_push_delivery_job_internal', {
-          p_job_id: job.job_id,
+    }
+
+    const { data: batchResult, error: batchError } = await service.rpc('apply_push_receipt_outcomes_internal', {
+      p_worker_id: workerId,
+      p_outcomes: outcomes,
+    });
+    if (batchError) {
+      const fallback = await Promise.all(outcomes.map(async (outcome) => {
+        if (outcome.kind === 'complete') {
+          const { error: completeError } = await service.rpc('complete_push_delivery_job_internal', {
+            p_job_id: outcome.jobId,
+            p_worker_id: workerId,
+            p_outcome: outcome.outcome,
+            p_error_code: outcome.errorCode ?? null,
+            p_http_status: outcome.httpStatus ?? null,
+          });
+          if (completeError) throw completeError;
+          return {
+            delivered: outcome.outcome === 'delivered' ? 1 : 0,
+            deferred: 0,
+            failed: outcome.outcome === 'delivered' ? 0 : 1,
+          };
+        }
+        if (outcome.kind === 'retry') {
+          const { error: retryError } = await service.rpc('retry_push_delivery_from_receipt_internal', {
+            p_job_id: outcome.jobId,
+            p_worker_id: workerId,
+            p_error_code: outcome.errorCode,
+            p_http_status: outcome.httpStatus ?? null,
+          });
+          if (retryError) throw retryError;
+          return { delivered: 0, deferred: 1, failed: 0 };
+        }
+        const { error: deferError } = await service.rpc('defer_push_receipt_internal', {
+          p_job_id: outcome.jobId,
           p_worker_id: workerId,
-          p_outcome: 'permanent_failed',
-          p_error_code: parsed.code,
-          p_http_status: response.status,
+          p_error_code: outcome.errorCode,
+          p_http_status: outcome.httpStatus ?? null,
         });
-        if (completeError) throw completeError;
-        return { delivered: 0, deferred: 0, failed: 1 };
-      }
-      if (response.ok && parsed && !parsed.delivered && !parsed.permanent) {
-        const { error: retryError } = await service.rpc('retry_push_delivery_from_receipt_internal', {
-          p_job_id: job.job_id,
-          p_worker_id: workerId,
-          p_error_code: parsed.code,
-          p_http_status: response.status,
-        });
-        if (retryError) throw retryError;
+        if (deferError) throw deferError;
         return { delivered: 0, deferred: 1, failed: 0 };
-      }
-      if (response.ok && parsed && !parsed.delivered) {
-        const { error: completeError } = await service.rpc('complete_push_delivery_job_internal', {
-          p_job_id: job.job_id,
-          p_worker_id: workerId,
-          p_outcome: 'permanent_failed',
-          p_error_code: 'UNKNOWN_EXPO_ERROR',
-          p_http_status: response.status,
-        });
-        if (completeError) throw completeError;
-        return { delivered: 0, deferred: 0, failed: 1 };
-      }
-      const { error: deferError } = await service.rpc('defer_push_receipt_internal', {
-        p_job_id: job.job_id,
-        p_worker_id: workerId,
-        p_error_code: response.ok ? 'RECEIPT_PENDING' : 'RECEIPT_UNAVAILABLE',
-        p_http_status: response.status,
-      });
-      if (deferError) throw deferError;
-      return { delivered: 0, deferred: 1, failed: 0 };
-    }));
+      }));
+      return {
+        claimed: jobs.length,
+        delivered: fallback.reduce((sum, row) => sum + row.delivered, 0),
+        deferred: fallback.reduce((sum, row) => sum + row.deferred, 0),
+        failed: fallback.reduce((sum, row) => sum + row.failed, 0),
+      };
+    }
+
     return {
       claimed: jobs.length,
-      delivered: outcomes.reduce((sum, outcome) => sum + outcome.delivered, 0),
-      deferred: outcomes.reduce((sum, outcome) => sum + outcome.deferred, 0),
-      failed: outcomes.reduce((sum, outcome) => sum + outcome.failed, 0),
+      delivered: typeof batchResult?.delivered === 'number' ? batchResult.delivered : 0,
+      deferred: typeof batchResult?.deferred === 'number' ? batchResult.deferred : 0,
+      failed: typeof batchResult?.failed === 'number' ? batchResult.failed : 0,
     };
   } catch (receiptFailure) {
     console.error('push receipt batch deferred', receiptFailure);
-    const deferred = await Promise.all(jobs.map((job) =>
-      service.rpc('defer_push_receipt_internal', {
-        p_job_id: job.job_id,
-        p_worker_id: workerId,
-        p_error_code: 'RECEIPT_UNAVAILABLE',
-        p_http_status: null,
-      })
-    ));
-    for (const result of deferred) if (result.error) console.error('push receipt defer failed', result.error);
+    const outcomes = jobs.map((job) => ({
+      kind: 'defer',
+      jobId: job.job_id,
+      errorCode: 'RECEIPT_UNAVAILABLE',
+    }));
+    const { error: batchError } = await service.rpc('apply_push_receipt_outcomes_internal', {
+      p_worker_id: workerId,
+      p_outcomes: outcomes,
+    });
+    if (batchError) {
+      const deferred = await Promise.all(jobs.map((job) =>
+        service.rpc('defer_push_receipt_internal', {
+          p_job_id: job.job_id,
+          p_worker_id: workerId,
+          p_error_code: 'RECEIPT_UNAVAILABLE',
+          p_http_status: null,
+        })
+      ));
+      for (const result of deferred) if (result.error) console.error('push receipt defer failed', result.error);
+    }
     return { claimed: jobs.length, delivered: 0, deferred: jobs.length, failed: 0 };
   }
 }

@@ -32,6 +32,17 @@ function parseAction(value: string): SensitiveAccountAction | null {
     : null;
 }
 
+function proofEmailFromSession(session: Session | null | undefined) {
+  if (!session) return '';
+  if (session.user.email) return session.user.email;
+  for (const identity of session.user.identities ?? []) {
+    if (identity.provider !== 'email') continue;
+    const details = identity.identity_data ?? {};
+    if (typeof details.email === 'string' && details.email.trim()) return details.email.trim();
+  }
+  return '';
+}
+
 export default function ReauthScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -40,7 +51,8 @@ export default function ReauthScreen() {
   const action = parseAction(first(params.action));
   const target = first(params.target);
   const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
-  const [email, setEmail] = useState(session?.user.email ?? '');
+  const [typedEmail, setTypedEmail] = useState('');
+  const email = typedEmail.trim() ? typedEmail : proofEmailFromSession(session);
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -104,11 +116,13 @@ export default function ReauthScreen() {
 
   async function sendCode() {
     if (busy) return;
+    const proofEmail = email;
+    if (!proofEmail) return;
     setBusy(true);
     try {
-      const result = await sendSecondaryEmailCode(email);
+      const result = await sendSecondaryEmailCode(proofEmail);
       emailClient.current = result.client;
-      setEmail(result.email);
+      setTypedEmail(result.email);
       setCodeSent(true);
       setCode('');
     } catch (error) {
@@ -120,9 +134,11 @@ export default function ReauthScreen() {
 
   async function verifyCode() {
     if (!emailClient.current || busy || code.trim().length < 6) return;
+    const proofEmail = email;
+    if (!proofEmail) return;
     setBusy(true);
     try {
-      const proof = await verifySecondaryEmailCode(emailClient.current, email, code);
+      const proof = await verifySecondaryEmailCode(emailClient.current, proofEmail, code);
       await complete(proof);
     } catch (error) {
       Alert.alert(t('reauth.failedTitle'), error instanceof Error ? error.message : t('auth.connectionError'));
@@ -151,11 +167,12 @@ export default function ReauthScreen() {
   ];
   const remainingIdentities = session.user.identities?.filter((identity) => identity.identity_id !== target) ?? [];
   const proofProviders = new Set(remainingIdentities.map((identity) => identity.provider));
-  // identities is optional on the session; fall back to session.user.email when the
+  const resolvedEmail = email;
+  // identities is optional on the session; fall back to recovered email when the
   // array is empty or missing so email OTP still appears for protected accounts.
   const canUseEmail = capabilities?.email === true && (
     proofProviders.has('email')
-    || (Boolean(session.user.email) && (!session.user.identities || session.user.identities.length === 0))
+    || (Boolean(resolvedEmail) && (!session.user.identities || session.user.identities.length === 0))
   );
   const availableProviders = providers.filter((provider) => provider.enabled && proofProviders.has(provider.name));
 
@@ -172,13 +189,13 @@ export default function ReauthScreen() {
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
-            editable={false}
+            editable={!resolvedEmail}
             keyboardType="email-address"
-            onChangeText={setEmail}
+            onChangeText={setTypedEmail}
             placeholder={t('auth.emailPlaceholder')}
             placeholderTextColor={colors.mutedLight}
             style={styles.input}
-            value={email}
+            value={resolvedEmail}
           />
           {codeSent ? <TextInput
             accessibilityLabel={t('auth.codeLabel')}
@@ -193,7 +210,7 @@ export default function ReauthScreen() {
             style={[styles.input, styles.codeInput]}
             value={code}
           /> : null}
-          <Pressable accessibilityRole="button" disabled={busy || (codeSent ? code.trim().length < 6 : !email.trim())} onPress={() => void (codeSent ? verifyCode() : sendCode())} style={[styles.primary, (busy || (codeSent ? code.trim().length < 6 : !email.trim())) && styles.disabled]}>
+          <Pressable accessibilityRole="button" disabled={busy || (codeSent ? code.trim().length < 6 : !resolvedEmail)} onPress={() => void (codeSent ? verifyCode() : sendCode())} style={[styles.primary, (busy || (codeSent ? code.trim().length < 6 : !resolvedEmail)) && styles.disabled]}>
             {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryText}>{codeSent ? t('reauth.verify') : t('reauth.sendCode')}</Text>}
           </Pressable>
         </> : null}
