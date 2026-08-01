@@ -156,7 +156,7 @@ defines the wider release gates.
 
 - Mobile unit tests: Vitest in `zona/src/__tests__/` (globals enabled via
   tsconfig types). Run `npm test` in `zona/`.
-- Edge Function unit tests: `deno test supabase/functions` — pure-function
+- Edge Function unit tests: `deno test --config supabase/functions/deno.json supabase/functions` — pure-function
   tests live beside the code as `*_test.ts` in `_shared/`.
 - `docs/TEST_PLAN.md` is the release contract: it additionally requires
   pgTAP-style database/RLS tests, Edge Function contract tests against

@@ -69,17 +69,17 @@ rm '{REMOTE_TAR}'
 set -e
 set -o pipefail
 export PATH=/usr/local/opt/node@22/bin:/usr/local/bin:/usr/bin:/bin
-export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 NODE_ENV=production
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 export EAS_NO_VCS=1 EAS_SKIP_AUTO_FINGERPRINT=1
 cd '{REMOTE_APP}'
 set -a
 . ./.env
 set +a
-npm ci
+npm ci --include=dev
 npm run release:check
 npm run typecheck
 npm test
-caffeinate -dims eas build --platform ios --profile production --local --non-interactive --output '{REMOTE_IPA}' 2>&1 | tee '{REMOTE_LOG}'
+NODE_ENV=production caffeinate -dims eas build --platform ios --profile production --local --non-interactive --output '{REMOTE_IPA}' 2>&1 | tee '{REMOTE_LOG}'
 '@.Replace('{REMOTE_APP}', $remoteApp).Replace('{REMOTE_IPA}', $remoteIpa).Replace('{REMOTE_LOG}', $remoteLog)
     Invoke-Remote $build
 
