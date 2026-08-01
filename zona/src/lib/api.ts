@@ -141,10 +141,10 @@ export function unregisterPushDevice(deviceId: string) {
   }, (value): value is { unregistered: boolean } => object(value) && value.unregistered === true);
 }
 
-export function deleteAccount(expectedUserId: string) {
+export function deleteAccount(expectedUserId: string, reauthGrant?: string) {
   return invoke<DeleteAccountResult>(
     'delete-account',
-    { confirmation: 'DELETE', expectedUserId },
+    { confirmation: 'DELETE', expectedUserId, ...(reauthGrant ? { reauthGrant } : {}) },
     (value): value is DeleteAccountResult => isDeleteAccountResult(value, expectedUserId),
   );
 }
