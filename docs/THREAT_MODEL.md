@@ -158,7 +158,8 @@ These are acceptable only for private TestFlight scope and must remain visible:
 
 - source credentials are long-lived and not hardware-bound;
 - ambiguous sender retries may duplicate notifications;
-- push is best effort without retry or delivery-receipt processing;
+- push remains best effort relative to the durable inbox, but uses a durable
+  job queue with retries and receipt processing;
 - source “last activity” is not presence;
 - third-party provider availability is outside Zona’s direct control.
 

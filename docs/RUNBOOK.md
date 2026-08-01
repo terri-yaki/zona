@@ -23,8 +23,10 @@ in the private operator system. Do not place access tokens in this document.
 ## Service semantics
 
 - HTTP 202 from `notify` means the database accepted the inbox record.
-- `pushAccepted` means Expo accepted a ticket, not that APNs displayed it.
-- Push is attempted once and is not retried in version 1.
+- `pushQueued` (and compatibility `pushAttempted`) counts durable jobs enqueued
+  for the worker; Expo ticket acceptance is not APNs display proof.
+- Push is delivered by `push-delivery-worker` with bounded retries and receipt
+  polling; the inbox remains authoritative if push is degraded.
 - Users can recover an accepted alert through inbox synchronization.
 - Notification rows, attachments, and associated push logs expire after seven days.
 - Rate-limit request rows expire after one day.
@@ -127,8 +129,9 @@ export notification content unless strictly necessary and authorized.
 2. Confirm project secrets exist and deployed function source matches release.
 3. Check database availability, connection/provider limits, migration state,
    advisory-lock waits, storage, and function logs.
-4. If durable insertion succeeds but push fails, communicate “inbox available,
-   push degraded”; do not retry all accepted rows blindly.
+4. If durable insertion succeeds but push is degraded, communicate “inbox
+   available, push degraded”; inspect `private.push_delivery_jobs` and the
+   worker rather than replaying accepted notifications.
 5. If a new function deployment caused the fault and schema remains compatible,
    redeploy the previous known-good function bundle.
 6. If a migration caused it, use a reviewed forward repair unless the migration
@@ -138,15 +141,17 @@ export notification content unless strictly necessary and authorized.
 
 1. Verify accepted inbox rows exist; this determines whether the core service
    remains available.
-2. Check Expo/APNs status and delivery ticket logs by time window.
-3. Distinguish HTTP transport failure, malformed provider response, ticket
-   errors, invalid/stale device tokens, and user-disabled permissions.
-4. Do not replay notifications without user/product approval; duplicates are
-   possible and stale alerts may be harmful.
+2. Check `push-delivery-worker` invocations, `private.push_delivery_jobs`
+   status counts, and Expo/APNs status by time window.
+3. Distinguish claim/lease stalls, HTTP transport failure, ticket errors,
+   receipt permanent failures, invalid/stale device tokens, and user-disabled
+   permissions.
+4. Do not replay notifications without user/product approval; the durable queue
+   already retries transient failures, and duplicates may be harmful.
 5. Ask affected users to refresh inbox and, if appropriate, re-register the
-   current iPhone from Settings.
-6. Track invalid-token volume. Implement receipt-based pruning before scaling
-   beyond private use.
+   current installation from Settings.
+6. Track permanent `DeviceNotRegistered` volume; the worker disables those
+   registrations from receipt feedback.
 
 ### Inbox/realtime degradation
 

@@ -19,14 +19,14 @@ function callbackUrl(transactionId: string) {
   return Linking.createURL('auth/callback', { queryParams: { zona_tx: transactionId } });
 }
 
-function normalizeEmail(email: string) {
+export function normalizeAuthEmail(email: string) {
   const value = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(value) || value.length > 254) throw new Error('INVALID_EMAIL');
   return value;
 }
 
 export async function startEmailAuth(email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) {
-  const normalized = normalizeEmail(email);
+  const normalized = normalizeAuthEmail(email);
   const { data: sessionData } = await supabase.auth.getSession();
   const expectedUserId = intent === 'protect_guest' || intent === 'link_method' ? sessionData.session?.user.id ?? null : null;
   if ((intent === 'protect_guest' || intent === 'link_method') && !expectedUserId) throw new Error('UNAUTHORIZED');
@@ -57,7 +57,7 @@ export async function verifyEmailAuthCode(input: {
 }) {
   const transaction = await getAuthTransaction(input.transactionId);
   if (!transaction || transaction.provider !== 'email') throw new Error('AUTH_TRANSACTION_EXPIRED');
-  const normalizedEmail = normalizeEmail(input.email);
+  const normalizedEmail = normalizeAuthEmail(input.email);
   if (!transaction.email || normalizedEmail !== transaction.email) throw new Error('AUTH_TRANSACTION_MISMATCH');
   const type = transaction.intent === 'protect_guest' || transaction.intent === 'link_method' ? 'email_change' : 'email';
   const { data, error } = await supabase.auth.verifyOtp({

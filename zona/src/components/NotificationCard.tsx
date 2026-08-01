@@ -14,8 +14,16 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
   const unread = !item.read_at;
   const showSeverity = isVisible('notification.severity') && isEnabled('notification.severity');
   const severity = severityAppearance(showSeverity ? item.severity : null);
+  const accessibilityLabel = [
+    item.source_name_snapshot,
+    item.title,
+    unread ? t('inbox.unreadA11y') : null,
+  ].filter(Boolean).join(', ');
+
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -43,7 +51,7 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
         <Text numberOfLines={1} style={[styles.title, unread && styles.unreadTitle]}>{item.title}</Text>
         <Text numberOfLines={2} style={styles.body}>{item.body}</Text>
       </View>
-      {unread ? <View accessibilityLabel={t('inbox.unreadA11y')} style={styles.dot} /> : null}
+      {unread ? <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.dot} /> : null}
     </Pressable>
   );
 }

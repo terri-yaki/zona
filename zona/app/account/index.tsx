@@ -183,7 +183,9 @@ export default function AccountScreen() {
         return;
       }
       if (scope === 'all') await revokeOtherAccountInstallations();
-      await unregisterThisInstallation(userId).catch(() => undefined);
+      // Fail closed: if push unregister fails, keep the session so the user is
+      // not left signed out while the installation still receives pushes.
+      await unregisterThisInstallation(userId);
       const { error } = await supabase.auth.signOut({ scope: scope === 'all' ? 'global' : 'local' });
       if (error) throw error;
       await clearPrivateUserState(userId).catch(() => undefined);

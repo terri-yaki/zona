@@ -1,6 +1,6 @@
 import { sha256, sha256Bytes } from '../_shared/crypto.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { json, readJson } from '../_shared/http.ts';
+import { json, readBodyBytes, readJson } from '../_shared/http.ts';
 import { sniffImageMime } from '../_shared/image.ts';
 import { FALLBACK_ATTACHMENT_MAX_BYTES, MULTIPART_OVERHEAD_BYTES, type SenderLimits } from '../_shared/limits.ts';
 import {
@@ -164,12 +164,15 @@ async function readNotifyPayload(req: Request, limits: IngestPolicy): Promise<No
 }
 
 async function readMultipartPayload(req: Request, limits: IngestPolicy): Promise<NotifyPayload> {
-  const declaredLength = Number(req.headers.get('content-length'));
-  if (Number.isFinite(declaredLength) && declaredLength > limits.multipartMaxBytes) throw new Error('PAYLOAD_TOO_LARGE');
+  // Cap the stream itself so a missing or understated Content-Length cannot
+  // force the runtime to buffer an unbounded body before formData parsing.
+  const contentType = req.headers.get('content-type') ?? '';
+  const bytes = await readBodyBytes(req, limits.multipartMaxBytes, 'INVALID_PAYLOAD');
 
   let form: FormData;
   try {
-    form = await req.formData();
+    const body = bytes.slice().buffer as ArrayBuffer;
+    form = await new Response(body, { headers: { 'content-type': contentType } }).formData();
   } catch {
     throw new Error('INVALID_PAYLOAD');
   }

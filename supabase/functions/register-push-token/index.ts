@@ -34,6 +34,18 @@ Deno.serve(async (req) => {
 
     if (body.action !== undefined && body.action !== 'register') return json({ error: 'INVALID_ACTION' }, 400);
 
+    // Enforce the session denylist on every register path, including legacy
+    // non-UUID device ids that skip installation binding.
+    const { error: sessionError } = await service.rpc('assert_account_session_active_internal', {
+      p_user_id: user.id,
+      p_session_id: sessionId,
+    });
+    if (sessionError) {
+      if (sessionError.message.includes('ACCOUNT_INACTIVE')) throw new Error('ACCOUNT_INACTIVE');
+      if (sessionError.message.includes('INVALID_SESSION')) throw new Error('UNAUTHORIZED');
+      throw sessionError;
+    }
+
     const token = requiredString(body.token, 255, 'INVALID_TOKEN');
     const platform = body.platform === 'android' || body.platform === 'ios' ? body.platform : null;
     if (!expoTokenPattern.test(token) || deviceId.length < 8 || !platform) {

@@ -141,9 +141,9 @@ export default function NewSourceScreen() {
         <Text style={styles.title}>{t('sourceNew.nameTitle')}</Text>
         <Text style={styles.help}>{t('sourceNew.nameHelp')}</Text>
         <Text style={styles.label}>{t('sourceNew.displayName')}</Text>
-        <TextInput autoFocus maxLength={80} onChangeText={setDisplayName} placeholder={t('sourceNew.displayPlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={displayName} />
+        <TextInput accessibilityLabel={t('sourceNew.displayName')} autoFocus maxLength={80} onChangeText={setDisplayName} placeholder={t('sourceNew.displayPlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={displayName} />
         <Text style={styles.label}>{t('sourceNew.hostname')}</Text>
-        <TextInput autoCapitalize="none" maxLength={255} onChangeText={setHostname} placeholder={t('sourceNew.hostnamePlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={hostname} />
+        <TextInput accessibilityLabel={t('sourceNew.hostname')} autoCapitalize="none" maxLength={255} onChangeText={setHostname} placeholder={t('sourceNew.hostnamePlaceholder')} placeholderTextColor={colors.muted} style={styles.input} value={hostname} />
         <Pressable accessibilityRole="button" disabled={working} onPress={submit} style={[styles.primary, working && styles.disabled]}>
           {working ? <><ActivityIndicator color={colors.white} /><Text style={styles.primaryText}>{t('sourceNew.creating')}</Text></> : <><AppIcon color={colors.white} fallback="+" name="key.fill" size={16} /><Text style={styles.primaryText}>{t('sourceNew.create')}</Text></>}
         </Pressable>

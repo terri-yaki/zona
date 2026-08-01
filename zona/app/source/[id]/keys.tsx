@@ -250,6 +250,7 @@ function KeyEditorModal({ busy, mode, onChange, onClose, onSubmit, value, visibl
           <Text style={styles.sheetTitle}>{mode === 'add' ? t('sourceKeys.addTitle') : t('sourceKeys.renameTitle')}</Text>
           <Text style={styles.sheetBody}>{t('sourceKeys.labelHelp')}</Text>
           <TextInput
+            accessibilityLabel={mode === 'add' ? t('sourceKeys.addTitle') : t('sourceKeys.renameTitle')}
             autoFocus
             maxLength={80}
             onChangeText={onChange}

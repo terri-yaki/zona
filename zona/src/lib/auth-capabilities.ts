@@ -8,7 +8,7 @@ export type AuthCapabilities = {
   google: boolean;
 };
 
-const fallback: AuthCapabilities = {
+export const fallbackAuthCapabilities: AuthCapabilities = {
   anonymous: true,
   apple: false,
   email: false,
@@ -23,6 +23,22 @@ function enabled(record: Record<string, unknown>, key: string, defaultValue: boo
   return typeof value === 'boolean' ? value : defaultValue;
 }
 
+export function parseAuthCapabilities(payload: unknown): AuthCapabilities {
+  const external = payload && typeof payload === 'object' && !Array.isArray(payload)
+    && (payload as { external?: unknown }).external
+    && typeof (payload as { external?: unknown }).external === 'object'
+    && !Array.isArray((payload as { external?: unknown }).external)
+    ? (payload as { external: Record<string, unknown> }).external
+    : {};
+  return {
+    anonymous: enabled(external, 'anonymous_users', fallbackAuthCapabilities.anonymous),
+    apple: enabled(external, 'apple', false),
+    email: enabled(external, 'email', fallbackAuthCapabilities.email),
+    github: enabled(external, 'github', false),
+    google: enabled(external, 'google', false),
+  };
+}
+
 export async function getAuthCapabilities(): Promise<AuthCapabilities> {
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const controller = new AbortController();
@@ -33,21 +49,11 @@ export async function getAuthCapabilities(): Promise<AuthCapabilities> {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`AUTH_SETTINGS_${response.status}`);
-    const payload = await response.json() as { external?: unknown };
-    const external = payload.external && typeof payload.external === 'object'
-      ? payload.external as Record<string, unknown>
-      : {};
-    const value = {
-      anonymous: enabled(external, 'anonymous_users', fallback.anonymous),
-      apple: enabled(external, 'apple', false),
-      email: enabled(external, 'email', fallback.email),
-      github: enabled(external, 'github', false),
-      google: enabled(external, 'google', false),
-    };
+    const value = parseAuthCapabilities(await response.json());
     cached = { expiresAt: Date.now() + 5 * 60_000, value };
     return value;
   } catch {
-    return fallback;
+    return fallbackAuthCapabilities;
   } finally {
     clearTimeout(timeout);
   }

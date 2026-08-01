@@ -34,7 +34,9 @@ flowchart LR
 
   B -->|"TLS + source Bearer token"| N
   N -->|"hash lookup + atomic ingest"| DB
-  N -->|"best-effort ticket request"| EXPO
+  N -->|"enqueue durable push jobs"| DB
+  W["push-delivery-worker"] -->|"claim + Expo batch send/receipts"| EXPO
+  DB --> W
   APNS --> NATIVE
   FCM --> NATIVE
   APP -->|"guest or recoverable user session"| AUTH
@@ -134,9 +136,12 @@ the source, replays or rejects a previously seen idempotency key, serializes
 per-source and per-account rate checks, updates last activity, and inserts the
 durable notification.
 
-After acceptance, the function reads the owner’s push registrations and makes
-one Expo Push Service request. Ticket results are logged. Version 1 does not
-queue retries or poll push receipts; `pushAccepted` is not delivery proof.
+After acceptance, the function enqueues durable push-delivery jobs for the
+owner’s active registrations and returns `pushQueued` (also mirrored on
+compatibility fields `pushAttempted` / `pushAccepted`). The
+`push-delivery-worker` claims jobs in batches, sends Expo tickets, retries
+transient failures with backoff, and polls receipts. Ticket acceptance is not
+device delivery proof.
 
 ### Database
 
@@ -296,8 +301,9 @@ only public values.
   retains a 60/minute ceiling. Platform-level abuse limits remain desirable.
 - The inbox must use cursor pagination; a fixed `.limit(200)` is not a complete
   seven-day inbox at permitted ingestion rates.
-- Expo recommends bounded push message batches. If installation counts grow,
-  ingestion should enqueue push fan-out rather than extend request latency.
+- Expo recommends bounded push message batches. Ingest enqueues durable
+  push-delivery jobs; `push-delivery-worker` sends in Expo-sized batches and
+  processes receipts asynchronously.
 - Senders must supply an `Idempotency-Key`; an identical replay returns the
   original record. Duplicates remain possible only when a sender mints a fresh
   key per attempt instead of per logical event.
@@ -306,8 +312,8 @@ only public values.
   default) in a private bucket with owner-folder RLS.
   Rich-push images on the lock screen would need an iOS Notification Service
   Extension and are out of scope.
-- There is no push receipt worker. Invalid/stale Expo tokens are not currently
-  pruned from receipt feedback.
+- Receipt feedback permanently fails jobs for invalid/stale Expo tokens and
+  disables those registrations when Expo reports `DeviceNotRegistered`.
 - “Last activity” is the most recent accepted alert, not a reliable online
   presence signal.
 

@@ -123,8 +123,10 @@ The user must be able to:
 - **NOTI-03** A caller cannot select `userId`, `sourceId`, or source name.
 - **NOTI-04** The API returns the accepted notification UUID and authenticated
   source UUID with HTTP 202.
-- **NOTI-05** Push is attempted once without retry processing in version 1.
-  Failure must not remove or hide the accepted inbox item.
+- **NOTI-05** Push is enqueued into a durable job table after inbox acceptance.
+  The delivery worker retries transient Expo failures with backoff and polls
+  receipts; permanent provider errors disable stale registrations. Failure must
+  not remove or hide the accepted inbox item.
 - **NOTI-06** The inbox supports cursor pagination and queries by source,
   unread state, and date. A UI cap must not make retained records unreachable.
 - **NOTI-07** Notification detail navigation must work from foreground,
