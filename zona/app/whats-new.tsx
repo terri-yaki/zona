@@ -5,14 +5,16 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppIcon } from '@/components/AppIcon';
 import { useBottomSafePadding } from '@/components/TabScreen';
-import { fetchChangelogRows, getCachedChangelogRows } from '@/data/changelog';
+import { loadChangelogRows } from '@/data/changelog';
 import { getLocaleTag } from '@/i18n';
 import { bundledChangelog, toChangelogReleases, type ChangelogRow } from '@/lib/changelog';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { colors, radius, shadows } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export default function WhatsNewScreen() {
+  const styles = useThemedStyles(createStyles);
   const { language, t } = useI18n();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
@@ -23,13 +25,10 @@ export default function WhatsNewScreen() {
     let active = true;
     if (!userId) return () => { active = false; };
     void (async () => {
-      const cached = await getCachedChangelogRows(userId);
-      if (!active) return;
-      if (cached.rows !== null) setServerRows(cached.rows);
-      if (cached.state === 'fresh') return;
-      const rows = await fetchChangelogRows(userId);
-      if (active && rows !== null) setServerRows(rows);
-      else if (active && cached.rows === null) setServerRows(null);
+      const rows = await loadChangelogRows(userId, (cachedRows) => {
+        if (active) setServerRows(cachedRows);
+      });
+      if (active) setServerRows(rows);
     })();
     return () => {
       active = false;
@@ -103,7 +102,7 @@ export default function WhatsNewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, paddingHorizontal: 23, paddingVertical: 28 },
   heroIcon: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 20, height: 54, justifyContent: 'center', marginBottom: 15, width: 54 },

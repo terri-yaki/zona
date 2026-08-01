@@ -35,6 +35,23 @@ export async function getCachedChangelogRows(ownerUserId: string) {
 }
 
 /**
+ * Network-first What's New loading: cached rows are reported through
+ * `onCachedRows` for instant paint, but the server fetch ALWAYS runs — cache
+ * freshness never suppresses it. On success the server rows win (an empty
+ * array stays authoritative); cached rows decide the content only when the
+ * fetch fails; with no cache and no fetch the caller uses the bundled copy.
+ */
+export async function loadChangelogRows(
+  ownerUserId: string,
+  onCachedRows?: (rows: ChangelogRow[]) => void,
+): Promise<ChangelogRow[] | null> {
+  const cached = await getCachedChangelogRows(ownerUserId);
+  if (cached.rows !== null) onCachedRows?.(cached.rows);
+  const fetched = await fetchChangelogRows(ownerUserId);
+  return fetched ?? cached.rows;
+}
+
+/**
  * Server-driven What's New content from the normalized release tables.
  * Returns null only when the backend is unavailable; an empty array is an
  * authoritative operator choice and must not resurrect bundled releases.
