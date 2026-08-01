@@ -11,7 +11,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -25,7 +24,7 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { setApiKeySound } from '@/data/sources';
 import { useSources } from '@/hooks/useSources';
-import { renameSource, revokeSource, setSourceActive, testSource } from '@/lib/api';
+import { renameSource, revokeSource, testSource } from '@/lib/api';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { userMessage } from '@/lib/errors';
 import { openAndroidSourceNotificationSettings } from '@/lib/android-source-notifications';
@@ -40,6 +39,7 @@ import { previewNotificationSound } from '@/lib/notification-sounds';
 import { runtimeNumber } from '@/lib/runtime-controls';
 import { validateSourceInput } from '@/lib/validation';
 import { colors, radius, shadows } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import type { ApiKey, Source } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
@@ -54,7 +54,7 @@ const soundGlyphs: Partial<Record<SoundName, SoundGlyph>> = {
   silent: { name: 'speaker.slash.fill', fallback: '∅' },
 };
 
-const iosToneGlyph: SoundGlyph = { name: 'applelogo', fallback: '♪' };
+const iosToneGlyph: SoundGlyph = { name: 'apple.logo', fallback: '♪' };
 
 function soundGlyph(choice: SoundName): SoundGlyph {
   if (soundGlyphs[choice]) return soundGlyphs[choice];
@@ -67,6 +67,7 @@ function recentlyActive(lastSeenAt: string | null, windowMilliseconds: number) {
 }
 
 export default function SourcesScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { t } = useI18n();
   const { snapshot, isEnabled, isVisible } = useRuntimeConfig();
@@ -103,8 +104,13 @@ export default function SourcesScreen() {
     setBusySourceId(source.id);
     try {
       await renameSource(source.id, normalized);
+      patchSource(source.id, (current) => ({
+        ...current,
+        display_name: normalized,
+        api_key: current.api_key ? { ...current.api_key, name: normalized } : null,
+      }));
       setRenameSourceTarget(null);
-      await load();
+      void load();
     } catch (caught) {
       Alert.alert(t('sources.renameError'), userMessage(caught));
     } finally {
@@ -126,7 +132,18 @@ export default function SourcesScreen() {
             setBusySourceId(source.id);
             try {
               await revokeSource(source.id);
-              await load();
+              const revokedAt = new Date().toISOString();
+              patchSource(source.id, (current) => ({
+                ...current,
+                revoked_at: revokedAt,
+                api_key: current.api_key ? {
+                  ...current.api_key,
+                  is_active: false,
+                  revoked_at: current.api_key.revoked_at ?? revokedAt,
+                  updated_at: revokedAt,
+                } : null,
+              }));
+              void load();
             } catch (caught) {
               Alert.alert(t('sources.revokeError'), userMessage(caught));
             } finally {
@@ -136,19 +153,6 @@ export default function SourcesScreen() {
         },
       ],
     );
-  }
-
-  async function toggleActive(source: Source, isActive: boolean) {
-    if (busySourceId || source.revoked_at) return;
-    setBusySourceId(source.id);
-    try {
-      await setSourceActive(source.id, isActive);
-      await load();
-    } catch (caught) {
-      Alert.alert(t('sources.updateKeyError'), userMessage(caught));
-    } finally {
-      setBusySourceId(null);
-    }
   }
 
   async function updateSound(source: Source, soundName: SoundName) {
@@ -208,7 +212,8 @@ export default function SourcesScreen() {
         ? t('sources.testRejected')
         : t('sources.testInboxOnly');
       Alert.alert(t('sources.testSent'), message);
-      await load();
+      patchSource(source.id, (current) => ({ ...current, last_seen_at: new Date().toISOString() }));
+      void load();
     } catch (caught) {
       Alert.alert(t('sources.testError'), userMessage(caught));
     } finally {
@@ -305,20 +310,21 @@ export default function SourcesScreen() {
                 <Text style={styles.lastSeen}>
                   {item.last_seen_at ? t('sources.lastActive', { time: relativeTime(item.last_seen_at) }) : t('sources.waitingFirst')}
                 </Text>
-                <View style={styles.keyRow}>
+                <Pressable
+                  accessibilityLabel={t('sourceKeys.manageFor', { name: item.display_name })}
+                  accessibilityRole="button"
+                  onPress={() => router.push({
+                    pathname: '/source/[id]/keys',
+                    params: { id: item.id, name: item.display_name, revoked: item.revoked_at ? 'true' : 'false' },
+                  } as never)}
+                  style={({ pressed }) => [styles.keyRow, pressed && styles.actionPressed]}
+                >
                   <View style={styles.keyCopy}>
-                    <Text style={styles.keyLabel}>{t('sources.apiKey')}</Text>
+                    <Text style={styles.keyLabel}>{t('sourceKeys.manage')}</Text>
                     <Text style={styles.keyPrefix}>{item.api_key?.key_prefix ? `${item.api_key.key_prefix}…` : t('sources.protectedKey')}</Text>
                   </View>
-                  {isVisible('sources.pause') ? <Switch
-                    accessibilityLabel={`${t('sources.apiKey')} ${item.display_name}`}
-                    disabled={Boolean(busySourceId) || Boolean(item.revoked_at) || !isEnabled('sources.pause')}
-                    onValueChange={(value) => void toggleActive(item, value)}
-                    trackColor={{ false: colors.border, true: colors.primarySoft }}
-                    thumbColor={keyActive ? colors.primary : colors.mutedLight}
-                    value={keyActive}
-                  /> : null}
-                </View>
+                  <AppIcon color={colors.primary} fallback=">" name="chevron.right" size={13} />
+                </Pressable>
                 {!item.revoked_at ? (
                   <View style={styles.actions}>
                     {isVisible('sources.test') ? <Pressable
@@ -395,6 +401,7 @@ function RenameSourceModal({ busy, error, onChange, onClose, onSubmit, value, vi
   value: string;
   visible: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   return (
@@ -443,6 +450,7 @@ function SoundPickerModal({
   onClose: () => void;
   onSelect: (sound: SoundName) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
 
@@ -512,7 +520,7 @@ function SoundPickerModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   header: {
     alignItems: 'center',
     flexDirection: 'row',

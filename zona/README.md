@@ -7,6 +7,8 @@
 2. The iOS bundle identifier (`com.terriyaki.zona`) and the linked EAS
    project (`terriyaki/zona`) are already configured in `app.json`.
 3. Enable anonymous sign-ins in Supabase Authentication → Sign In / Providers.
+   To test account recovery, also enable email and manual identity linking;
+   configure Apple, Google, or GitHub in Supabase before those buttons appear.
 
 ## Develop and verify
 

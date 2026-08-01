@@ -7,15 +7,27 @@ import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius, shadows } from '@/theme';
 import type { InboxNotification } from '@/types';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useThemedStyles } from '@/theme-preference';
 
 export function NotificationCard({ item, onPress }: { item: InboxNotification; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
   const unread = !item.read_at;
   const showSeverity = isVisible('notification.severity') && isEnabled('notification.severity');
   const severity = severityAppearance(showSeverity ? item.severity : null);
+  const accessibilityLabel = [
+    item.source_name_snapshot,
+    item.title,
+    item.body,
+    relativeTime(item.created_at),
+    unread ? t('inbox.unreadA11y') : null,
+  ].filter(Boolean).join(', ');
+
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -43,12 +55,12 @@ export function NotificationCard({ item, onPress }: { item: InboxNotification; o
         <Text numberOfLines={1} style={[styles.title, unread && styles.unreadTitle]}>{item.title}</Text>
         <Text numberOfLines={2} style={styles.body}>{item.body}</Text>
       </View>
-      {unread ? <View accessibilityLabel={t('inbox.unreadA11y')} style={styles.dot} /> : null}
+      {unread ? <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.dot} /> : null}
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: '#E9EEEB', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   avatar: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 13, borderWidth: 1, height: 44, justifyContent: 'center', position: 'relative', width: 44 },

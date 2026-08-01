@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 
 import { addPushRegistrationRefreshListener, syncPushRegistration } from '@/lib/push';
+import { claimInstallationForUser } from '@/lib/installation';
 import { useAuth } from '@/providers/AuthProvider';
 
 /** Cool-down after a failed Expo token fetch so tunnel/dev network issues don't spam. */
@@ -24,7 +25,8 @@ export function PushRegistrationSync() {
 
       lastAttemptAt.current = now;
       inFlight.current = true;
-      void syncPushRegistration(userId)
+      void claimInstallationForUser(userId)
+        .then(() => syncPushRegistration(userId))
         .then(() => {
           failureCount.current = 0;
         })

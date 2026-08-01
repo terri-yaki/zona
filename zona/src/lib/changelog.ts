@@ -12,6 +12,8 @@ import { translate, type SupportedLanguage } from '../i18n';
 export type ChangelogText = { en: string; zhHant: string };
 
 export type ChangelogRowItem = {
+  /** Stable operator-assigned item key from the release-note tables. */
+  key?: string;
   icon: string;
   title: ChangelogText;
   body: ChangelogText;
@@ -28,6 +30,8 @@ export type ChangelogRow = {
 };
 
 export type ChangelogReleaseItem = {
+  /** Stable key when server-driven; undefined for bundled fallback items. */
+  key?: string;
   /** SF Symbol name; unknown names degrade to the AppIcon text fallback. */
   icon: SFSymbol;
   title: string;
@@ -66,7 +70,7 @@ function parseItem(value: unknown): ChangelogRowItem | null {
   const title = localizedText(record.title_en, record.title_zh_hant);
   if (!title) return null;
   const body = localizedText(record.body_en, record.body_zh_hant) ?? { en: '', zhHant: '' };
-  return { icon: asText(record.icon).trim() || 'sparkles', title, body };
+  return { key: asText(record.key).trim() || undefined, icon: asText(record.icon).trim() || 'sparkles', title, body };
 }
 
 /**
@@ -120,6 +124,7 @@ export function toChangelogRelease(
     summary: pick(row.summary, language),
     latest: false,
     items: row.items.map((item) => ({
+      key: item.key,
       icon: item.icon as SFSymbol,
       title: pick(item.title, language),
       body: pick(item.body, language),

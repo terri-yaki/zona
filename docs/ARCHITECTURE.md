@@ -34,10 +34,12 @@ flowchart LR
 
   B -->|"TLS + source Bearer token"| N
   N -->|"hash lookup + atomic ingest"| DB
-  N -->|"best-effort ticket request"| EXPO
+  N -->|"enqueue durable push jobs"| DB
+  W["push-delivery-worker"] -->|"claim + Expo batch send/receipts"| EXPO
+  DB --> W
   APNS --> NATIVE
   FCM --> NATIVE
-  APP -->|"anonymous session"| AUTH
+  APP -->|"guest or recoverable user session"| AUTH
   APP -->|"user JWT"| U
   APP -->|"owner-scoped RPCs + RLS reads"| DB
   DB -->|"private user/config broadcasts"| RT --> APP
@@ -62,6 +64,9 @@ flowchart LR
 9. Version 1 contains no remote command channel or arbitrary shell execution.
 10. Native compatibility is pinned to Expo SDK 56 until an explicit upgrade is
     designed, tested, and recorded.
+11. Human identities, personal accounts, app installations, notification
+    sources, and third-party integrations are separate principals. A credential
+    issued to one principal cannot authorize another.
 
 ## Component boundaries
 
@@ -70,6 +75,14 @@ flowchart LR
 The Expo Router application owns presentation, navigation, authentication
 session state, permission onboarding, installation identity, push-token
 registration, and RLS-backed inbox synchronization.
+
+Starting in v0.0.7, bounded AsyncStorage caches keep recent owner-scoped inbox
+pages, sources, preferences, changelog content, and the evaluated runtime
+snapshot available between launches. Each key includes the owning user and a
+query or environment variant. Screens show fresh cached content immediately,
+keep stale content visible while revalidating, and never queue offline writes.
+Sign-out increments a per-user cache generation before clearing storage, so a
+late network response cannot put private data back after the session ends.
 
 Recommended internal boundaries as the application grows:
 
@@ -86,17 +99,44 @@ The current implementation is small and may not yet contain every proposed
 feature directory. New work should preserve these ownership boundaries rather
 than putting transport or persistence directly into screens.
 
+### Authentication and account ownership
+
+v0.0.8 keeps private guest start while adding passwordless email, Apple,
+Google, and GitHub recovery. A guest is normally upgraded in place by linking
+a verified identity to the current Supabase Auth user; changing the Auth user
+ID during that flow is a failure. Sign-in on a replacement phone restores
+server-held account data but never reveals a source's one-time plaintext key.
+
+An additive personal account and membership layer becomes the future resource,
+billing, and integration boundary. Existing `user_id` ownership remains
+authoritative during the old-client compatibility window. Account transfer is
+server-only, requires proof of both sessions, and never silently merges two
+protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
+[ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md).
+
 ### User-authenticated Edge Functions
 
 - `create-source`: verifies a user JWT, generates a credential, stores its hash
   through a service-only database function, and returns the secret once.
+- `create-source-key` / `manage-source-key`: issues and manages per-source
+  access keys server-side (v0.0.8 multi-key rotation).
 - `manage-source`: verifies owner scope before rename or revoke.
 - `register-push-token`: registers or removes one iOS or Android installation while
   preventing cross-account token reassignment.
+- `reauthenticate`: issues one-time reauth grants from a fresh secondary proof.
+- `account-security`: consumes reauth grants for identity, installation, and
+  session actions.
+- `account-transfer`: previews, commits, and cancels guest-account transfers.
+- `delete-account`: runs the durable account-deletion job with reauth.
+- `auth-transaction`: binds auth flows (protect_guest, link_method) to the
+  current installation.
+- `test-source`: verifies a source credential with a queued test notification.
 
 Supabase gateway JWT verification is intentionally disabled in configuration;
 these functions call Supabase Auth to validate the Bearer user token. This is a
-security-sensitive invariant and needs endpoint tests in CI.
+security-sensitive invariant; handler contract tests live in
+`supabase/functions/_shared` and CI runs `deno test` + `deno check` (full
+endpoint tests need live secrets and are not yet present).
 
 ### Notification ingestion
 
@@ -108,9 +148,12 @@ the source, replays or rejects a previously seen idempotency key, serializes
 per-source and per-account rate checks, updates last activity, and inserts the
 durable notification.
 
-After acceptance, the function reads the owner’s push registrations and makes
-one Expo Push Service request. Ticket results are logged. Version 1 does not
-queue retries or poll push receipts; `pushAccepted` is not delivery proof.
+After acceptance, the function enqueues durable push-delivery jobs for the
+owner’s active registrations and returns `pushQueued` (also mirrored on
+compatibility fields `pushAttempted` / `pushAccepted`). The
+`push-delivery-worker` claims jobs in batches, sends Expo tickets, retries
+transient failures with backoff, and polls receipts. Ticket acceptance is not
+device delivery proof.
 
 ### Database
 
@@ -127,6 +170,10 @@ queue retries or poll push receipts; `pushAccepted` is not delivery proof.
 | `private.notification_ingest_requests` | Rolling source/account rate evidence | Service/database function only |
 | `private.account_rate_limit_events` | Hourly account operation rate evidence | Service/database function only |
 | `private.push_delivery_attempts` | Expo ticket attempt diagnostics | Service/database function only |
+| `private.client_event_logs` | Redacted mobile lifecycle and failure diagnostics | Authenticated write RPC; private reads |
+| `private.server_event_logs` | Redacted relay/database outcomes with latency and request IDs | Service/database function only |
+| `private.daily_usage_stats` | HKT service and per-user operational aggregates | Service/database function only |
+| `private.daily_report_runs` | Idempotent daily-pulse delivery ledger | Service/database function only |
 | `private.app_feature_controls` | Targeted show/hide/disable/read-only rules | Evaluated only by authenticated bootstrap RPC |
 | `private.app_runtime_settings` | Typed, targeted client display values | Evaluated only by authenticated bootstrap RPC |
 | `private.service_switches` | Fail-closed ingestion, source, attachment, severity, and push controls | Service/database function only |
@@ -149,8 +196,14 @@ permission is revoked from public, anonymous, and authenticated roles.
 
 ### Scheduled cleanup
 
-An hourly `pg_cron` job deletes expired notification rows and rate-limit rows
-older than one day. Delivery log rows cascade when their notification expires.
+An hourly `pg_cron` job deletes expired notification rows and rate-limit rows.
+The v0.0.7 observability job retains redacted raw events for 30 days and daily
+aggregates for 400 days. A separate 00:05 HKT (16:05 UTC) job invokes the
+daily-report Edge Function, which renders a seven-day PNG locally and sends the
+previous day's service pulse through an operator-owned Zona source. See
+[OBSERVABILITY.md](OBSERVABILITY.md).
+Rate-limit evidence older than one day is removed. Delivery log rows cascade
+when their notification expires.
 Source, credential, push-device, and Auth records remain until their lifecycle
 event or account deletion.
 
@@ -158,19 +211,28 @@ event or account deletion.
 
 ### Source creation
 
-1. The app generates an opaque `zona_live_…` token using native secure random
-   bytes and hashes it locally.
-2. An authenticated PostgREST RPC atomically stores the stable source UUID,
-   credential hash, and safe API-key metadata without an Edge cold start.
-3. Row isolation comes from `auth.uid()` inside the owner-only wrapper; the
-   service-only internal function still enforces limits and validation.
-4. A safe `api_keys` metadata row stores the name, short prefix, active state,
-   timestamps, and optional expiry; it never stores the raw token or hash.
-5. The response is marked `Cache-Control: no-store` and presents the token once.
-6. The user moves it to the sender’s secret store.
+v0.0.7 currently generates and hashes the token in the app, then stores the
+hash through an authenticated PostgREST RPC. That RPC remains a compatibility
+surface for installed builds.
 
-Losing a token does not make it recoverable. Create a replacement source,
-verify it, and revoke the old source.
+v0.0.8 makes the authenticated Edge API canonical:
+
+1. The server generates an opaque `zona_live_…` token with cryptographic
+   randomness.
+2. It atomically stores the stable source/access-key identity, credential hash,
+   and safe metadata; plaintext is never persisted.
+3. The no-store response presents the token once, then the user moves it to the
+   sender's secret store.
+4. A source may later receive a second independently revocable key for overlap
+   rotation without changing the source UUID, display name, sound, or history.
+
+The one-to-many schema migration and old-client cutover are specified in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and ADR 0001's v0.0.8
+amendment. OpenAPI changes ship with the implementation, not ahead of it.
+
+Losing a token does not make it recoverable. Before v0.0.8, create a
+replacement source, verify it, and revoke the old source. In v0.0.8, create a
+replacement key on the same source, verify it, then revoke only the lost key.
 
 ### Notification acceptance
 
@@ -251,8 +313,9 @@ only public values.
   retains a 60/minute ceiling. Platform-level abuse limits remain desirable.
 - The inbox must use cursor pagination; a fixed `.limit(200)` is not a complete
   seven-day inbox at permitted ingestion rates.
-- Expo recommends bounded push message batches. If installation counts grow,
-  ingestion should enqueue push fan-out rather than extend request latency.
+- Expo recommends bounded push message batches. Ingest enqueues durable
+  push-delivery jobs; `push-delivery-worker` sends in Expo-sized batches and
+  processes receipts asynchronously.
 - Senders must supply an `Idempotency-Key`; an identical replay returns the
   original record. Duplicates remain possible only when a sender mints a fresh
   key per attempt instead of per logical event.
@@ -261,8 +324,8 @@ only public values.
   default) in a private bucket with owner-folder RLS.
   Rich-push images on the lock screen would need an iOS Notification Service
   Extension and are out of scope.
-- There is no push receipt worker. Invalid/stale Expo tokens are not currently
-  pruned from receipt feedback.
+- Receipt feedback permanently fails jobs for invalid/stale Expo tokens and
+  disables those registrations when Expo reports `DeviceNotRegistered`.
 - “Last activity” is the most recent accepted alert, not a reliable online
   presence signal.
 

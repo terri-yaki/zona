@@ -3,7 +3,6 @@ import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import {
   Animated,
-  Dimensions,
   Image,
   Modal,
   Platform,
@@ -11,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
@@ -34,8 +34,6 @@ type Props = {
   accessibilityLabel?: string;
   previewStyle?: object;
 };
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 /**
  * Attachment preview → full-screen viewer with pinch-to-zoom.
@@ -86,6 +84,7 @@ export function ImageLightbox({ uri, accessibilityLabel, previewStyle }: Props) 
 function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [zoom, setZoom] = useState(1);
 
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -111,7 +110,7 @@ function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
           accessibilityLabel={t('image.fullSize')}
           resizeMode="contain"
           source={{ uri }}
-          style={styles.fullImage}
+          style={[styles.fullImage, { height: screenHeight * 0.78, width: screenWidth }]}
         />
       </ScrollView>
       <ViewerChrome onClose={onClose} paddingBottom={insets.bottom + 8} paddingTop={insets.top + 8} zoomLabel={`${Math.round(zoom * 100)}%`} />
@@ -122,6 +121,7 @@ function IosZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
 function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [baseScale] = useState(() => new Animated.Value(1));
   const [pinchScale] = useState(() => new Animated.Value(1));
   const [scale] = useState(() => Animated.multiply(baseScale, pinchScale));
@@ -193,7 +193,7 @@ function AndroidZoomViewer({ uri, onClose }: { uri: string; onClose: () => void 
                 accessibilityLabel={t('image.fullSize')}
                 resizeMode="contain"
                 source={{ uri }}
-                style={styles.fullImage}
+                style={[styles.fullImage, { height: screenHeight * 0.78, width: screenWidth }]}
               />
             </Animated.View>
           </PinchGestureHandler>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   modalRoot: { backgroundColor: 'rgba(0,0,0,0.94)', flex: 1 },
   flex: { flex: 1 },
   iosZoomContent: { alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
-  fullImage: { height: screenHeight * 0.78, width: screenWidth },
+  fullImage: {},
   androidCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   chrome: {
     alignItems: 'center',

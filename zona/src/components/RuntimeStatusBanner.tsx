@@ -1,19 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { AppIcon } from '@/components/AppIcon';
+import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export function RuntimeStatusBanner() {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
+  const { session } = useAuth();
   const { snapshot } = useRuntimeConfig();
-  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
-  const candidate = snapshot.announcements[0] ?? null;
-  const announcement = candidate?.id === dismissedAnnouncementId ? null : candidate;
+  const [dismissedKeys, setDismissedKeys] = useState<string[]>([]);
+  const ownerUserId = session?.user.id;
+  const keyFor = useCallback((id: string) => `${ownerUserId}.${id}`, [ownerUserId]);
+  // First non-dismissed announcement wins, so dismissing one reveals the next.
+  const announcement = ownerUserId
+    ? snapshot.announcements.find((item) => !dismissedKeys.includes(keyFor(item.id))) ?? null
+    : snapshot.announcements[0] ?? null;
   const maintenance = snapshot.releasePolicy.maintenanceMode;
   const buildNumber = Number.parseInt(Constants.nativeBuildVersion ?? '0', 10) || 0;
   const updateRequired = snapshot.releasePolicy.updateMode === 'hard'
@@ -23,14 +31,16 @@ export function RuntimeStatusBanner() {
   const updateAvailable = updateRequired || updateRecommended;
 
   useEffect(() => {
-    if (!candidate?.isDismissible) return;
-    const key = `zona.runtime-announcement.dismissed.${candidate.id}`;
+    if (!announcement?.isDismissible || !ownerUserId) return;
+    const key = `zona.runtime-announcement.dismissed.${ownerUserId}.${announcement.id}`;
     void AsyncStorage.getItem(key)
       .then((value) => {
-        if (value === '1') setDismissedAnnouncementId(candidate.id);
+        if (value === '1') {
+          setDismissedKeys((prev) => (prev.includes(keyFor(announcement.id)) ? prev : [...prev, keyFor(announcement.id)]));
+        }
       })
       .catch((error) => console.warn('Could not read the dismissed announcement.', error));
-  }, [candidate?.id, candidate?.isDismissible]);
+  }, [announcement?.id, announcement?.isDismissible, ownerUserId, keyFor]);
 
   if (!maintenance && !updateAvailable && !announcement) return null;
 
@@ -50,10 +60,10 @@ export function RuntimeStatusBanner() {
   const actionLabel = maintenance || updateAvailable ? null : announcement?.actionLabel;
 
   async function dismissAnnouncement() {
-    if (!announcement?.isDismissible) return;
-    setDismissedAnnouncementId(announcement.id);
+    if (!announcement?.isDismissible || !ownerUserId) return;
+    setDismissedKeys((prev) => [...prev, keyFor(announcement.id)]);
     try {
-      await AsyncStorage.setItem(`zona.runtime-announcement.dismissed.${announcement.id}`, '1');
+      await AsyncStorage.setItem(`zona.runtime-announcement.dismissed.${ownerUserId}.${announcement.id}`, '1');
     } catch (error) {
       console.warn('Could not persist the dismissed announcement.', error);
     }
@@ -94,7 +104,7 @@ export function RuntimeStatusBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   banner: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginBottom: 8, marginHorizontal: 16, marginTop: 6, padding: 12 },
   warning: { backgroundColor: colors.accentSoft },
   critical: { backgroundColor: colors.dangerSoft },

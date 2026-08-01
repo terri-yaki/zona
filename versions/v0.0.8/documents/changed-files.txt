@@ -1,0 +1,16 @@
+CHANGELOG.md
+docs/ACCOUNT_MANAGEMENT.md
+docs/adr/0001-source-token-architecture.md
+docs/adr/0002-anonymous-sign-in.md
+docs/adr/0004-recoverable-accounts-and-principal-separation.md
+docs/API.md
+docs/ARCHITECTURE.md
+docs/openapi.yaml
+docs/PRD.md
+docs/PUBLIC_LAUNCH_PLAN.md
+docs/ROADMAP.md
+docs/TEST_PLAN.md
+docs/THREAT_MODEL.md
+README.md
+supabase/README.md
+zona/README.md

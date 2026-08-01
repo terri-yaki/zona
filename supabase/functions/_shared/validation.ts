@@ -1,3 +1,6 @@
+/** Single source of truth for the reauth grant shape (handler + tests). */
+export const reauthGrantPattern = /^zona_reauth_[0-9a-f]{64}$/;
+
 export function requiredString(value: unknown, maximum: number, code = 'INVALID_PAYLOAD'): string {
   if (typeof value !== 'string') throw new Error(code);
   const normalized = value.trim();

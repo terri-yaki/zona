@@ -17,8 +17,10 @@ import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { getLocaleTag } from '@/i18n';
 import { colors, radius } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 
 export default function InboxScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { session } = useAuth();
   const { language, t, tc } = useI18n();
@@ -230,6 +232,7 @@ function FilterChip({
   onPress: () => void;
   tone: 'default' | 'source';
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -258,7 +261,7 @@ function FilterChip({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   summary: {
     alignItems: 'center',
     backgroundColor: colors.surface,

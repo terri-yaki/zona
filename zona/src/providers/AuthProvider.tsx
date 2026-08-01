@@ -1,7 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
-import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { clearPrivateUserState } from '@/cache/private-state';
+import { startEmailAuth, startProviderAuth, verifyEmailAuthCode } from '@/lib/auth-flow';
+import type { AuthIntent, AuthProviderName } from '@/lib/auth-transactions';
 import { supabase } from '@/lib/supabase';
 import { translate } from '@/i18n';
 
@@ -10,22 +13,65 @@ type AuthState = {
   loading: boolean;
   authError: string | null;
   clearAuthError: () => void;
+  continueAsGuest: () => Promise<void>;
+  refreshSession: () => Promise<void>;
+  sendEmailAuth: (email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startEmailAuth>;
+  startProvider: (provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startProviderAuth>;
+  verifyEmailCode: typeof verifyEmailAuthCode;
 };
 
-const AuthContext = createContext<AuthState>({ session: null, loading: true, authError: null, clearAuthError() {} });
+const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const activeUserId = useRef<string | null>(null);
   const clearAuthError = useCallback(() => setAuthError(null), []);
+  const applySession = useCallback((nextSession: Session | null) => {
+    const previousUserId = activeUserId.current;
+    const nextUserId = nextSession?.user.id ?? null;
+    activeUserId.current = nextUserId;
+    setSession(nextSession);
+    if (previousUserId && previousUserId !== nextUserId) {
+      void clearPrivateUserState(previousUserId).catch((error) => {
+        console.warn('Could not clear the previous account cache.', error);
+      });
+    }
+  }, []);
+
+  const continueAsGuest = useCallback(async () => {
+    clearAuthError();
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+  }, [clearAuthError]);
+
+  const refreshSession = useCallback(async () => {
+    const { data: refreshed, error } = await supabase.auth.refreshSession();
+    if (error) throw error;
+    applySession(refreshed.session);
+  }, [applySession]);
+
+  const sendEmailAuth = useCallback((email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
+    startEmailAuth(email, intent)
+  ), []);
+
+  const startProvider = useCallback((provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
+    startProviderAuth(provider, intent)
+  ), []);
+
+  const verifyEmailCode = useCallback(async (input: Parameters<typeof verifyEmailAuthCode>[0]) => {
+    const user = await verifyEmailAuthCode(input);
+    await refreshSession();
+    return user;
+  }, [refreshSession]);
 
   useEffect(() => {
     let active = true;
 
     const { data: authSubscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return;
-      setSession(nextSession);
+      applySession(nextSession);
     });
     const appStateSubscription = Platform.OS === 'web' ? null : AppState.addEventListener('change', (state) => {
       if (state === 'active') supabase.auth.startAutoRefresh();
@@ -37,7 +83,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const { data, error } = await supabase.auth.getSession();
         if (!active) return;
         if (error) setAuthError(translate('error.UNAUTHORIZED'));
-        setSession(data.session);
+        applySession(data.session);
         if (Platform.OS !== 'web' && AppState.currentState === 'active') supabase.auth.startAutoRefresh();
       } catch {
         if (active) setAuthError(translate('error.connection'));
@@ -52,12 +98,24 @@ export function AuthProvider({ children }: PropsWithChildren) {
       appStateSubscription?.remove();
       if (Platform.OS !== 'web') supabase.auth.stopAutoRefresh();
     };
-  }, []);
+  }, [applySession]);
 
-  const value = useMemo(() => ({ session, loading, authError, clearAuthError }), [authError, clearAuthError, loading, session]);
+  const value = useMemo(() => ({
+    session,
+    loading,
+    authError,
+    clearAuthError,
+    continueAsGuest,
+    refreshSession,
+    sendEmailAuth,
+    startProvider,
+    verifyEmailCode,
+  }), [authError, clearAuthError, continueAsGuest, loading, refreshSession, sendEmailAuth, session, startProvider, verifyEmailCode]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const value = useContext(AuthContext);
+  if (!value) throw new Error('useAuth must be used within AuthProvider.');
+  return value;
 }

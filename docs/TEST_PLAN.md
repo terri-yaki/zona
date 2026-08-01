@@ -79,7 +79,15 @@ Required database cases:
   for the exact `{owner}/{notification}` path with an allowed MIME/size;
 - cleanup deletes expired notifications/delivery rows, old request rows, and
   expired attachment objects but not live data;
-- user/account deletion cascades through all owned data.
+- user/account deletion cascades through all owned data;
+- every Auth user has exactly one personal account and active owner membership;
+- guest identity linking preserves the Auth user ID and existing ownership;
+- membership policies reject cross-account reads and user metadata cannot grant
+  account, role, plan, or integration scope;
+- installation revocation and guest transfer are owner-checked, idempotent, and
+  safe under concurrent requests;
+- a deleting account immediately rejects RLS access, ingestion, transfers, and
+  integration use even when a previously issued access token has not expired;
 - inactive, expired, future, platform-mismatched, and lower-priority runtime
   rules are ignored; stable rollout assignment is deterministic;
 - presentation controls cannot bypass server ownership, RLS, quotas, or kill
@@ -123,6 +131,12 @@ stack traces, SQL details, tokens, or notification content.
 User-authenticated functions require two-user tests for cross-account rename,
 revoke, push registration, token conflict, and deletion. Gateway JWT checking is
 disabled, so tests must prove each handler validates Supabase Auth itself.
+Account functions additionally test recent reauthentication, last-method
+unlink rejection, session/installation revocation, callback intent/state,
+dual-session transfer proof, transfer preview/limits, and resumable deletion.
+The identity suite separately verifies Supabase's minimum-identity behavior and
+records that a valid session can call public identity APIs without passing
+through Zona's app-level recent-proof gate.
 
 ### Mobile component and integration tests
 
@@ -130,20 +144,65 @@ Use React Native Testing Library with network/native modules mocked at their
 boundaries. Cover:
 
 - anonymous sign-in pending, success, and provider error;
+- email, Apple, Google, and GitHub sign-in and guest-protection flows;
+- same-UUID guest upgrade preserving sources, keys, preferences, inbox, cache,
+  installation registration, and entitlements;
+- auth callbacks from cold, warm, background, terminated, duplicate, expired,
+  wrong-state, wrong-intent, canceled, denied, and offline states;
+- transfer cancellation, expiry, denial, and relaunch retain the active guest
+  session and suppress cache/push side effects from isolated destination auth;
+- email sign-in uses `shouldCreateUser=false`, explicit sign-up can create, and
+  unknown/mistyped addresses remain non-enumerating;
+- automatic verified-email identity linking lands on the expected account and
+  never triggers an application-data merge;
+- linked-method listing/add/remove, recent reauthentication, and blocked removal
+  of the last recovery method;
+- second-phone restore, remote installation revoke, sign out this phone, sign
+  out other phones, and sign out everywhere;
+- legacy sessions bind to an installation on their next push registration or
+  v0.0.8 launch handshake; an otherwise valid unbound session remains usable
+  during compatibility, is absent from selective removal, and is denied as soon
+  as the account is tombstoned;
+- account switching while push registration is in flight, atomic Expo-token
+  ownership transfer, and retry after a prior `TOKEN_CONFLICT`;
+- existing-account provider conflict and guest-transfer confirmation without
+  any silent merge;
 - expired/invalid saved-session restoration;
 - push onboarding for granted, denied, simulator, Expo Go, web, missing EAS
   project ID, and provider error;
 - source creation, one-time token warning/copy, rename, revoke, and all error
   states;
+- one source can create, list, label, pause/resume, and individually revoke
+  several keys while a replacement key keeps ingestion active;
+- old source overview/API-key screens still show exactly one card per source,
+  with legacy pause/revoke/sound actions mapped to aggregate or source settings;
+- an integration-owned source with no Zona source key is absent from the legacy
+  key view but remains attributable and filterable by its permanent source ID;
 - inbox loading, empty, error, refresh, realtime insert/update/delete,
   pagination, source/unread/date filters, and filter count semantics;
 - notification read and delete authorization/errors, including early purge of
   an attached image;
 - attachment loading, rendering, and failure states in the detail screen, and
   the inbox attachment badge;
+- guest-transfer cancellation, expiry, process death, and injected copy failure
+  remove all service-only staged objects; scheduled orphan cleanup leaves no
+  destination-readable attachment;
 - notification interaction routing with missing, malformed, or unauthorized IDs;
 - current-installation registration refresh and safe sign-out;
+- deletion continues through its service-side queue after normal sessions are
+  denied; only the deletion receipt/initiating deletion-only session can read
+  status or request resume before final Auth-user removal;
 - offline transitions and recovery without representing errors as an empty inbox.
+- cold launch from a fresh on-device cache, stale content followed by background
+  refresh, manual refresh, and recovery from corrupt or oversized cache data;
+- strict account isolation across sign-out and account switching, including a
+  delayed request that completes after the former user's cache is cleared;
+- guest sign-out keeps the permanent-loss warning; sign-out/deletion dismisses
+  delivered notifications and removes user-specific Android source channels;
+- bounded cache retention, size reporting, manual clearing, and the absence of
+  any offline write queue;
+- one-call inbox snapshot behavior plus the temporary two-read fallback when
+  the additive v0.0.7 RPC is not available yet;
 - stale-while-revalidate runtime bootstrap caching, fail-safe compiled defaults,
   per-feature hidden/disabled behavior, build update banners, maintenance mode,
   and persisted dismissal of dismissible announcements;

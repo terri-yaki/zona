@@ -549,6 +549,19 @@ export type Database = {
       };
     };
     Functions: {
+      record_client_event: {
+        Args: {
+          p_app_version: string;
+          p_build_number: number;
+          p_context?: Json;
+          p_event_name: string;
+          p_installation_id: string;
+          p_level: string;
+          p_message: string | null;
+          p_platform: string;
+        };
+        Returns: undefined;
+      };
       create_source: {
         Args: {
           p_display_name: string;
@@ -579,6 +592,15 @@ export type Database = {
           p_locale: 'en' | 'zh-Hant';
           p_platform: 'android' | 'ios' | 'web';
           p_release_channel: 'development' | 'preview' | 'production';
+        };
+        Returns: Json;
+      };
+      get_inbox_snapshot: {
+        Args: {
+          p_page_size?: number;
+          p_since?: string | null;
+          p_source_id?: string | null;
+          p_unread_only?: boolean;
         };
         Returns: Json;
       };

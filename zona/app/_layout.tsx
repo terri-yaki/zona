@@ -11,13 +11,18 @@ import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { AppUpdateSync } from '@/components/AppUpdateSync';
+import { AccountSessionSync } from '@/components/AccountSessionSync';
+import { CacheLifecycleSync } from '@/components/CacheLifecycleSync';
+import { ClientTelemetrySync } from '@/components/ClientTelemetrySync';
 import { LiveActivitySync } from '@/components/LiveActivitySync';
 import { PushRegistrationSync } from '@/components/PushRegistrationSync';
 import { ensureNotificationSoundChannels } from '@/lib/notification-sounds';
+import { recordClientErrorOnce } from '@/lib/client-telemetry';
 import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pending-notification';
 import { isUuid } from '@/lib/validation';
 import { translate } from '@/i18n';
 import { colors, radius } from '@/theme';
+import { hydrateThemePreference, useThemedStyles } from '@/theme-preference';
 
 function NotificationNavigation() {
   const router = useRouter();
@@ -35,6 +40,9 @@ function NotificationNavigation() {
       if (!response || !active) return;
       const responseKey = `${response.notification.request.identifier}:${response.actionIdentifier}`;
       if (handledResponses.current.has(responseKey)) return;
+      // Bound the dedupe set; keys are response-unique so an occasional full
+      // reset is harmless.
+      if (handledResponses.current.size >= 500) handledResponses.current.clear();
       handledResponses.current.add(responseKey);
       const id = response?.notification.request.content.data?.notificationId;
       if (!isUuid(id)) return;
@@ -60,7 +68,7 @@ function NotificationNavigation() {
     let active = true;
     void takePendingNotificationId().then((id) => {
       if (active && id) router.push({ pathname: '/notification/[id]', params: { id } });
-    });
+    }).catch((error) => console.warn('Could not restore the pending notification deep link.', error));
     return () => { active = false; };
   }, [loading, router, session]);
 
@@ -68,9 +76,11 @@ function NotificationNavigation() {
 }
 
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const styles = useThemedStyles(createStyles);
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
   if (__DEV__ && error) console.error('[Zona ErrorBoundary]', error);
+  if (error) recordClientErrorOnce('ui.error_boundary', error);
 
   return (
     <View style={styles.errorPage}>
@@ -93,6 +103,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 export default function RootLayout() {
   useEffect(() => {
     void ensureNotificationSoundChannels();
+    // Restore the saved theme preset before first paint of any screen.
+    void hydrateThemePreference();
   }, []);
 
   return (
@@ -115,6 +127,9 @@ function RootNavigator() {
   const { isEnabled, isVisible } = useRuntimeConfig();
   return (
     <>
+      <CacheLifecycleSync />
+          <AccountSessionSync />
+          <ClientTelemetrySync />
           {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}
@@ -132,17 +147,21 @@ function RootNavigator() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="sign-in" options={{ headerShown: false }} />
             <Stack.Screen name="push-onboarding" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+            <Stack.Screen name="auth/check-email" options={{ headerShown: false }} />
+            <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
             <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
             <Stack.Screen name="whats-new" options={{ title: t('nav.whatsNew') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
             <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />
+            <Stack.Screen name="source/[id]/keys" options={{ title: t('sourceKeys.title') }} />
           </Stack>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   errorPage: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 28 },
   errorTitle: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center' },
   errorMessage: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 10, maxWidth: 420, textAlign: 'center' },

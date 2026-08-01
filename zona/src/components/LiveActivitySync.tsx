@@ -26,15 +26,17 @@ function emptySnapshot(): ZonaLiveActivitySnapshot {
 }
 
 async function fetchSnapshot(): Promise<ZonaLiveActivitySnapshot> {
-  const unreadCount = await unreadNotificationCount();
+  const [unreadCount, listed] = await Promise.all([
+    unreadNotificationCount(),
+    listNotifications({
+      sourceId: null,
+      since: null,
+      unreadOnly: true,
+    }, null, 1),
+  ]);
   if (unreadCount <= 0) return emptySnapshot();
 
-  const { items } = await listNotifications({
-    sourceId: null,
-    since: null,
-    unreadOnly: true,
-  });
-  const latest = items[0] ?? null;
+  const latest = listed.items[0] ?? null;
   return {
     unreadCount,
     latestTitle: latest?.title ?? null,
@@ -114,7 +116,9 @@ export function LiveActivitySync() {
         'broadcast',
         { event: 'changed' },
         () => {
-          void runSync(true);
+          // Respect the 2s throttle so inbox bursts coalesce instead of forcing
+          // a serial unread+list round-trip on every broadcast event.
+          void runSync(false);
         },
       )
       .subscribe();

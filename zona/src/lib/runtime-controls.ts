@@ -120,6 +120,12 @@ function string(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+/** URLs opened by the app must be https; anything else degrades to no URL. */
+function httpsUrl(value: unknown): string {
+  const url = string(value) ?? '';
+  return /^https:\/\//i.test(url) ? url : '';
+}
+
 function number(value: unknown, fallback: number, minimum = 0, maximum = Number.MAX_SAFE_INTEGER): number {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(maximum, Math.max(minimum, Math.trunc(value)))
@@ -193,7 +199,7 @@ export function parseRuntimeSnapshot(value: unknown): RuntimeSnapshot {
       updateMode: updateMode === 'soft' || updateMode === 'hard' ? updateMode : 'none',
       maintenanceMode: (policy.maintenance_mode ?? policy.maintenanceMode) === true,
       message: string(policy.message ?? policy.message_en),
-      storeUrl: string(policy.store_url ?? policy.storeUrl),
+      storeUrl: httpsUrl(policy.store_url ?? policy.storeUrl),
     },
     announcements: parseAnnouncements(root.announcements),
   };

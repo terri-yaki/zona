@@ -1,0 +1,14 @@
+{
+  "version": "0.0.7",
+  "sourceCommit": "89e042aaaa06f3e2a8134d29b1b0130fb3d21f8a",
+  "sourceBranch": "v0.0.7",
+  "gitTag": null,
+  "boundaryConfidence": "strong",
+  "boundaryNote": "Exact implementation commit containing the v0.0.7 cache, observability, customer changelog correction, documentation, and deployed migrations.",
+  "previousVersion": "0.0.6",
+  "appJsonVersion": "0.0.7",
+  "packageJsonVersion": "0.0.7",
+  "migrationCount": 32,
+  "deltaMigrationCount": 7,
+  "documentCount": 32
+}

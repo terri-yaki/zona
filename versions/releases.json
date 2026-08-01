@@ -46,5 +46,21 @@
     "boundaryConfidence": "strong",
     "previousVersion": "0.0.5",
     "path": "v0.0.6"
+  },
+  {
+    "version": "0.0.7",
+    "sourceCommit": "89e042aaaa06f3e2a8134d29b1b0130fb3d21f8a",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.6",
+    "path": "v0.0.7"
+  },
+  {
+    "version": "0.0.8",
+    "sourceCommit": "92d11b4e6e1704636fd60e057457cf44bc37227c",
+    "gitTag": null,
+    "boundaryConfidence": "strong",
+    "previousVersion": "0.0.7",
+    "path": "v0.0.8"
   }
 ]

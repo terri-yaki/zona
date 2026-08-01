@@ -14,3 +14,7 @@ export async function takePendingNotificationId() {
   await AsyncStorage.removeItem(pendingNotificationKey);
   return isUuid(id) ? id : null;
 }
+
+export function clearPendingNotificationId() {
+  return AsyncStorage.removeItem(pendingNotificationKey);
+}

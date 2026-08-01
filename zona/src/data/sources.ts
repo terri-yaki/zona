@@ -1,6 +1,7 @@
 import { dataError } from '@/lib/errors';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
+import type { SourceAccessKey } from '@/types';
 
 export async function listSources({ includeRevoked = true } = {}) {
   let query = supabase
@@ -60,4 +61,14 @@ export async function setApiKeySound(apiKeyId: string, soundName: import('@/type
     }
     throw dataError(error, translate('sources.soundError'));
   }
+}
+
+export async function listSourceAccessKeys(sourceId: string): Promise<SourceAccessKey[]> {
+  const { data, error } = await supabase
+    .from('source_access_keys')
+    .select('id,source_id,name,key_prefix,is_active,created_at,updated_at,last_used_at,expires_at,revoked_at')
+    .eq('source_id', sourceId)
+    .order('created_at', { ascending: false });
+  if (error) throw dataError(error, translate('sourceKeys.loadError'));
+  return (data ?? []) as SourceAccessKey[];
 }

@@ -6,7 +6,42 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-30
+
 ### Added
+
+- Protect your Zona with email, Apple, Google, or GitHub, then pick up your
+  sources and recent inbox on another phone.
+- Give scripts and agents their own labelled access keys, replace one safely,
+  and keep the same source name, sound, filters, and history.
+- See and remove phones that should no longer have access to your Zona.
+- Pick a color theme that suits you — Meadow, Ocean, Sunset, or Violet —
+  from Settings.
+- Sensitive account changes, like unlinking a sign-in method or moving your
+  Zona to another phone, now ask for a recent sign-in proof before they go
+  through.
+
+### Changed
+
+- Opening Zona or coming back to it always checks the server for new alerts
+  and sources; saved copies still paint first while the refresh lands.
+- What's New now always asks the server for the latest content instead of
+  trusting a fresh-enough saved copy.
+- Push delivery runs through a durable queue, so a temporary hiccup retries
+  instead of dropping the alert.
+
+## [0.0.7] - 2026-07-29
+
+### Added
+
+- Open Zona and your recent alerts are already waiting, with less time spent on
+  loading screens.
+- Recent alerts remain available when the connection drops, then Zona quietly
+  catches up when you are back online.
+- Saved inboxes stay separate for each account and leave the phone when that
+  account signs out.
+- Settings shows how much space Zona is using and lets you clear saved content
+  whenever you choose.
 
 - Runtime feature controls with `enabled`, `disabled`, `hidden`, and
   `read_only` modes; activation windows; iOS/Android/web, channel, locale,

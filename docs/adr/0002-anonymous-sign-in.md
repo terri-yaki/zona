@@ -1,10 +1,13 @@
 # ADR 0002: Anonymous sign-in replaces email magic links
 
-- Status: Accepted for version 1
+- Status: Superseded for account recovery by ADR 0004; guest start remains accepted
 - Date: 2026-07-20
 - Owners: Product and engineering owner to be assigned before release
 
 ## Context
+
+> v0.0.8 keeps anonymous guest start but replaces this ADR's no-recovery
+> decision with [ADR 0004](0004-recoverable-accounts-and-principal-separation.md).
 
 Zona is a private, single-owner application. Email magic-link authentication
 required a production SMTP provider, and the hosted built-in email service

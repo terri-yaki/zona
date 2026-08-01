@@ -74,9 +74,10 @@ Do **not** send any of these to `/notify`:
 
 The server hashes the source token and derives the owning account and source
 from it. A sender therefore cannot impersonate another source by changing a
-request field. Create a separate source/token for every PC or sending
-application that needs an independent identity, sound, pause switch, or
-revocation boundary.
+request field. Create a separate source for every PC or sending application
+that needs an independent identity or sound. A source may have several
+independently paused or revoked access keys, which lets you rotate a credential
+without changing the source shown in the inbox.
 
 Treat the token like a password. Store it in an environment variable, Windows
 Credential Manager, a CI secret, or another OS-backed secret store. Never put
@@ -86,13 +87,84 @@ The app's API-key registry exposes only safe metadata:
 
 | Field | Meaning |
 | --- | --- |
-| `name` | User-editable PC/application label. This becomes the source shown by Zona. |
+| `name` | User-editable label for this particular access key. It does not rename the source. |
 | `key_prefix` | Short, non-secret identifier; it is not usable for authentication. |
 | `is_active` | Reversible pause/resume switch. A paused key receives `401 INVALID_TOKEN`. |
-| `sound_name` | Per-source sound selected in Zona; a sender cannot override it per request. |
+| `sound_name` | Legacy projection of the source sound; a sender cannot override it per request. |
 | `last_used_at` | Last newly accepted notification. An idempotent replay does not advance it. |
 | `expires_at` | Optional expiry time. An expired key receives `401 INVALID_TOKEN`. |
 | `revoked_at` | Permanent revocation time. A revoked token cannot be restored. |
+
+## Access-key rotation
+
+In v0.0.8, a permanent source and its credentials are separate. For example,
+`Office PC` can keep the same source ID, sound, filters, and history while it
+has an `Old script` key and a `New agent` key during a safe changeover.
+
+A newly issued plaintext token is returned exactly once. Zona stores only its
+SHA-256 hash. Test the replacement token first, then revoke the old key. Never
+revoke the whole source just to rotate one credential.
+
+The authenticated Zona app uses these mobile endpoints with the current
+Supabase access JWT:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /functions/v1/create-source` | Create a source and its first key. |
+| `POST /functions/v1/create-source-key` | Add a separately labelled key to an existing source. |
+| `POST /functions/v1/manage-source-key` | Rename, pause/resume, or permanently revoke one key. |
+| `POST /functions/v1/manage-source` | Legacy source-wide action; pause/resume/revoke applies to every key. |
+
+These endpoints are for an authenticated Zona client, not a PC sender. Do not
+put the user's Supabase JWT in a script or CI secret.
+
+### Create a replacement key
+
+```http
+POST /functions/v1/create-source-key
+Authorization: Bearer SUPABASE_USER_ACCESS_JWT
+Content-Type: application/json
+
+{
+  "sourceId": "05c46ccb-0a9e-48c1-9b19-e0398f6ea69b",
+  "keyLabel": "New build agent"
+}
+```
+
+HTTP `201` returns the secret once and prevents response caching:
+
+```json
+{
+  "sourceId": "05c46ccb-0a9e-48c1-9b19-e0398f6ea69b",
+  "accessKeyId": "190fd6ab-ea65-4a16-b456-f98e3cd6c0dc",
+  "keyLabel": "New build agent",
+  "token": "zona_live_REPLACE_WITH_THE_ONE_TIME_SECRET",
+  "ingestUrl": "https://gerncrjtrdjtjvybvseb.supabase.co/functions/v1/notify"
+}
+```
+
+Move `token` directly to the sender's secure storage. Zona cannot reveal it
+again. `sourceId` remains the notification identity; `accessKeyId` selects only
+the credential lifecycle.
+
+### Pause, resume, rename, or revoke one key
+
+```json
+{ "accessKeyId": "190fd6ab-ea65-4a16-b456-f98e3cd6c0dc", "action": "set_active", "isActive": false }
+```
+
+```json
+{ "accessKeyId": "190fd6ab-ea65-4a16-b456-f98e3cd6c0dc", "action": "rename", "keyLabel": "Production agent" }
+```
+
+```json
+{ "accessKeyId": "190fd6ab-ea65-4a16-b456-f98e3cd6c0dc", "action": "revoke" }
+```
+
+All three are sent to `POST /functions/v1/manage-source-key`. Pause is
+reversible; revoke is permanent. A key action cannot affect a sibling key or a
+source owned by another account. Old Zona builds still show one card per
+source and intentionally treat their pause/revoke controls as source-wide.
 
 ## Request headers
 

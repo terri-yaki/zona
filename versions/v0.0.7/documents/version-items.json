@@ -1,0 +1,17 @@
+{
+  "version": "0.0.7",
+  "title": {
+    "en": "Your inbox is ready when you are",
+    "zhHant": "一打開，信箱已經準備好"
+  },
+  "summary": {
+    "en": "Open Zona and your recent alerts are already waiting—even when the connection isn’t.",
+    "zhHant": "打開Zona，最近的通知已經在等你，即使網絡不穩，也能繼續查看。"
+  },
+  "items": [
+    { "key": "open-and-go", "icon": "bolt.fill", "titleEn": "Open and get moving", "titleZhHant": "打開就能行動" },
+    { "key": "between-connections", "icon": "tray.full.fill", "titleEn": "Still useful offline", "titleZhHant": "離線仍然有用" },
+    { "key": "account-private", "icon": "person.crop.circle.fill", "titleEn": "Saved only for you", "titleZhHant": "只為你儲存" },
+    { "key": "cache-control", "icon": "internaldrive", "titleEn": "You decide what stays", "titleZhHant": "由你決定保留甚麼" }
+  ]
+}

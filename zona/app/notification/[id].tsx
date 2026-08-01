@@ -17,11 +17,13 @@ import { useI18n } from '@/providers/LocalizationProvider';
 import { useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
 import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
+import { useThemedStyles } from '@/theme-preference';
 import type { InboxNotification } from '@/types';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export default function NotificationDetailScreen() {
+  const styles = useThemedStyles(createStyles);
   const { session, loading: authLoading } = useAuth();
   const { language, t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
@@ -286,6 +288,7 @@ export default function NotificationDetailScreen() {
 }
 
 function UnavailableState({ message, onPress }: { message: string; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
   return (
     <View style={styles.center}>
@@ -301,7 +304,7 @@ function UnavailableState({ message, onPress }: { message: string; onPress: () =
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 22 },
   center: { alignItems: 'stretch', backgroundColor: colors.background, flex: 1, justifyContent: 'center', padding: 30 },
   missing: { color: colors.muted, fontSize: 15, textAlign: 'center' },

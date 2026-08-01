@@ -15,9 +15,14 @@ export default function Index() {
     if (!session) return;
     let current = true;
     const userId = session.user.id;
-    isPushOnboardingComplete(userId).then((value) => {
-      if (current) setOnboarded({ userId, value });
-    });
+    isPushOnboardingComplete(userId)
+      .then((value) => {
+        if (current) setOnboarded({ userId, value });
+      })
+      .catch(() => {
+        // Storage failures must not strand the gate on LoadingScreen forever.
+        if (current) setOnboarded({ userId, value: false });
+      });
     return () => { current = false; };
   }, [session]);
 

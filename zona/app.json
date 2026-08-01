@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zona",
     "slug": "zona",
-    "version": "0.0.6",
+    "version": "0.0.8",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -17,6 +17,10 @@
     },
     "android": {
       "package": "com.terriyaki.zona",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
       "softwareKeyboardLayoutMode": "resize"
     },
     "ios": {
@@ -28,8 +32,12 @@
         "NSSupportsLiveActivities": true
       }
     },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "plugins": [
       "expo-router",
+      "expo-web-browser",
       [
         "expo-notifications",
         {
