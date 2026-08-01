@@ -104,14 +104,16 @@ rm -rf "$verify_dir"
     }
 
     if ($Submit) {
-        $submit = @'
+        # NOTE: do not name this local $submit — case-insensitive collision
+        # with the [switch]$Submit parameter converts the string and fails.
+        $submitCommand = @'
 set -e
 export PATH=/usr/local/opt/node@22/bin:/usr/local/bin:/usr/bin:/bin
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 cd '{REMOTE_APP}'
 caffeinate -dims eas submit --platform ios --profile production --path '{REMOTE_IPA}' --non-interactive
 '@.Replace('{REMOTE_APP}', $remoteApp).Replace('{REMOTE_IPA}', $remoteIpa)
-        Invoke-Remote $submit
+        Invoke-Remote $submitCommand
     }
 
     Write-Host "IPA ready: $localIpa"
