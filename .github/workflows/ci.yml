@@ -85,12 +85,20 @@ jobs:
           supabase functions serve > /tmp/zona-functions.log 2>&1 &
           functions_pid=$!
           trap 'kill "$functions_pid" 2>/dev/null || true; rm -f /tmp/zona-supabase.env' EXIT
-          for attempt in {1..30}; do
+          functions_ready=0
+          for attempt in {1..60}; do
             status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
               "$SUPABASE_URL/functions/v1/create-source" || true)
-            if [ "$status" != "000" ]; then break; fi
+            if [ "$status" = "405" ]; then
+              functions_ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$functions_ready" != "1" ]; then
+            echo "Local Edge Functions did not become ready (last HTTP $status)."
+            exit 1
+          fi
           node scripts/test-local-edge-contract.mjs
       - name: Stop disposable Supabase stack
         if: always()
