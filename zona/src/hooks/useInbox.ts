@@ -16,6 +16,7 @@ import {
   type InboxCursor,
   type InboxFilters,
 } from '@/data/notifications';
+import { runOnForeground } from '@/lib/foreground';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
@@ -301,6 +302,15 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    // Fresh open and every return to the foreground pull the server, no
+    // matter how fresh the cache is; cached rows still paint first.
+    return runOnForeground(() => {
+      void loadRef.current('refresh');
+    });
   }, [userId]);
 
   return {

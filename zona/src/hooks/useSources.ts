@@ -12,6 +12,7 @@ import {
 } from '@/cache/store';
 import { listSources } from '@/data/sources';
 import { syncAndroidSourceNotificationChannels } from '@/lib/android-source-notifications';
+import { runOnForeground } from '@/lib/foreground';
 import { useAuth } from '@/providers/AuthProvider';
 import { translate } from '@/i18n';
 import type { Source } from '@/types';
@@ -148,6 +149,20 @@ export function useSources(includeRevoked = true) {
       && Date.now() - latestFetchedAt <= cachePolicies.sources.freshForMs;
     if (!fresh) void load();
   }, [cacheKey, fetchedAt, hydratedCacheKey, load, userId]));
+
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
+  useEffect(() => {
+    if (!userId) return;
+    // Fresh open and every return to the foreground pull the server, no
+    // matter how fresh the cache is; cached rows still paint first.
+    return runOnForeground(() => {
+      void loadRef.current(true);
+    });
+  }, [userId]);
 
   return {
     error,
