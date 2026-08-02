@@ -5,6 +5,14 @@ on:
     branches: [main]
     paths:
       - 'zona/**'
+      - '!zona/app.json'
+      - '!zona/package.json'
+      - '!zona/package-lock.json'
+      - '!zona/plugins/**'
+      - '!zona/widgets/**'
+      - '!zona/assets/sounds/**'
+      - '!zona/assets/icon.png'
+      - '!zona/assets/adaptive-icon.png'
       - '.github/workflows/preview-ota.yml'
   workflow_dispatch:
     inputs:
@@ -40,7 +48,7 @@ jobs:
       - name: Setup Expo / EAS
         uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 21.4.0
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
@@ -66,6 +74,6 @@ jobs:
           eas update \
             --channel preview \
             --environment preview \
-            --platform ios \
+            --platform all \
             --non-interactive \
             --message "$MESSAGE"

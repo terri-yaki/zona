@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '@/theme';
 import { RuntimeStatusBanner } from '@/components/RuntimeStatusBanner';
+import { useThemedStyles } from '@/theme-preference';
 
 /**
  * Shared shell for NativeTabs screens.
@@ -19,6 +20,7 @@ export function TabScreen({
   style?: StyleProp<ViewStyle>;
   edges?: ('top' | 'right' | 'bottom' | 'left')[];
 }>) {
+  const styles = useThemedStyles(createStyles);
   return (
     <SafeAreaView edges={edges} style={[styles.safe, style]}>
       <RuntimeStatusBanner />
@@ -43,10 +45,11 @@ export function useBottomSafePadding(extra = 16) {
 }
 
 export function TabScrollBackground({ children }: { children?: ReactNode }) {
+  const styles = useThemedStyles(createStyles);
   return <View style={styles.fill}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = () => StyleSheet.create({
   safe: {
     backgroundColor: colors.background,
     flex: 1,

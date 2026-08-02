@@ -10,7 +10,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { LocalizationProvider, useI18n } from '@/providers/LocalizationProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '@/providers/RuntimeConfigProvider';
-import { AppUpdateSync } from '@/components/AppUpdateSync';
 import { AccountSessionSync } from '@/components/AccountSessionSync';
 import { CacheLifecycleSync } from '@/components/CacheLifecycleSync';
 import { ClientTelemetrySync } from '@/components/ClientTelemetrySync';
@@ -22,7 +21,7 @@ import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pend
 import { isUuid } from '@/lib/validation';
 import { translate } from '@/i18n';
 import { colors, radius } from '@/theme';
-import { hydrateThemePreference, useThemedStyles } from '@/theme-preference';
+import { hydrateThemePreference, useActiveThemePreset, useThemedStyles } from '@/theme-preference';
 
 function NotificationNavigation() {
   const router = useRouter();
@@ -125,17 +124,21 @@ export default function RootLayout() {
 function RootNavigator() {
   const { t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
+  // Subscribing to the active preset re-renders the navigator on a theme
+  // switch so the Stack screenOptions below re-resolve the live-bound colors
+  // instead of keeping the palette baked at first render.
+  const themePreset = useActiveThemePreset();
+  const chromeStyle = themePreset.appearance === 'dark' ? 'light' : 'dark';
   return (
     <>
       <CacheLifecycleSync />
           <AccountSessionSync />
-          <ClientTelemetrySync />
-          {isVisible('background.ota_updates') && isEnabled('background.ota_updates') ? <AppUpdateSync /> : null}
+          {isVisible('background.client_telemetry') && isEnabled('background.client_telemetry') ? <ClientTelemetrySync /> : null}
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}
           <NotificationNavigation />
-          <NavigationBar style="dark" />
-          <StatusBar style="dark" />
+          <NavigationBar style={chromeStyle} />
+          <StatusBar style={chromeStyle} />
           <Stack screenOptions={{
             contentStyle: { backgroundColor: colors.background },
             headerBackButtonDisplayMode: 'minimal',
@@ -152,6 +155,9 @@ function RootNavigator() {
             <Stack.Screen name="account/index" options={{ title: t('account.title') }} />
             <Stack.Screen name="privacy" options={{ title: t('nav.privacy') }} />
             <Stack.Screen name="whats-new" options={{ title: t('nav.whatsNew') }} />
+            <Stack.Screen name="app-status" options={{ title: t('nav.appStatus') }} />
+            <Stack.Screen name="first-alert" options={{ title: t('firstAlert.title') }} />
+            <Stack.Screen name="notification-schedule" options={{ title: t('schedule.globalTitle') }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="notification/[id]" options={{ title: t('nav.notification') }} />
             <Stack.Screen name="source/new" options={{ title: t('nav.newSource'), presentation: 'modal' }} />

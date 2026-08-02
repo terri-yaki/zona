@@ -2,8 +2,8 @@
 
 Status: Proposal for validation; not an approved production release contract.  
 Prepared: 2026-07-24.  
-Target: Public iPhone App Store distribution to developers, homelab operators,
-and automation users.
+Target: Public iOS App Store and Android distribution to developers, homelab
+operators, and automation users.
 
 This plan does not replace [PRD.md](PRD.md), [THREAT_MODEL.md](THREAT_MODEL.md),
 [TEST_PLAN.md](TEST_PLAN.md), or [RELEASE.md](RELEASE.md). Those documents still
@@ -19,23 +19,22 @@ a custom API, Redis, or a queue until production measurements justify them.
 The immediate blockers are product and operational controls, not database
 compute:
 
-1. recoverable customer accounts;
-2. economic quotas that limit cost per account;
-3. complete account and attachment deletion;
-4. App Store-compliant subscription entitlements;
-5. public privacy, support, security, and incident ownership;
-6. database/RLS/contract/load tests and production observability.
+1. abuse-resistant public signup and provider configuration;
+2. App Store/Play-compliant purchases and server-authoritative entitlements;
+3. final public privacy, terms, support, security, and incident ownership;
+4. staging, backup/restore, monitoring, load, and physical-device evidence;
+5. store metadata, review material, and rollout operations.
 
 ## Product position
 
 Zona's current workflow is technical: a user creates a source, receives a
 one-time Bearer token, and configures an HTTP sender. The initial public segment
 should therefore be developers, homelab operators, and automation users—not all
-consumer iPhone owners.
+consumer phone owners.
 
 Proposed value proposition:
 
-> A private, durable iPhone inbox for alerts from scripts and computers. Every
+> A private, durable phone inbox for alerts from scripts and computers. Every
 > sender has its own revocable key, identity, sound, and seven-day history.
 
 Do not claim guaranteed push delivery, device presence, monitoring, remote
@@ -82,7 +81,7 @@ Suggested starting offer for validation:
 | Capability | Free | Zona Plus |
 | --- | ---: | ---: |
 | Active sources | 2 | 10 |
-| Registered iPhones | 1 | 3 |
+| Registered phones | 1 | 3 |
 | Accepted alerts per day | 100 | 2,000 |
 | Attachments per day | 0 initially | 100 |
 | Attachment ingress per day | 0 initially | 250 MiB |
@@ -135,37 +134,40 @@ without deleting existing data before normal retention.
 
 ## Public-launch security changes
 
-### P0 before public beta
+### Foundation already implemented
 
-- Replace the private/single-owner authentication ADR with a public account
-  lifecycle ADR.
-- Add daily per-account alert, attachment-count, and attachment-byte quotas.
-- Add project-wide ingestion and attachment kill switches.
+- Recoverable-account lifecycle and private guest upgrade are specified and
+  implemented, with provider buttons conditional on deployed Auth settings.
+- Server-owned plan limits, daily economic counters, and ingestion/attachment
+  kill switches protect the hosted service.
+- Account deletion removes owned database rows, attachments, and the Auth user;
+  source/access-key revocation happens first.
+- Multipart size is bounded before parsing, attachments are magic-byte checked,
+  and failed metadata persistence removes the uploaded object.
+- Source keys are server-generated, returned once, stored only as hashes, and
+  independently rotatable.
+- Push uses a durable queue, bounded retry, receipt polling, normalized failure
+  reasons, and stale-device invalidation.
+- CI rebuilds the database and tests RLS, migrations, Edge Functions, and the
+  OpenAPI response contract on each pull request.
+
+### P0 still required before public beta
+
 - Apply provider signup rate limits and CAPTCHA or device attestation to account
   creation where supported. Per-account limits alone do not stop creation of
   fresh anonymous accounts.
-- Fix account deletion so it removes all owner-prefixed Storage objects as well
-  as database and Auth records. Make deletion idempotent and retryable.
-- Remove an uploaded object if attachment metadata persistence fails.
-- Enforce multipart request size before unbounded buffering at the gateway or
-  with a byte-counting parser.
-- Implement the v0.0.8 canonical server-generated Edge source-key path, keep the
-  client-hash RPC only for old-build compatibility, then retire it when release
-  policy permits.
 - Default lock-screen previews to private/redacted content for new public
   accounts.
 - Publish completed privacy, terms, support, and security contacts and link them
   directly in the app.
+- Operate a separate staging project, complete backup/restore and load drills,
+  and collect the release-specific iOS/Android physical-device evidence.
 
 ### P1 before paid launch
 
-- Poll Expo push receipts approximately 15 minutes after submission and disable
-  `DeviceNotRegistered` tokens.
-- Store normalized push diagnostics rather than complete provider responses.
 - Enable Expo push access-token security.
-- Add two-user RLS tests, Edge Function/OpenAPI contract tests, rate-limit and
-  quota concurrency tests, migration upgrade tests, deletion tests, attachment
-  isolation tests, and streaming-size tests.
+- Complete the remaining rate-limit/quota concurrency, upgrade, deletion,
+  attachment-isolation, load, and physical-device test evidence.
 - Pin GitHub Actions and EAS CLI versions; protect production deployments with
   approvals and environment-scoped credentials.
 - Add dependency, static, secret, and produced-bundle scans. No critical/high
@@ -176,15 +178,15 @@ without deleting existing data before normal retention.
 ```mermaid
 flowchart LR
   S[Sender scripts and apps] -->|TLS, source token, idempotency key| N[Supabase notify Edge Function]
-  I[iPhone app] -->|Supabase Auth JWT| A[Supabase Auth]
+  I[iOS and Android apps] -->|Supabase Auth JWT| A[Supabase Auth]
   I -->|RLS queries and Realtime| D[(Supabase Postgres)]
   I -->|private objects| O[Supabase Storage]
   N -->|atomic auth, quota, insert| D
-  N -->|best effort after insert| E[Expo Push Service]
+  N -->|durable delivery jobs| D
+  W -->|bounded send and receipt checks| E[Expo Push Service]
   E --> P[Apple APNs]
   W[Scheduled cleanup and receipt worker] --> D
   W --> O
-  W --> E
   C[GitHub Actions] --> ST[Staging Supabase and EAS]
   C -->|manual approval| PR[Production Supabase and EAS]
 ```
@@ -363,7 +365,7 @@ Public distribution is allowed only when:
 - quotas and kill switches bound anonymous and paid-user cost;
 - deletion removes Auth, database, push, billing linkage as required, and
   Storage objects;
-- RLS, contract, concurrency, quota, migration, load, and physical-iPhone tests
+- RLS, contract, concurrency, quota, migration, load, and physical-device tests
   have current evidence;
 - production backups, monitoring, incident ownership, and rollback are tested;
 - App Store metadata, privacy answers, subscription disclosures, and reviewer

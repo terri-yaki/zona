@@ -70,6 +70,9 @@ vi.mock('@/lib/android-source-notifications', () => ({
   syncAndroidSourceNotificationChannels: async () => undefined,
 }));
 
+const widgetSync = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/inbox-widget', () => ({ syncInboxWidget: widgetSync }));
+
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 const userId = 'user-foreground';
@@ -126,8 +129,8 @@ async function flush(rounds = 6) {
 }
 
 let inboxState: ReturnType<typeof useInbox> | null = null;
-function InboxProbe() {
-  const state = useInbox(userId, inboxFilters);
+function InboxProbe({ widgetEnabled = true }: { widgetEnabled?: boolean }) {
+  const state = useInbox(userId, inboxFilters, 30, widgetEnabled);
   useEffect(() => {
     inboxState = state;
   });
@@ -152,6 +155,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     server.sourcesRows = [];
     inboxState = null;
     sourcesState = null;
+    widgetSync.mockClear();
     (AppState as unknown as { __reset: () => void }).__reset();
   });
 
@@ -193,6 +197,16 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(server.inboxCalls).toBeGreaterThan(callsBeforeResume);
     expect(inboxState!.items.map((item) => item.id)).toEqual(['server-2']);
     expect(inboxState!.unreadCount).toBe(5);
+  });
+
+  it('inbox: does not write widget snapshots when its runtime control is off', async () => {
+    server.inboxSnapshot = { rows: [inboxRow('server-1', 'Widget stays quiet')], unreadCount: 1 };
+    await act(async () => {
+      create(<InboxProbe widgetEnabled={false} />);
+    });
+    await flush();
+
+    expect(widgetSync).not.toHaveBeenCalled();
   });
 
   it('sources: fresh cache on cold start still fetches, and resume fetches again', async () => {

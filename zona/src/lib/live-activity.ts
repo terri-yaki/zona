@@ -9,8 +9,10 @@ import {
   buildLiveActivityConfig,
   buildLiveActivityState,
   LIVE_ACTIVITY_SYMBOL,
+  liveActivityPalette,
   type ZonaLiveActivitySnapshot,
 } from '@/lib/live-activity-presentation';
+import { getActiveThemePreset, getActiveThemePresetId } from '@/theme-preference';
 
 export type { ZonaLiveActivitySnapshot } from '@/lib/live-activity-presentation';
 
@@ -23,9 +25,15 @@ const SESSION_END_KEY = 'zona.live_activity_session_end';
  * Bump when the activity presentation changes in a way `updateActivity`
  * cannot migrate (attributes are fixed at start). A mismatch forces
  * stop + start so existing activities pick up the new design once.
+ * The stored tag also carries the theme preset id, so switching themes
+ * restarts the activity with the picked palette.
  */
 const DESIGN_VERSION_KEY = 'zona.live_activity_design_version';
-const CURRENT_DESIGN_VERSION = '3';
+const CURRENT_DESIGN_VERSION = '4';
+
+function currentDesignTag(): string {
+  return `${CURRENT_DESIGN_VERSION}:${getActiveThemePresetId()}`;
+}
 
 type LiveActivityModule = typeof import('expo-live-activity');
 
@@ -133,9 +141,9 @@ export async function syncLiveActivity(
   try {
     const state = buildLiveActivityState(snapshot);
     const existingId = await getStoredActivityId();
-    const designVersion = await AsyncStorage.getItem(DESIGN_VERSION_KEY);
+    const designTag = await AsyncStorage.getItem(DESIGN_VERSION_KEY);
 
-    if (existingId && designVersion === CURRENT_DESIGN_VERSION) {
+    if (existingId && designTag === currentDesignTag()) {
       try {
         LiveActivity.updateActivity(existingId, state);
         return;
@@ -145,13 +153,14 @@ export async function syncLiveActivity(
       }
     }
 
-    // Design mismatch (or missing activity): restart so attributes/theme apply.
+    // Design or theme mismatch (or missing activity): restart so the
+    // attributes and the picked theme palette apply.
     if (existingId) await stopLiveActivity(translate('settings.liveStatus'));
 
-    const id = LiveActivity.startActivity(state, buildLiveActivityConfig(snapshot));
+    const id = LiveActivity.startActivity(state, buildLiveActivityConfig(snapshot, liveActivityPalette(getActiveThemePreset())));
     if (id) {
       await setStoredActivityId(id);
-      await AsyncStorage.setItem(DESIGN_VERSION_KEY, CURRENT_DESIGN_VERSION);
+      await AsyncStorage.setItem(DESIGN_VERSION_KEY, currentDesignTag());
     }
   } catch (error) {
     console.warn('Could not sync Live Activity.', error);

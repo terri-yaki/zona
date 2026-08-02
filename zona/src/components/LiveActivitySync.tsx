@@ -12,6 +12,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
+import { useThemePreferenceId } from '@/theme-preference';
 
 const MIN_SYNC_INTERVAL_MS = 2_000;
 
@@ -54,6 +55,9 @@ export function LiveActivitySync() {
   const { session } = useAuth();
   const { language } = useI18n();
   const userId = session?.user.id;
+  // Re-running the sync effect on a theme switch restarts the Live Activity
+  // with the picked palette (design tag mismatch forces stop + start).
+  const themePresetId = useThemePreferenceId();
   const inFlight = useRef(false);
   const lastSyncAt = useRef(0);
   const pending = useRef(false);
@@ -128,7 +132,7 @@ export function LiveActivitySync() {
       appStateSub.remove();
       void supabase.removeChannel(channel);
     };
-  }, [runSync, userId]);
+  }, [runSync, themePresetId, userId]);
 
   return null;
 }

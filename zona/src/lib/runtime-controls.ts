@@ -1,28 +1,73 @@
 export const featureKeys = [
+  'inbox.summary',
   'inbox.filters',
+  'inbox.source_filter',
+  'inbox.unread_filter',
+  'inbox.time_filter',
   'inbox.mark_all_read',
   'inbox.show_revoked_filters',
+  'inbox.pull_to_refresh',
+  'inbox.pagination',
+  'inbox.category_badges',
+  'inbox.attachment_badges',
+  'inbox.relative_time',
+  'inbox.search',
+  'inbox.saved_filters',
+  'inbox.pinned_filter',
+  'inbox.severity_filter',
+  'inbox.grouping',
   'notification.attachments',
+  'notification.category',
   'notification.metadata',
   'notification.severity',
+  'notification.delivery_status',
+  'notification.copy',
+  'notification.share',
+  'notification.absolute_time',
+  'notification.pin',
+  'notification.mark_unread',
   'sources.create',
+  'sources.search',
+  'sources.pull_to_refresh',
+  'sources.status_badges',
+  'sources.hostname',
+  'sources.last_seen',
   'sources.rename',
   'sources.pause',
   'sources.test',
   'sources.sound',
+  'sources.health',
+  'sources.schedule',
+  'source_keys.create',
+  'source_keys.rename',
+  'source_keys.pull_to_refresh',
+  'settings.account_summary',
+  'settings.delivery_status',
   'settings.push',
   'settings.push_registration',
   'settings.sound',
   'settings.preview',
   'settings.live_activity',
   'settings.language',
+  'settings.theme',
   'settings.whats_new',
   'settings.manual_update',
   'settings.user_guide',
+  'settings.offline_cache',
+  'settings.app_status',
+  'settings.quiet_hours',
+  'account.usage',
+  'status.control_summary',
+  'status.plan_limits',
+  'status.configuration_details',
+  'status.support_link',
+  'status.copy_diagnostics',
   'onboarding.push',
+  'onboarding.first_alert',
   'background.live_activity',
-  'background.ota_updates',
   'background.push_registration',
+  'background.client_telemetry',
+  'ios.widget',
 ] as const;
 
 export type FeatureKey = (typeof featureKeys)[number];
@@ -88,7 +133,19 @@ export const defaultRuntimeSnapshot: RuntimeSnapshot = {
     'runtime.refresh_seconds': 300,
     'inbox.page_size': 30,
     'inbox.time_filter_hours': 24,
+    'inbox.card_title_lines': 1,
+    'inbox.card_body_lines': 2,
+    'inbox.card_spacing': 6,
+    'inbox.max_source_filters': 50,
     'sources.online_window_minutes': 5,
+    'sources.search_minimum_count': 4,
+    'sources.card_spacing': 6,
+    'notification.delivery_poll_seconds': 15,
+    'notification.attachment_url_ttl_seconds': 3600,
+    'status.config_stale_after_seconds': 900,
+    'status.show_internal_revision': false,
+    'content.support_url': 'https://github.com/terri-yaki/zona/issues',
+    'ui.density': 'comfortable',
   },
   limits: {
     maxSourceKeys: 3,
@@ -216,6 +273,21 @@ export function featureEnabled(snapshot: RuntimeSnapshot, key: FeatureKey): bool
 export function runtimeString(snapshot: RuntimeSnapshot, key: string, fallback: string): string {
   const value = snapshot.settings[key];
   return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+export function runtimeBoolean(snapshot: RuntimeSnapshot, key: string, fallback: boolean): boolean {
+  const value = snapshot.settings[key];
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+export function runtimeChoice<const T extends string>(
+  snapshot: RuntimeSnapshot,
+  key: string,
+  choices: readonly T[],
+  fallback: T,
+): T {
+  const value = snapshot.settings[key];
+  return typeof value === 'string' && choices.includes(value as T) ? value as T : fallback;
 }
 
 export function runtimeNumber(

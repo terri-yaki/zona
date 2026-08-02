@@ -13,10 +13,12 @@ an HTTPS request. The machine-readable contract is [openapi.yaml](openapi.yaml).
 If this guide, the OpenAPI contract, and deployed behavior disagree, treat that
 as a defect and update them together.
 
-The other endpoints in `openapi.yaml` are authenticated account-management
-surfaces, not machine-sender APIs. The app may use those endpoints or equivalent
-RLS-protected database functions. A notification sender normally needs only
-`/notify`.
+The other endpoints in `openapi.yaml` are selected authenticated source,
+registration, and delivery surfaces, not machine-sender APIs. It is not a full
+inventory of Zona's internal account handlers; those flows are documented in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md). The app may use an Edge
+Function or an equivalent owner-scoped database function. A notification
+sender normally needs only `/notify`.
 
 Operator-controlled availability, plan limits, and safe client presentation
 are documented in [RUNTIME_CONTROLS.md](RUNTIME_CONTROLS.md). These controls do
@@ -24,7 +26,7 @@ not let a sender select its source, owner, sound, or delivery settings.
 
 ## Quick start on Windows
 
-1. In Zona on the iPhone, open **API Keys** and create a source for the PC or
+1. In Zona on iOS or Android, open **Sources** and create a source for the PC or
    application.
 2. Copy the `zona_live_...` token immediately. Zona shows the complete token
    only once.
@@ -42,6 +44,11 @@ $env:ZONA_SOURCE_TOKEN = 'zona_live_REPLACE_WITH_YOUR_SOURCE_TOKEN'
 The command should return a JSON object containing `notificationId`,
 `sourceId`, and `sourceName`. The notification is then visible in Zona's inbox,
 even if remote push delivery was unavailable.
+
+Quiet hours and source schedules never reject this API request. Zona stores the
+alert normally, returns its notification ID, and keeps it searchable in the
+inbox; only the phone push is skipped for that quiet window. Notification
+details identify that outcome as quiet hours rather than a delivery failure.
 
 To include an image:
 
@@ -69,7 +76,7 @@ Do **not** send any of these to `/notify`:
 
 - A Supabase publishable key.
 - A Supabase secret or `service_role` key.
-- The iPhone user's Supabase access token.
+- The app user's Supabase access token.
 - A source name, source ID, user ID, hostname, or sound name.
 
 The server hashes the source token and derives the owning account and source
@@ -83,7 +90,7 @@ Treat the token like a password. Store it in an environment variable, Windows
 Credential Manager, a CI secret, or another OS-backed secret store. Never put
 it in source control, URLs, logs, screenshots, or notification `data`.
 
-The app's API-key registry exposes only safe metadata:
+The app's access-key registry exposes only safe metadata:
 
 | Field | Meaning |
 | --- | --- |
@@ -200,12 +207,16 @@ in the URL query string.
 | `title` | string | Yes | 1–120 characters after surrounding whitespace is removed. |
 | `body` | string | Yes | 1–2,000 characters after surrounding whitespace is removed. |
 | `category` | string or `null` | No | 1–80 characters when present. Omitted, `null`, or `""` means no category. |
-| `severity` | string or `null` | No | `low`, `medium`, `high`, or `critical` (case-insensitive). Omitted, `null`, or `""` keeps the default white appearance. |
+| `severity` | string or `null` | No | `low`, `medium`, `high`, or `critical` (case-insensitive). Omitted, `null`, or `""` keeps the active theme's neutral appearance. |
 | `data` | JSON object | No | Defaults to `{}`. The serialized object must be at most 4,096 UTF-8 bytes. Arrays and primitive values are rejected. |
 
 `data` is stored with the inbox item for application-specific context. It does
 not alter routing, source identity, sound, severity, or push behavior. Use namespaced,
 non-sensitive keys and keep large logs or files outside this field.
+
+Severity changes presentation, not authorization or delivery priority. Zona
+uses green for `low`, yellow for `medium`, orange for `high`, red for
+`critical`, and the active theme's neutral treatment when severity is absent.
 
 Only the documented fields are part of the contract. In particular,
 `sourceName`, `sourceId`, `userId`, `sound`, and `pushEnabled` are not supported
@@ -559,15 +570,15 @@ Senders cannot change these settings in a notification request:
 | Setting | Effect |
 | --- | --- |
 | Source name | Displayed in push content and saved as a historical snapshot on the inbox item. |
-| Per-source sound | Selects the bundled iPhone ringtone for that source. `category` does not select a sound. |
+| Per-source sound | Selects that source's platform-appropriate notification sound or Android channel. `category` does not select a sound. |
 | `push_enabled` | When off, Zona still stores the inbox record but skips remote push. |
 | `play_sound` | Global override; when off, all source sounds are silent. |
 | `show_preview` | When off, the push uses generic text while the full inbox item remains available in Zona. |
-| `live_activity_enabled` | iPhone client preference for Live Status; it does not change `/notify` in v1. |
+| `live_activity_enabled` | iOS client preference for Live Status; it does not change `/notify` in v1. |
 
 ## Limits
 
-The per-account rate, attachment size, retention, and API-key limits are
+The per-account rate, attachment size, retention, and access-key limits are
 operator-configured per tier (standard and premium) and can change without an
 API redeploy; the values below are the standard-tier defaults. Premium
 accounts may have higher values.
@@ -585,7 +596,9 @@ accounts may have higher values.
 | Conservative generated push payload | 3,800 serialized UTF-8 bytes |
 | Rate per source | 60 accepted requests in a rolling minute |
 | Rate per account | 20 accepted requests in a rolling minute across all sources |
-| Active API keys per account | 3 (revoked keys never count) |
+| Active sources | 3 per standard account |
+| Unrevoked access keys | 10 per source and 10 total per standard account |
+| Registered devices | 10 standard; 25 premium |
 | Retention | 7 days |
 
 ## Errors
@@ -608,6 +621,7 @@ Error responses use a small JSON envelope:
 | `405` | `METHOD_NOT_ALLOWED` | The endpoint accepts only `POST` (plus CORS preflight). | Use `POST`. |
 | `409` | `IDEMPOTENCY_CONFLICT` | This source reused a key with different content or a different image. | Use the original content, or a new key for a genuinely new event. |
 | `413` | `PAYLOAD_TOO_LARGE` | JSON exceeded 16 KiB or multipart exceeded the configured ceiling. | Reduce the request size. |
+| `423` | `ACCOUNT_INACTIVE` | The owning account is deleted, deleting, suspended, or otherwise inactive. | Do not retry until the account is restored or support resolves its state. |
 | `429` | `RATE_LIMITED` | This source exceeded 60 accepted requests/minute. | Wait for `Retry-After`, then retry with the same key. |
 | `429` | `ACCOUNT_RATE_LIMITED` | All sources for the account exceeded the configured per-account rate. | Wait for `Retry-After`, then retry with the same key. |
 | `500` | `INTERNAL_ERROR` | The request was not confirmed as accepted. | Retry with backoff, the same key, and identical content. |

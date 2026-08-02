@@ -6,12 +6,16 @@ info:
   description: |
     Zona's version 1 HTTP contract. All traffic uses TLS. Sender applications
     normally use only `POST /functions/v1/notify`; the other operations are
-    invoked by the authenticated iPhone app.
+    invoked by the authenticated iOS or Android app. Account lifecycle
+    operations outside this sender-and-delivery surface are documented in
+    `ACCOUNT_MANAGEMENT.md`; this file is not an inventory of every internal
+    account handler.
 
     A 202 response from `notify` means the durable, retention-bounded inbox
-    record exists. `pushQueued` counts durable delivery jobs. A background
-    worker sends them with bounded retries and checks Expo receipts; neither a
-    queue entry nor a provider receipt proves that the phone displayed an alert.
+    record exists. `pushQueued` counts durable delivery jobs and can be zero
+    when account or source quiet hours are active. A background worker sends
+    queued jobs with bounded retries and checks Expo receipts; neither a queue
+    entry nor a provider receipt proves that the phone displayed an alert.
 
     Every JSON request has a 16 KiB transport limit. `notify.data` has an
     additional 4 KiB UTF-8 serialized limit. These byte limits are normative
@@ -41,6 +45,8 @@ paths:
         The source and owner are derived from the Bearer credential. Callers
         cannot provide or override source/owner identity. The inbox record and
         eligible delivery jobs are durable before the response is returned.
+        Quiet hours suppress only those jobs; the inbox record is still
+        accepted and returned normally.
 
         `Idempotency-Key` is required. Re-sending the same key with an
         identical payload returns the stored notification with
@@ -49,7 +55,8 @@ paths:
         `409 IDEMPOTENCY_CONFLICT`. Optional severity is part of that payload,
         so changing only severity is also a conflict.
 
-        One evidence image (PNG/JPEG/WebP, at most 5 MiB) may be attached by
+        One evidence image (PNG/JPEG/WebP, up to the account's server-resolved
+        attachment limit) may be attached by
         sending `multipart/form-data` with an `attachment` file part. The
         image's SHA-256 participates in idempotency: the same key with a
         different image is a conflict.
@@ -97,7 +104,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/NotifyAccepted'
         '202':
-          description: Inbox record accepted and eligible push delivery jobs durably queued.
+          description: |
+            Inbox record accepted. Eligible push delivery jobs are durably
+            queued, or intentionally omitted while quiet hours are active.
           headers:
             Cache-Control:
               schema:
@@ -136,6 +145,8 @@ paths:
                 error: IDEMPOTENCY_CONFLICT
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '429':
           description: Rate limit exceeded; currently 60 accepted requests per source or 20 per standard account in the rolling minute. Operator-configured plan limits may be lower or higher where documented.
           headers:
@@ -203,7 +214,7 @@ paths:
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
-          description: The account reached its active source-key plan limit (currently 3 for the standard plan).
+          description: The account reached its active-source plan limit (3 for the standard plan by default).
           content:
             application/json:
               schema:
@@ -212,6 +223,8 @@ paths:
                 error: SOURCE_LIMIT_REACHED
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '429':
           description: Source creation exceeded 10 requests per account per hour.
           headers:
@@ -282,15 +295,22 @@ paths:
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
-          description: This source already has the maximum number of unrevoked access keys.
+          description: The source or account reached its unrevoked access-key limit (10 per source and 10 per standard account by default).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: SOURCE_KEY_LIMIT_REACHED
+              examples:
+                sourceLimit:
+                  value:
+                    error: SOURCE_KEY_LIMIT_REACHED
+                accountLimit:
+                  value:
+                    error: ACCESS_KEY_LIMIT_REACHED
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '429':
           description: Access-key creation exceeded 30 requests per account per hour.
           headers:
@@ -354,6 +374,8 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -407,6 +429,8 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -414,12 +438,11 @@ paths:
     post:
       operationId: testSource
       tags: [Mobile]
-      summary: Create and push a test alert for one owned source.
+      summary: Create and queue a test alert for one owned source.
       description: |
-        Creates the durable inbox record first, then makes one best-effort push
-        using the source's selected notification sound. Unlike sender
-        `notify`, this authenticated test helper still reports its immediate
-        Expo ticket result. The source must be active and owned by the user.
+        Creates the durable inbox record and uses the same delivery queue,
+        quiet-schedule, preview, sound, retry, and receipt behavior as sender
+        `notify`. The source must be active and owned by the user.
       security:
         - userBearer: []
       requestBody:
@@ -430,7 +453,7 @@ paths:
               $ref: '#/components/schemas/TestSourceRequest'
       responses:
         '202':
-          description: Test inbox record created; push may or may not have been accepted.
+          description: Test inbox record created; eligible delivery jobs were queued.
           content:
             application/json:
               schema:
@@ -455,6 +478,8 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '500':
           $ref: '#/components/responses/InternalError'
         '503':
@@ -500,7 +525,7 @@ paths:
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '409':
-          description: Push token is already owned by another account, or the account already has 10 active devices.
+          description: Push token/installation ownership conflicts, or the account reached its plan-resolved active-device limit (10 standard, 25 premium by default).
           content:
             application/json:
               schema:
@@ -509,11 +534,16 @@ paths:
                 tokenConflict:
                   value:
                     error: TOKEN_CONFLICT
+                installationConflict:
+                  value:
+                    error: INSTALLATION_CONFLICT
                 deviceLimit:
                   value:
                     error: DEVICE_LIMIT_REACHED
         '413':
           $ref: '#/components/responses/PayloadTooLarge'
+        '423':
+          $ref: '#/components/responses/AccountInactive'
         '429':
           description: Device registration exceeded 120 requests per account per hour.
           headers:
@@ -545,6 +575,7 @@ paths:
         not prove that the phone displayed it.
       security:
         - userBearer: []
+          publishableKey: []
       requestBody:
         required: true
         content:
@@ -575,6 +606,11 @@ components:
       scheme: bearer
       bearerFormat: Supabase access JWT
       description: Current Supabase Auth access token for the owner.
+    publishableKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Supabase publishable project key required by the Data API gateway.
 
   parameters:
     IdempotencyKey:
@@ -636,7 +672,7 @@ components:
           format: date-time
         reason:
           type: [string, 'null']
-          enum: [device_unavailable, message_too_big, push_configuration, provider_unavailable, unconfirmed, null]
+          enum: [device_unavailable, message_too_big, push_configuration, provider_unavailable, unconfirmed, quiet_hours, null]
 
     NotifyRequest:
       type: object
@@ -660,7 +696,7 @@ components:
         severity:
           type: [string, 'null']
           enum: [low, medium, high, critical, null]
-          description: Optional visual urgency. Null or omitted uses the neutral white inbox style.
+          description: Optional visual urgency. Null or omitted uses the active theme's neutral inbox style.
         data:
           type: object
           description: |
@@ -721,8 +757,9 @@ components:
           type: integer
           minimum: 0
           description: |
-            Durable delivery jobs created for eligible phones. Present on a
-            newly accepted notification and omitted on an idempotent replay.
+            Durable delivery jobs created for eligible phones. This is zero
+            while account or source quiet hours are active. Present on a newly
+            accepted notification and omitted on an idempotent replay.
 
     NotifyMultipartRequest:
       type: object
@@ -752,10 +789,12 @@ components:
           type: string
           format: binary
           description: |
-            Optional evidence image, at most 5 MiB. Only magic bytes are
+            Optional evidence image, up to the server-resolved account limit
+            (5 MiB for the standard plan by default). Only magic bytes are
             trusted: PNG, JPEG, and WebP are accepted; anything else (including
             SVG and renamed executables) is rejected with `INVALID_PAYLOAD`.
-            The whole multipart request is limited to 6 MiB.
+            The whole multipart request is limited to the attachment limit
+            plus 1 MiB of form overhead.
 
     CreateSourceRequest:
       type: object
@@ -1001,7 +1040,7 @@ components:
     TestSourceAccepted:
       type: object
       additionalProperties: false
-      required: [notificationId, sourceId, pushAttempted, pushAccepted]
+      required: [notificationId, sourceId, pushQueued, pushAttempted, pushAccepted]
       properties:
         notificationId:
           type: string
@@ -1009,16 +1048,20 @@ components:
         sourceId:
           type: string
           format: uuid
+        pushQueued:
+          type: integer
+          minimum: 0
+          description: Durable delivery jobs created for eligible phones.
         pushAttempted:
           type: integer
           minimum: 0
-          description: Phones targeted synchronously by this test request.
+          deprecated: true
+          description: Compatibility alias equal to `pushQueued`; no provider request has run yet.
         pushAccepted:
           type: integer
           minimum: 0
-          description: |
-            Expo tickets accepted during this test request. This is provider
-            acceptance, not proof that the phone displayed the alert.
+          deprecated: true
+          description: Compatibility field; always zero because delivery is asynchronous.
 
     RegisterPushRequest:
       type: object
@@ -1112,6 +1155,14 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             error: UNAUTHORIZED
+    AccountInactive:
+      description: The owning account is deleted, deleting, suspended, or otherwise inactive.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: ACCOUNT_INACTIVE
     MethodNotAllowed:
       description: Endpoint accepts POST only, except for CORS preflight.
       content:
@@ -1121,7 +1172,7 @@ components:
           example:
             error: METHOD_NOT_ALLOWED
     PayloadTooLarge:
-      description: Request body exceeds 16 KiB (JSON) or 6 MiB (multipart).
+      description: Request body exceeds 16 KiB (JSON) or the plan-resolved attachment limit plus 1 MiB (multipart).
       content:
         application/json:
           schema:

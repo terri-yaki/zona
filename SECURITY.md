@@ -1,15 +1,15 @@
 # Security policy
 
-Zona is currently a private, pre-production TestFlight project. The existence
-of this policy does not mean the service has completed its release security
-gates. See the [threat model](docs/THREAT_MODEL.md) and
+Zona is currently a private TestFlight and Android preview project. The
+existence of this policy does not mean the service has completed its public
+release security gates. See the [threat model](docs/THREAT_MODEL.md) and
 [test plan](docs/TEST_PLAN.md).
 
 ## Supported versions
 
 Only the latest explicitly approved TestFlight build and its matching deployed
 Supabase schema/Edge Functions are supported. Version 1 is pinned to Expo SDK
-54. Older builds should be removed from tester access after a replacement is
+56. Older builds should be removed from tester access after a replacement is
 verified.
 
 ## Reporting a vulnerability
@@ -40,10 +40,13 @@ testing.
   only its SHA-256 hash and derives source/owner identity from it.
 - Sender applications call only the bounded notification Edge Function; they do
   not receive database or service-role access.
-- Notifications are inserted before best-effort push delivery.
+- Notifications are inserted before durable push jobs are sent. Transient
+  provider failures receive bounded retries; inbox acceptance never implies a
+  banner was displayed.
 - Source credentials are independently and immediately revocable.
-- Notifications and associated push-delivery diagnostics expire after seven
-  days; rate-limit request rows expire after one day.
+- Notifications and associated push-delivery diagnostics expire after the
+  plan-resolved retention period (seven days on the standard plan); rate-limit
+  request rows expire after one day.
 - Future PC control is out of scope. Arbitrary remote shell execution is
   prohibited.
 
@@ -83,8 +86,9 @@ must still target the correct project and rely on tested RLS—not key obscurity
 ## Privacy and incident response
 
 Notification content is processed by Supabase, Expo Push Service, and Apple
-APNs and may appear on an iPhone lock screen. Do not use Zona for secrets or
-regulated/sensitive data without an approved privacy/security assessment.
+APNs or Google FCM and may appear on a phone lock screen. Do not use Zona for
+secrets or regulated/sensitive data without an approved privacy/security
+assessment.
 
 Security incidents follow [RUNBOOK.md](docs/RUNBOOK.md): contain and rotate
 credentials, preserve minimal evidence, determine access and data impact,

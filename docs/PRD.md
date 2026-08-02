@@ -1,6 +1,7 @@
 # Zona product requirements
 
-Status: Draft; release gates in this document are not yet satisfied.  
+Status: Product contract through v0.0.10; v0.0.11 development changes are
+tracked under Unreleased, and public-launch evidence remains open.
 Product scope: private iOS TestFlight and Android preview distribution.
 Native baseline: Expo SDK 56.
 
@@ -9,8 +10,10 @@ Native baseline: Expo SDK 56.
 Zona is a private, multi-source alert inbox. A signed-in user creates an
 independent source for each trusted PC or local application. That sender uses
 the one-time source credential to submit an alert to a Supabase Edge Function.
-Zona stores the alert in a retention-bounded inbox and then attempts one
-best-effort Expo/APNs-or-FCM push to each registered installation.
+Zona stores the alert in a retention-bounded inbox and durably queues eligible
+push work. A background worker sends through Expo/APNs-or-FCM, retries bounded
+transient failures, and checks provider receipts for each registered
+installation.
 
 The database record is the source of truth. A successful API response means
 the inbox item was accepted; it does not guarantee that iOS displayed a push.
@@ -72,9 +75,11 @@ The user must be able to:
 - **AUTH-04** Before external TestFlight or App Store distribution, the app
   must offer an easy-to-find, confirmed account-deletion flow that deletes the
   Supabase Auth account and application data that is not legally retained.
-- **AUTH-05** v0.0.8 must retain private guest start and let a guest protect the
-  same account with email, Apple, Google, or GitHub without changing its Auth
-  user ID or existing ownership.
+- **AUTH-05** The app retains private guest start and can protect the same
+  account with email, Apple, Google, or GitHub without changing its Auth user ID
+  or existing ownership. Each method is shown only when that provider is enabled
+  in the connected Supabase project; provider availability is deployment
+  configuration, not a hard-coded promise.
 - **AUTH-06** A protected user can restore server-held sources, preferences,
   entitlements, and retained history on another phone. Plaintext source keys
   remain non-recoverable.
@@ -111,6 +116,10 @@ The user must be able to:
   the old source.
 - **SRC-08** v0.0.8 adds independently revocable overlapping keys to one
   permanent source so rotation preserves source identity, history, and sound.
+- **SRC-09** The Sources screen can search display name, hostname, access-key
+  label, and safe key prefix without exposing a plaintext credential.
+- **SRC-10** Source status reports recent activity and aggregate provider
+  acceptance honestly; it must not imply live presence or human receipt.
 
 ### Notification ingestion and inbox
 
@@ -139,11 +148,19 @@ The user must be able to:
   bucket readable only by its owner, participates in idempotency, is
   best-effort like push, and shares the seven-day retention.
 - **NOTI-10** Severity participates in idempotency and changes presentation,
-  not delivery priority. Null severity uses a neutral white inbox card.
+  not delivery priority. Null severity uses the active theme's neutral surface.
 - **NOTI-11** Notification detail shows an owner-scoped delivery summary. It
   distinguishes no targeted phone, queued work, provider acceptance, and
   terminal failure without exposing private delivery internals or claiming
   that a provider receipt proves the phone displayed the alert.
+- **NOTI-12** Inbox search covers alert content and source identity, and owners
+  can save and remove common filter combinations.
+- **NOTI-13** Owners can pin an alert and return it to unread without changing
+  the immutable sender payload or source snapshot.
+- **NOTI-14** Repeated-alert grouping is a presentation aid only; every durable
+  notification remains individually reachable.
+- **NOTI-15** Copy/share output is a bounded human-readable summary that omits
+  metadata, credentials, internal IDs, object paths, and signed attachment URLs.
 
 ### Mobile push registration
 
@@ -161,6 +178,12 @@ The user must be able to:
 - **PUSH-06** Every active source can select an iOS bundled ringtone or use its
   native Android notification channel independently. The global sound switch
   overrides per-source choices.
+- **PUSH-07** Account quiet hours and per-source schedules suppress eligible
+  push jobs only; the notification is still accepted into the inbox and the
+  delivery summary reports `quiet_hours` without treating it as a failure.
+- **PUSH-08** The iOS widget receives only a bounded inbox summary when its
+  runtime feature is enabled. Apple Shortcuts are signed-build capabilities,
+  not remotely installable or removable runtime controls.
 
 ### Source API
 
@@ -168,11 +191,12 @@ The user must be able to:
   `Authorization` header.
 - **API-02** The public contract is documented in
   [openapi.yaml](openapi.yaml) and [API.md](API.md).
-- **API-03** The server enforces a 16 KiB request cap, field limits, 4 KiB
-  metadata cap, and 60 accepted requests per rolling minute per source.
+- **API-03** The server enforces a 16 KiB JSON request cap, field limits, 4 KiB
+  metadata cap, and plan-resolved rolling rate limits. Standard defaults are 60
+  accepted requests per source and 20 across the account per minute.
 - **API-04** Clients retry only network failures, HTTP 5xx, and HTTP 429 with
   bounded exponential backoff and reuse the same required idempotency key.
-- **API-05** The owner can pause and resume an API key independently. The safe
+- **API-05** The owner can pause and resume an access key independently. The safe
   key registry exposes name, prefix, active state, usage, expiry, and revocation
   timestamps but never the raw credential or credential hash.
 
@@ -238,7 +262,7 @@ exists” is not sufficient evidence.
 | AC-07 | Cross-user reads, updates, deletes, and management fail | RLS/Edge Function tests using two users |
 | AC-08 | Forced Expo failure still leaves the accepted inbox row | Fault-injection test |
 | AC-09 | Source, unread, date, and pagination filters return complete results | Query/UI tests beyond 200 records |
-| AC-10 | Foreground, background, and terminated notification interactions open the correct detail | Physical-iPhone TestFlight matrix |
+| AC-10 | Foreground, background, and terminated notification interactions open the correct detail | Physical iOS/Android matrix |
 | AC-11 | Expired sessions and malformed credentials fail closed | Automated endpoint tests |
 | AC-12 | Boundary, malformed, oversized, and non-object metadata payloads are rejected | Contract tests |
 | AC-13 | Concurrent request 61 in a rolling minute is rate-limited | Database concurrency test |
@@ -248,27 +272,32 @@ exists” is not sufficient evidence.
 | AC-17 | Anonymous sign-in succeeds on a fresh install and restores the same account across restarts | Device smoke test |
 | AC-18 | A multipart send stores a magic-byte-verified image readable only by its owner; spoofed, oversized, and replay-with-different-image sends behave per contract | Contract and two-user tests |
 | AC-19 | Accessibility checks pass on sign-in, onboarding, inbox, source creation, and settings | VoiceOver/Dynamic Type checklist |
-| AC-20 | Email, Apple, Google, and GitHub protect a guest without changing its Auth user ID or owned data | Provider E2E and database parity evidence |
+| AC-20 | Every recovery method enabled for the deployment protects a guest without changing its Auth user ID or owned data; disabled providers stay hidden | Provider E2E and database parity evidence |
 | AC-21 | A protected account restores its server-held data and push registration on another phone | iPhone/Android restore matrix |
 | AC-22 | Zona's linking and unlinking flow requires recent proof and cannot remove the last recovery method; tests also document the residual direct-Supabase identity-API boundary | Auth integration tests |
 | AC-23 | A provider identity already owned elsewhere stops for explicit conflict handling and never silently merges | Two-account provider test |
 | AC-24 | Revoking one or all installations stops their sensitive access and future push without affecting active allowed phones | Session/push E2E evidence |
 | AC-25 | Guest transfer and account deletion are idempotent, resumable, cross-account isolated, and fail closed | Database/Storage/Auth fault-injection evidence |
+| AC-26 | Search, saved views, pin/unread actions, and repeated-alert grouping preserve access to each owned alert | Mobile helper/integration tests and device exercise |
+| AC-27 | Quiet schedules suppress push jobs while retaining the inbox item and reporting `quiet_hours` | Time-zone/database tests and notification-detail capture |
+| AC-28 | Source activity and delivery health use provider-acceptance language and never claim presence or human receipt | Copy review, database aggregate tests, and device capture |
+| AC-29 | Widget data obeys its runtime control; changing Apple Shortcuts requires a signed iOS build | Runtime-control test and native build verification |
 
 Pairing-code expiry/reuse tests are intentionally retired by ADR 0001.
 
-## External release blockers
+## Public-launch evidence still required
 
-The following cannot be represented as complete by source code alone:
+Private TestFlight operation and public App Store readiness are different
+states. The following public-launch evidence cannot be represented as complete
+by source code alone:
 
-- Configure EAS production variables for the public Supabase URL/key.
-- Configure authentication providers (anonymous sign-ins enabled), APNs
-  credentials, and App Store Connect application ownership.
-- Publish a privacy-policy URL and support/contact URL.
-- Complete App Store privacy answers and implement account deletion.
-- Provide final app icon, splash, screenshots, description, reviewer access,
-  age rating, and export-compliance answers.
-- Produce a signed build and complete the physical-device TestFlight matrix.
+- Confirm the production environment, APNs/FCM credentials, enabled Auth
+  providers, and App Store/Play Console ownership for the exact release.
+- Publish final privacy-policy and support/contact URLs and keep store privacy
+  answers consistent with the implemented deletion and retention behavior.
+- Provide final screenshots, description, reviewer access, age rating, and
+  export-compliance answers.
+- Complete the physical-device TestFlight/Android matrix on the submitted build.
 - Assign named service, security, privacy, and incident owners.
 
 ## Definition of done

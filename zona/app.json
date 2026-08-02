@@ -2,7 +2,7 @@
   "expo": {
     "name": "Zona",
     "slug": "zona",
-    "version": "0.0.9",
+    "version": "0.0.11",
     "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -26,6 +26,7 @@
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": false,
+      "appleTeamId": "537FW7XQD7",
       "bundleIdentifier": "com.terriyaki.zona",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -114,6 +115,31 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.terriyaki.zona.widgets",
+          "groupIdentifier": "group.com.terriyaki.zona",
+          "widgets": [
+            {
+              "name": "ZonaInboxWidget",
+              "displayName": "Zona Inbox",
+              "description": "See unread alerts and the latest source at a glance.",
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryCircular",
+                  "accessoryRectangular",
+                  "accessoryInline"
+                ]
+              },
+              "android": null
+            }
+          ]
+        }
+      ],
+      "./plugins/with-zona-shortcuts.cjs",
       [
         "expo-navigation-bar",
         {

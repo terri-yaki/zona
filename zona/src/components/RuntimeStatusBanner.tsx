@@ -111,7 +111,7 @@ const createStyles = () => StyleSheet.create({
   copy: { flex: 1 },
   title: { color: colors.text, fontSize: 13, fontWeight: '800' },
   body: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginTop: 2 },
-  action: { paddingHorizontal: 6, paddingVertical: 8 },
+  action: { alignItems: 'center', justifyContent: 'center', minHeight: 44, paddingHorizontal: 6, paddingVertical: 8 },
   actionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
-  dismiss: { alignItems: 'center', alignSelf: 'flex-start', justifyContent: 'center', minHeight: 28, minWidth: 28 },
+  dismiss: { alignItems: 'center', alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, minWidth: 44 },
 });

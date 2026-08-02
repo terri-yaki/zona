@@ -8,9 +8,9 @@ Zona can show a **Live Status** surface on the iPhone **Lock Screen** and
 1. Open **Settings → Notifications → Live Status** and turn it on (saved on your
    Zona account via `app_options.live_activity_enabled`).
 2. When the inbox has unread alerts and the app is running (or becomes active),
-   a Live Activity starts: a deep-green glance card showing `N unread · latest
-   alert title`, the source, and an "updated Xm" recency line, with the Zona
-   monogram on the left.
+   a Live Activity starts: a glance card in the selected app theme showing
+   `N unread · latest alert title`, the source, and an "updated Xm" recency
+   line, with the white bell symbol on the left.
 3. Marking alerts read (or **Read all**) ends the activity.
 4. Turning Live Status off ends the activity immediately.
 
@@ -35,27 +35,15 @@ Screen chrome.
 
 Remote ActivityKit push updates (refresh while killed) are **out of scope** for v1.
 
-## Planned design upgrade (needs one new IPA)
-
-The current presentation is the maximum the stock `expo-live-activity`
-template allows from JS. The full redesign — a right-side unread-count rail on
-the Lock Screen card, an unread-count pill in the Dynamic Island
-compact/minimal regions, an "updated … ago" line, and a chip-backed monogram
-asset — requires adding `count` / `sourceName` / `updatedAt` fields to the
-extension's `ContentState` and custom SwiftUI regions via a patch-package
-patch on the package's Swift templates (3 files). That is a native-target
-change, so it ships with the next IPA, not OTA. Design board:
-[live-activity-redesign.png](live-activity-redesign.png).
-
 ## Implementation
 
 | Piece | Role |
 | --- | --- |
 | `expo-live-activity` | Config plugin + ActivityKit bridge used by the current SDK 56 build; guarded at runtime because the native module is optional and the package is archived upstream in favor of `expo-widgets`. Listed as unmaintained in RN Directory and excluded in `package.json` `expo.doctor.reactNativeDirectoryCheck`. |
 | `zona/src/lib/live-activity.ts` | Preference storage, start/update/stop, soft failures. |
-| `zona/src/lib/live-activity-presentation.ts` | Pure, unit-tested state/config builders (count-led title, recency subtitle, brand palette). No RN imports. |
+| `zona/src/lib/live-activity-presentation.ts` | Pure, unit-tested state/config builders (count-led title, recency subtitle, selected-theme palette). No RN imports. |
 | `zona/src/components/LiveActivitySync.tsx` | Mirrors unread + latest notification into the activity. |
-| `zona/assets/liveActivity/icon.png` | App icon resized for ActivityKit (from `assets/icon.png`); keep **under 4 KB**. |
+| `zona/plugins/with-zona-live-activity-symbol.cjs` | Adds native SF Symbol support to the generated extension and renders the white `bell.badge.fill` mark. This is a native change and requires a new IPA when modified. |
 | Settings | Server-backed `app_options.live_activity_enabled` (default off). Runtime activity id stays on-device. |
 
 Deep link: activity config uses scheme path `/` or `/notification/{id}` via

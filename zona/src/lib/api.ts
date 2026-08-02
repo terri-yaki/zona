@@ -111,14 +111,23 @@ export async function setSourceActive(sourceId: string, isActive: boolean) {
   return data;
 }
 
+type TestSourceResult = {
+  notificationId: string;
+  sourceId: string;
+  pushQueued?: number;
+  pushAttempted: number;
+  pushAccepted: number;
+};
+
 export function testSource(sourceId: string) {
-  return invoke<{ notificationId: string; sourceId: string; pushAttempted: number; pushAccepted: number }>(
+  return invoke<TestSourceResult>(
     'test-source',
     { sourceId },
-    (value): value is { notificationId: string; sourceId: string; pushAttempted: number; pushAccepted: number } => (
+    (value): value is TestSourceResult => (
       object(value)
       && typeof value.notificationId === 'string'
       && typeof value.sourceId === 'string'
+      && (typeof value.pushQueued === 'number' || value.pushQueued === undefined)
       && typeof value.pushAttempted === 'number'
       && typeof value.pushAccepted === 'number'
     ),

@@ -30,17 +30,33 @@ export const themeColorKeys = [
 export type ThemeColorKey = typeof themeColorKeys[number];
 export type ThemePresetColors = Record<ThemeColorKey, string>;
 
+/** Lock-screen Live Status palette; hex values passed to the native widget. */
+export type ThemeLiveActivityColors = {
+  background: string;
+  title: string;
+  subtitle: string;
+};
+
 export type ThemePreset = {
   id: string;
   /** i18n key for the display name (settings.themePreset.*). */
   nameKey: TranslationKey;
+  /** 'light' presets pair with dark status-bar icons, 'dark' with light ones. */
+  appearance: 'light' | 'dark';
   colors: ThemePresetColors;
+  /**
+   * Optional Live Activity palette override. When omitted, the Live Status
+   * card derives its colors from the preset's primary family
+   * (see liveActivityPalette in @/lib/live-activity-presentation).
+   */
+  liveActivity?: ThemeLiveActivityColors;
 };
 
 export const themePresets: ThemePreset[] = [
   {
     id: 'meadow',
     nameKey: 'settings.themePreset.meadow',
+    appearance: 'light',
     colors: {
       background: '#F3F6F4',
       surface: '#FFFFFF',
@@ -66,6 +82,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'ocean',
     nameKey: 'settings.themePreset.ocean',
+    appearance: 'light',
     colors: {
       background: '#F1F6F9',
       surface: '#FFFFFF',
@@ -91,6 +108,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'sunset',
     nameKey: 'settings.themePreset.sunset',
+    appearance: 'light',
     colors: {
       background: '#FAF4F0',
       surface: '#FFFFFF',
@@ -116,6 +134,7 @@ export const themePresets: ThemePreset[] = [
   {
     id: 'violet',
     nameKey: 'settings.themePreset.violet',
+    appearance: 'light',
     colors: {
       background: '#F6F3F9',
       surface: '#FFFFFF',
@@ -136,6 +155,65 @@ export const themePresets: ThemePreset[] = [
       successSoft: '#E2F2EA',
       unread: '#F1ECF8',
       white: '#FFFFFF',
+    },
+  },
+  {
+    id: 'minimalist',
+    nameKey: 'settings.themePreset.minimalist',
+    appearance: 'light',
+    colors: {
+      background: '#FFFFFF',
+      surface: '#FFFFFF',
+      surfaceMuted: '#F2F2F2',
+      text: '#0A0A0A',
+      textSoft: '#242424',
+      muted: '#6E6E6E',
+      mutedLight: '#9A9A9A',
+      border: '#E4E4E4',
+      primary: '#0A0A0A',
+      primaryDark: '#000000',
+      primarySoft: '#EDEDED',
+      accent: '#0A0A0A',
+      accentSoft: '#F0F0F0',
+      danger: '#3D3D3D',
+      dangerSoft: '#EFEFEF',
+      success: '#2E2E2E',
+      successSoft: '#F0F0F0',
+      unread: '#F5F5F5',
+      white: '#FFFFFF',
+    },
+  },
+  {
+    id: 'neon',
+    nameKey: 'settings.themePreset.neon',
+    appearance: 'dark',
+    colors: {
+      background: '#0B0B10',
+      surface: '#15151D',
+      surfaceMuted: '#1D1D28',
+      text: '#F5F5FA',
+      textSoft: '#D9D9E6',
+      muted: '#9C9CAD',
+      mutedLight: '#7C7C8E',
+      border: '#2A2A38',
+      primary: '#00E5A0',
+      primaryDark: '#00B67F',
+      primarySoft: '#0E2B21',
+      accent: '#FF3D8A',
+      accentSoft: '#381226',
+      danger: '#FF5470',
+      dangerSoft: '#3A1220',
+      success: '#2BD97C',
+      successSoft: '#0E2A1C',
+      unread: '#101D17',
+      white: '#FFFFFF',
+    },
+    // Neon reads best as a dark lock-screen card with the neon mint leading,
+    // rather than the default primaryDark surface used by light presets.
+    liveActivity: {
+      background: '#101018',
+      title: '#00E5A0',
+      subtitle: '#9C9CAD',
     },
   },
 ];

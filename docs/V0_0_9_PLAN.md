@@ -1,7 +1,7 @@
 # Zona v0.0.9 — Trust and visibility
 
-Status: approved working scope. The customer changelog below is a draft and
-must remain unpublished until the release evidence is complete.
+Status: implementation complete and merged. The database-backed customer note
+remains inactive until an operator explicitly publishes it.
 
 ## Outcome
 
@@ -9,7 +9,7 @@ Close the two visible gaps left by v0.0.8 and turn the existing test assets
 into enforced release gates. This release does not add a new authentication
 factor, merge two protected accounts, or introduce payments.
 
-## Review of the v0.0.8 baseline
+## Baseline recorded when planning began
 
 - The app, Deno, and TypeScript baselines are green: 105 mobile tests and 41
   shared Edge Function tests pass, and TypeScript reports no errors.
@@ -22,9 +22,9 @@ factor, merge two protected accounts, or introduce payments.
 - The sender API guide still describes `pushAccepted` as an Expo ticket count.
   The durable queue now returns compatibility fields plus `pushQueued`, so the
   documented response contract must be corrected before release.
-- The v0.0.8 archive points to the pre-audit implementation commit. Refresh its
-  manifests so it identifies the code and migrations that produced the shipped
-  build, without rewriting historical migrations.
+- The v0.0.8 archive remains a feature-boundary snapshot, not a claim that its
+  commit produced the later audited store build. Historical manifests are not
+  rewritten after publication.
 
 ## PR 1 — Account usage
 
@@ -95,7 +95,10 @@ result, and evidence link. Blank evidence is a failed gate.
   preview, idempotent commit, recovery, and support tooling. It should not share
   the v0.0.9 delivery migration.
 
-## Customer changelog draft
+## Customer changelog copy
+
+The matching `app_release_notes` row exists but is inactive. This section records
+the approved wording; activating the row is a separate release operation.
 
 ### Know where every alert stands
 

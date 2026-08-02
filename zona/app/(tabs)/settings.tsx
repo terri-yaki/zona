@@ -12,6 +12,7 @@ import { getAppOptions, getCachedAppOptions, updateAppOptions, type AppOptionFla
 import { deleteAccount } from '@/lib/api';
 import { clearPrivateUserState } from '@/cache/private-state';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
+import { deliveryStatusVisible } from '@/lib/app-version';
 import {
   advanceDeleteConfirmation,
   cancelDeleteConfirmation,
@@ -340,6 +341,22 @@ export default function SettingsScreen() {
   const languageValue = preference === 'system'
     ? t('settings.languageSystemWithValue', { language: languageName })
     : languageAutonym(preference);
+  const showLanguage = isVisible('settings.language');
+  const showTheme = isVisible('settings.theme');
+  const showDeliveryStatus = deliveryStatusVisible() && isVisible('settings.delivery_status');
+  const showWhatsNew = isVisible('settings.whats_new');
+  const showManualUpdate = isVisible('settings.manual_update');
+  const showUserGuide = isVisible('settings.user_guide');
+  const showOfflineCache = isVisible('settings.offline_cache');
+  const showAppStatus = isVisible('settings.app_status');
+  const showFirstAlert = isVisible('onboarding.first_alert');
+  const showAnyAppRow = showLanguage || showTheme || showWhatsNew || showManualUpdate
+    || showUserGuide || showOfflineCache || showAppStatus || showFirstAlert;
+  const showNotificationOptions = isVisible('settings.push')
+    || isVisible('settings.sound')
+    || isVisible('settings.preview')
+    || (liveActivitySupported && isVisible('settings.live_activity'))
+    || isVisible('settings.quiet_hours');
   return (
     <TabScreen>
       <ScrollView
@@ -355,14 +372,14 @@ export default function SettingsScreen() {
         <AppIcon color={colors.white} fallback="›" name="chevron.right" size={18} />
       </Pressable>
 
-      <Text style={styles.section}>{t('settings.sectionAccount')}</Text>
-      <View style={styles.card}>
+      {isVisible('settings.account_summary') ? <><Text style={styles.section}>{t('settings.sectionAccount')}</Text>
+      <View style={[styles.card, !isEnabled('settings.account_summary') && styles.disabled]} pointerEvents={isEnabled('settings.account_summary') ? 'auto' : 'none'}>
         <SettingRow icon="person" label={t('settings.account')} value={userId ? `${userId.slice(0, 8)}…` : '—'} />
         <View style={styles.divider} />
         <SettingRow icon="clock" label={t('settings.historyRetention')} value={tc('settings.retentionDay', 'settings.retentionDays', config.retentionDays)} />
-      </View>
+      </View></> : null}
 
-      <Text style={styles.section}>{t('settings.sectionNotifications')}</Text>
+      {showNotificationOptions ? <><Text style={styles.section}>{t('settings.sectionNotifications')}</Text>
       <View style={styles.card}>
         {isVisible('settings.push') ? (
           <OptionRow
@@ -418,10 +435,18 @@ export default function SettingsScreen() {
             ) : null}
           </>
         ) : null}
+        {isVisible('settings.quiet_hours') ? <>
+          {isVisible('settings.push') || isVisible('settings.sound') || isVisible('settings.preview') || (liveActivitySupported && isVisible('settings.live_activity')) ? <View style={styles.divider} /> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.quiet_hours') }} disabled={!isEnabled('settings.quiet_hours')} onPress={() => router.push('/notification-schedule' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.quiet_hours') && styles.disabled, pressed && styles.pressed]}>
+            <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="Q" name="moon.stars.fill" size={17} /></View>
+            <View style={styles.cacheCopy}><Text style={styles.link}>{t('settings.quietHours')}</Text><Text style={styles.cacheDescription}>{t('settings.quietHoursDesc')}</Text></View>
+            <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+          </Pressable>
+        </> : null}
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
-      </View>
+      </View></> : null}
 
-      <Text style={styles.section}>{t('settings.sectionDelivery')}</Text>
+      {showDeliveryStatus ? <><Text style={styles.section}>{t('settings.sectionDelivery')}</Text>
       <View style={styles.card}>
         <SettingRow icon="bell" label={t('settings.iosPermission')} value={permissionStatus} />
         <View style={styles.divider} />
@@ -441,31 +466,31 @@ export default function SettingsScreen() {
             <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
           </Pressable>
         </> : null}
-      </View>
+      </View></> : null}
 
-      <Text style={styles.section}>{t('settings.sectionApp')}</Text>
+      {showAnyAppRow ? <><Text style={styles.section}>{t('settings.sectionApp')}</Text>
       <View style={styles.card}>
-        {isVisible('settings.language') ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.language') }} disabled={!isEnabled('settings.language')} onPress={() => setLanguageModal(true)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.language') && styles.disabled, pressed && styles.pressed]}>
+        {showLanguage ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.language') }} disabled={!isEnabled('settings.language')} onPress={() => setLanguageModal(true)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.language') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="A" name="globe" size={17} /></View>
           <Text style={styles.link}>{t('settings.language')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{languageValue}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable> : null}
-        {isVisible('settings.language') ? <View style={styles.divider} /> : null}
-        <Pressable accessibilityRole="button" onPress={() => setThemeModal(true)} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+        {showTheme && showLanguage ? <View style={styles.divider} /> : null}
+        {showTheme ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.theme') }} disabled={!isEnabled('settings.theme')} onPress={() => setThemeModal(true)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.theme') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="◐" name="paintpalette" size={17} /></View>
           <Text style={styles.link}>{t('settings.theme')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{t(activeTheme.nameKey)}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
-        {isVisible('settings.whats_new') ? <><View style={styles.divider} />
+        </Pressable> : null}
+        {showWhatsNew ? <>{showLanguage || showTheme ? <View style={styles.divider} /> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.whats_new') }} disabled={!isEnabled('settings.whats_new')} onPress={() => router.push('/whats-new')} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.whats_new') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="+" name="sparkles" size={17} /></View>
           <Text style={styles.link}>{t('settings.whatsNew')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{t('settings.whatsNewValue')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
-        {isVisible('settings.manual_update') ? <><View style={styles.divider} />
+        {showManualUpdate ? <>{showLanguage || showTheme || showWhatsNew ? <View style={styles.divider} /> : null}
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: checkingUpdate || !isEnabled('settings.manual_update') }}
@@ -477,10 +502,10 @@ export default function SettingsScreen() {
           style={({ pressed }) => [styles.registerRow, (checkingUpdate || !isEnabled('settings.manual_update')) && styles.disabled, pressed && styles.pressed]}
         >
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="↓" name="arrow.down.circle" size={17} /></View>
-          <Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text>
+          <View style={styles.cacheCopy}><Text style={styles.link}>{checkingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdate')}</Text><Text style={styles.cacheDescription}>{t('settings.checkUpdateDesc')}</Text></View>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
-        {isVisible('settings.user_guide') ? <><View style={styles.divider} />
+        {showUserGuide ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate ? <View style={styles.divider} /> : null}
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: !isEnabled('settings.user_guide') }}
@@ -492,17 +517,27 @@ export default function SettingsScreen() {
           <Text style={styles.link}>{t('settings.userGuide')}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
-        <View style={styles.divider} />
-        <Pressable accessibilityRole="button" onPress={clearOfflineCache} style={({ pressed }) => [styles.registerRow, pressed && styles.pressed]}>
+        {showOfflineCache ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate || showUserGuide ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.offline_cache') }} disabled={!isEnabled('settings.offline_cache')} onPress={clearOfflineCache} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.offline_cache') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="□" name="internaldrive" size={17} /></View>
-          <View style={styles.cacheCopy}>
-            <Text style={styles.link}>{t('settings.offlineCache')}</Text>
-            <Text style={styles.cacheDescription}>{t('settings.offlineCacheDesc')}</Text>
-          </View>
+          <Text style={styles.link}>{t('settings.offlineCache')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{formatCacheSize(visibleCacheBytes)}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
-        </Pressable>
-      </View>
+        </Pressable></> : null}
+        {showAppStatus ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate || showUserGuide || showOfflineCache ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.app_status') }} disabled={!isEnabled('settings.app_status')} onPress={() => router.push('/app-status' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.app_status') && styles.disabled, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="i" name="waveform.path.ecg" size={17} /></View>
+          <Text style={styles.link}>{t('settings.appStatus')}</Text>
+          <Text numberOfLines={1} style={styles.languageValue}>{snapshot.releasePolicy.maintenanceMode ? t('settings.appStatusLimited') : t('settings.appStatusReady')}</Text>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable></> : null}
+        {showFirstAlert ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate || showUserGuide || showOfflineCache || showAppStatus ? <View style={styles.divider} /> : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('onboarding.first_alert') }} disabled={!isEnabled('onboarding.first_alert')} onPress={() => router.push('/first-alert' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('onboarding.first_alert') && styles.disabled, pressed && styles.pressed]}>
+          <View style={styles.rowIcon}><AppIcon color={colors.accent} fallback="1" name="paperplane.fill" size={17} /></View>
+          <View style={styles.cacheCopy}><Text style={styles.link}>{t('settings.firstAlert')}</Text><Text style={styles.cacheDescription}>{t('settings.firstAlertDesc')}</Text></View>
+          <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
+        </Pressable></> : null}
+      </View></> : null}
 
       <Text style={styles.section}>{t('settings.sectionPrivacy')}</Text>
       <View style={styles.card}>
@@ -665,8 +700,8 @@ const createStyles = () => StyleSheet.create({
   profileIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 22, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
   profileCopy: { flex: 1 },
   profileTitle: { color: colors.white, fontSize: 15, fontWeight: '800' },
-  profileEmail: { color: '#D8EAE4', fontSize: 12, marginTop: 3 },
-  section: { color: colors.mutedLight, fontSize: 9, fontWeight: '800', letterSpacing: 0.9, marginBottom: 7, marginLeft: 5, marginTop: 18 },
+  profileEmail: { color: colors.primarySoft, fontSize: 12, marginTop: 3 },
+  section: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 7, marginLeft: 5, marginTop: 18 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, overflow: 'hidden', paddingHorizontal: 14 },
   row: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
   rowIcon: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 10, height: 34, justifyContent: 'center', marginRight: 11, width: 34 },
@@ -677,13 +712,13 @@ const createStyles = () => StyleSheet.create({
   optionRow: { alignItems: 'center', flexDirection: 'row', minHeight: 72, paddingVertical: 10 },
   optionCopy: { flex: 1, paddingRight: 12 },
   optionLabel: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
-  optionDescription: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  optionDescription: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   liveActivityHint: { color: colors.accent, fontSize: 11, lineHeight: 16, paddingBottom: 12, paddingLeft: 0 },
   optionsError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12 },
   registerRow: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
   link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },
   cacheCopy: { flex: 1, paddingRight: 8 },
-  cacheDescription: { color: colors.muted, fontSize: 10, lineHeight: 14, marginTop: 2 },
+  cacheDescription: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },
   themeDot: { borderRadius: 999, height: 18, marginRight: 10, width: 18 },
   modalBackdrop: { backgroundColor: 'rgba(18, 35, 29, 0.3)', flex: 1, justifyContent: 'flex-end' },

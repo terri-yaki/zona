@@ -1,17 +1,11 @@
 name: Deploy DB
 
-# Applies pending Supabase migrations to the live project whenever they land
-# on main. Changelog entries ride along automatically: adding a release note
-# is adding a seed migration (e.g. 202607260003_changelog_0_0_3.sql), and this
-# job pushes it — the app picks the new entry up on the next What's New open
-# with no app build required.
+# Manually applies reviewed pending Supabase migrations to the live project.
+# CI validates migrations on pull requests and main; production deployment is a
+# separate operator decision so a documentation or branch merge cannot mutate
+# the database automatically.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/migrations/**'
-      - '.github/workflows/db-deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -26,12 +20,13 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v5
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.111.0
 
       - name: Link and apply pending migrations
         env:
@@ -53,4 +48,5 @@ jobs:
             exit 1
           fi
           supabase link --project-ref "$PROJECT_REF"
+          supabase migration list
           supabase db push

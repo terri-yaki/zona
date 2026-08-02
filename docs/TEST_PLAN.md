@@ -2,7 +2,7 @@
 
 This plan is the release-verification contract for the private TestFlight
 version of Zona. It covers the Expo SDK 56 app, Supabase migration and Edge
-Functions, sender API, and physical-iPhone push behavior.
+Functions, sender API, and physical iOS/Android push behavior.
 
 Passing a compiler or finding no known bug is not proof of production
 readiness. Every release requires the evidence defined below.
@@ -109,6 +109,14 @@ Required database cases:
 - inactive changelog releases and individual release-note items are hidden;
 - compatibility views preserve v0.0.5 reads while v0.0.6 owner RPCs and
   user-scoped Realtime Broadcast prevent cross-account access.
+- inbox search cannot cross accounts and safely treats wildcard characters as
+  text; pinned pagination remains stable when timestamps match;
+- saved filters and notification schedules are owner-only, bounded, and reject
+  a source belonging to another account;
+- quiet hours store the alert first, skip only push-job creation, and report a
+  non-failure `quiet_hours` delivery reason across daily and overnight windows;
+- source health aggregates only owned sources and never exposes device tokens,
+  provider ticket IDs, raw errors, or notification bodies.
 
 ### Edge Function contract tests
 
@@ -157,8 +165,21 @@ through Zona's app-level recent-proof gate.
 
 ### Mobile component and integration tests
 
-Use React Native Testing Library with network/native modules mocked at their
-boundaries. Cover:
+The current automated mobile suite uses Vitest for pure helpers and parsers,
+plus focused `react-test-renderer` probes where hook lifecycle behavior matters;
+network and native modules are mocked at their boundaries. It does not claim
+React Native Testing Library coverage. Keep verifying search matching,
+saved-filter parsing, pin/mark-unread helpers, repeated-alert grouping,
+schedule validation, diagnostic redaction, first-alert templates, widget prop
+selection, foreground refresh, and themed-style rerenders. Interaction-heavy
+screen behavior remains part of the physical-device matrix until a dedicated
+native component harness is added.
+
+Native iOS release checks must generate the WidgetKit target and compile the
+App Intents source. On a physical iPhone, exercise every configured widget
+family and the **Open Zona Inbox** and **Prepare a Zona Alert** Shortcuts actions.
+
+Additional lifecycle cases:
 
 - anonymous sign-in pending, success, and provider error;
 - email, Apple, Google, and GitHub sign-in and guest-protection flows;
@@ -246,11 +267,12 @@ generated tokens. Automate the following sequence:
 
 The suite must delete its synthetic Auth users and data after completion.
 
-## Physical-iPhone TestFlight matrix
+## Physical iOS and Android matrix
 
-Run on at least one currently supported physical iPhone/iOS version and, before
-external reliance, the oldest supported iOS version. Record device model, iOS,
-build ID, EAS build URL, account, time, and evidence link.
+Run on at least one currently supported physical iPhone/iOS version and one
+physical Android device with configured FCM credentials. Before external
+reliance, also exercise the oldest supported OS versions. Record device model,
+OS, build ID, EAS build URL, account, time, and evidence link.
 
 | Scenario | Expected result |
 | --- | --- |
@@ -264,7 +286,7 @@ build ID, EAS build URL, account, time, and evidence link.
 | Rename source | Future push uses new name; old inbox row keeps old name |
 | Revoke one of two sources | Only revoked source fails |
 | Expo service failure simulation | Inbox row still appears after refresh |
-| Magic link from Mail | Deep link returns to app and restores intended routing |
+| Enabled email/provider recovery | Callback returns to the app and restores intended routing |
 | Seven-day boundary | Expired item disappears and current item remains |
 | VoiceOver and large text | Primary flows remain understandable and operable |
 | Lock-screen preview settings | Content exposure matches documented user expectations |
@@ -316,6 +338,32 @@ Copy this table into the release ticket. Blank evidence is a failed gate.
 | Privacy/account-deletion verification |  |  |  |  |
 | Migration/function deployment parity |  |  |  |  |
 | Monitoring and rollback rehearsal |  |  |  |  |
+
+## v0.0.10 Control Room matrix
+
+- Compare the 69 compiled runtime feature keys with `private.app_control_catalog` and
+  assert that every key has one safe global baseline without duplicating the
+  existing v0.0.6 rows.
+- Exercise `enabled`, `disabled`, `hidden`, and `read_only` on one control in
+  every app area. A hidden filter must stop affecting its query immediately.
+- Verify priority, platform, channel, locale, tier, build, schedule, and rollout
+  targeting still select exactly one evaluated rule.
+- Enter values below and above every numeric catalog bound. Database metadata
+  must explain the supported range and the client must clamp unsafe values.
+- Confirm `anon` and `authenticated` cannot read the private catalog or
+  dashboard, while bootstrap returns only the evaluated app-safe snapshot.
+- Search sources by display name, hostname, key label, and key prefix; confirm
+  case-insensitive matching, blank-query behavior, duplicate hostnames, and a
+  useful no-results state.
+- Copy and share an alert with and without category/severity. The result must
+  contain useful title/body/source/time text and exclude metadata, credentials,
+  database IDs, and attachment URLs.
+- Check App Status for fresh, saved/stale, limited, maintenance, offline, and
+  refresh states. Only validated HTTPS support links may open.
+- At 320, 375, and 430 point widths, and with the largest supported text size,
+  verify source actions wrap cleanly, settings never show orphan dividers,
+  labels remain legible, and every primary/icon control has a 44-point target.
+- Run the same matrix in English and Traditional Chinese on iOS and Android.
 
 ## Exit criteria
 

@@ -17,6 +17,7 @@ import {
   type InboxFilters,
 } from '@/data/notifications';
 import { runOnForeground } from '@/lib/foreground';
+import { syncInboxWidget } from '@/lib/inbox-widget';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
 import type { InboxNotification } from '@/types';
@@ -45,9 +46,13 @@ registerCacheResetter((ownerUserId) => {
 
 function filterCacheVariant(filters: InboxFilters, pageSize: number) {
   return [
+    'v2',
     filters.sourceId ?? 'all',
     filters.unreadOnly ? 'unread' : 'all',
     filters.since ?? 'anytime',
+    filters.pinnedOnly ? 'pinned' : 'all-pins',
+    filters.severity ?? 'all-severity',
+    (filters.searchQuery ?? '').trim().toLocaleLowerCase(),
     String(pageSize),
   ].join('|');
 }
@@ -123,8 +128,14 @@ function userHasAnyCache(ownerUserId: string) {
   return false;
 }
 
-export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
+export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, widgetEnabled = true) {
   const cacheVariant = filterCacheVariant(filters, pageSize);
+  const widgetEligible = !filters.sourceId
+    && !filters.unreadOnly
+    && !filters.since
+    && !filters.pinnedOnly
+    && !filters.severity
+    && !(filters.searchQuery ?? '').trim();
   const cacheKey = memoryCacheKey(userId, cacheVariant);
   const cachedPage = pageCache.get(cacheKey);
 
@@ -173,7 +184,8 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     setUnreadCount(page.unreadCount);
     setHasEverLoaded(true);
     rememberPage(userId, cacheVariantRef.current, page, fetchedAt);
-  }, [userId]);
+    if (widgetEligible && widgetEnabled) syncInboxWidget(page.items, page.unreadCount);
+  }, [userId, widgetEligible, widgetEnabled]);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
     const request = ++generation.current;

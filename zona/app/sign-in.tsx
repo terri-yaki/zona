@@ -78,8 +78,6 @@ export default function SignInScreen() {
 
   return (
     <SafeAreaView style={styles.page}>
-      <View pointerEvents="none" style={styles.orbLarge} />
-      <View pointerEvents="none" style={styles.orbSmall} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.brandRow}>
@@ -146,8 +144,6 @@ const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   content: { alignSelf: 'center', maxWidth: 520, width: '100%' },
-  orbLarge: { backgroundColor: colors.primarySoft, borderRadius: 180, height: 360, opacity: 0.7, position: 'absolute', right: -170, top: -110, width: 360 },
-  orbSmall: { backgroundColor: colors.accentSoft, borderRadius: 90, bottom: -40, height: 180, left: -75, opacity: 0.8, position: 'absolute', width: 180 },
   brandRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginBottom: 34 },
   mark: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 15, height: 48, justifyContent: 'center', width: 48 },
   brand: { color: colors.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.4 },
