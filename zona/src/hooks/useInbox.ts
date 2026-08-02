@@ -128,7 +128,7 @@ function userHasAnyCache(ownerUserId: string) {
   return false;
 }
 
-export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
+export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, widgetEnabled = true) {
   const cacheVariant = filterCacheVariant(filters, pageSize);
   const widgetEligible = !filters.sourceId
     && !filters.unreadOnly
@@ -184,8 +184,8 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30) {
     setUnreadCount(page.unreadCount);
     setHasEverLoaded(true);
     rememberPage(userId, cacheVariantRef.current, page, fetchedAt);
-    if (widgetEligible) syncInboxWidget(page.items, page.unreadCount);
-  }, [userId, widgetEligible]);
+    if (widgetEligible && widgetEnabled) syncInboxWidget(page.items, page.unreadCount);
+  }, [userId, widgetEligible, widgetEnabled]);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
     const request = ++generation.current;

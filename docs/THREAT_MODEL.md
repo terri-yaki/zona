@@ -46,11 +46,11 @@ or future PC-control scope changes.
 ## Trust boundaries
 
 1. Sender machine to public `notify` Edge Function.
-2. iPhone to Supabase Auth, Edge Functions, Postgres RLS, and Realtime.
+2. iOS/Android app to Supabase Auth, Edge Functions, Postgres RLS, and Realtime.
 3. Edge Function service role to private/public database objects.
 4. Backend to Expo Push Service and Apple APNs.
 5. Developer/CI/EAS/Supabase/Apple administrative control planes.
-6. Lock screen and other people with physical visibility of the iPhone.
+6. Lock screen and other people with physical visibility of the phone.
 
 ## Threat register
 
@@ -64,7 +64,7 @@ or future PC-control scope changes.
 | T-06 | Service-role key reaches mobile or sender | Hosted secret and separate publishable key | Build artifact/secret scan, environment inventory, immediate rotation on exposure |
 | T-07 | Payload exhausts memory/storage or injects UI content | Streamed 16 KiB request cap, field/metadata limits, React Native text rendering | Unicode/byte boundary tests, rate/capacity alerts, avoid interpreting metadata as HTML/URLs without validation |
 | T-08 | Concurrent requests bypass rate limit | Per-source and per-account advisory transaction locks and request ledger | Parallel 60/61 integration test and load test |
-| T-09 | Push failure loses accepted alert | DB insert precedes best-effort push | Fault-injection test, synthetic inbox canary, clear API semantics |
+| T-09 | Push failure loses accepted alert | DB insert and durable delivery jobs commit before the response; a worker retries transient failures and reconciles provider receipts | Fault-injection test, queue-age alert, synthetic inbox canary, clear API semantics |
 | T-10 | Push content exposed on lock screen or to providers | iOS user settings; TLS in transit | Privacy disclosure, sender guidance not to send secrets, consider redacted push mode later |
 | T-11 | Malicious metadata overwrites routing IDs | Server appends reserved notification/source IDs | Test collision behavior; construct reserved fields after untrusted metadata and validate detail authorization |
 | T-12 | Stale push token sends to wrong account/device | Registration ownership conflict checks; current-installation unregister | Test reinstall/account-switch lifecycle; process Expo receipt invalidation in future |

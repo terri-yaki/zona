@@ -230,7 +230,9 @@ export default function SourcesScreen() {
     setBusySourceId(source.id);
     try {
       const result = await testSource(source.id);
-      const message = result.pushAccepted > 0
+      const message = (result.pushQueued ?? 0) > 0
+        ? t('sources.testQueued')
+        : result.pushAccepted > 0
         ? t('sources.testAccepted')
         : result.pushAttempted > 0
         ? t('sources.testRejected')

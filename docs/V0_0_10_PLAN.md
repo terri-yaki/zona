@@ -17,11 +17,18 @@ tune supported presentation safely without shipping a new binary.
    credentials, attachment paths, and signed URLs.
 3. **App Status** — one screen explains configuration freshness, available or
    adjusted features, account capacity, app version/platform, and support.
-4. **Control catalog** — 57 compiled feature controls and 17 typed settings are
+4. **Control catalog** — 69 compiled runtime feature controls and 17 typed settings are
    privately documented with defaults, safe bounds, allowed values, and active
    rule/override counts.
 5. **UI quality pass** — readable badges, larger touch targets, responsive
    source actions, conditional settings dividers, and a cleaner sign-in screen.
+6. **Inbox productivity** — search alert content, save views, pin work, return
+   alerts to unread, and group repeated messages without losing history.
+7. **Focus and delivery clarity** — account quiet hours, per-source schedules,
+   source activity summaries, and honest provider-acceptance status.
+8. **First-alert path and iOS surfaces** — guided sender examples, an inbox
+   widget whose snapshot updates obey its runtime control, and build-time Apple
+   Shortcuts actions.
 
 ## Safety contract
 

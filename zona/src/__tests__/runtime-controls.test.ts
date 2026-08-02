@@ -17,6 +17,7 @@ describe('parseRuntimeSnapshot', () => {
       features: {
         'sources.create': { mode: 'disabled', reason: 'Maintenance' },
         'settings.sound': { mode: 'invented' },
+        'ios.shortcuts': { mode: 'hidden' },
         'arbitrary.remote.component': { mode: 'enabled' },
       },
     });
@@ -25,6 +26,7 @@ describe('parseRuntimeSnapshot', () => {
     expect(featureEnabled(snapshot, 'sources.create')).toBe(false);
     expect(snapshot.features['sources.create'].reason).toBe('Maintenance');
     expect(snapshot.features['settings.sound'].mode).toBe('enabled');
+    expect(snapshot.features).not.toHaveProperty('ios.shortcuts');
     expect(snapshot.features).not.toHaveProperty('arbitrary.remote.component');
   });
 

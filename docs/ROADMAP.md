@@ -38,7 +38,7 @@ the phone service, without opening a developer console.
   push-service receipt does not prove the person saw the alert.
 - Add automated database, RLS, migration, and Edge Function contract gates to
   every pull request.
-- Complete a physical-iPhone TestFlight matrix before release.
+- Complete physical iOS and Android release matrices before release.
 
 Architecture work: an owner-scoped delivery summary over the private queue,
 sanitized failure reasons, usage presentation over the existing server-owned
@@ -96,8 +96,8 @@ This is the first product hypothesis:
 | Searchable history | 7 days | 30 days |
 | Attachments | Basic allowance | Larger allowance |
 | Alert volume | Everyday use | Higher-volume use |
-| Saved views and source groups | — | Included |
-| Quiet schedules and escalations | — | Included |
+| Saved views and quiet schedules | Included | Included with higher limits |
+| Source groups and escalations | — | Included |
 
 Push delivery, account deletion, credential revocation, security protections,
 and a usable inbox are never paywalled. Before v1.0.0, monetization is ready

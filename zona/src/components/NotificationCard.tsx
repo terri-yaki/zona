@@ -84,7 +84,7 @@ export function NotificationCard({ item, onPress, repeatCount = 1 }: { item: Inb
 }
 
 const createStyles = () => StyleSheet.create({
-  card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: '#E9EEEB', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
+  card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
   cardCompact: { gap: 10, paddingHorizontal: 13, paddingVertical: 11 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
   avatar: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.72)', borderRadius: 13, borderWidth: 1, height: 44, justifyContent: 'center', position: 'relative', width: 44 },

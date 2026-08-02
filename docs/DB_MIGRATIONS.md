@@ -1,8 +1,9 @@
 # DB migration checklist (agent-facing)
 
-Run this checklist before any `supabase db push` or merge to `main` that
-carries a migration. The Deploy DB workflow applies whatever lands on `main`,
-so a mistake on `main` is a mistake in production within a minute.
+Run this checklist before any `supabase db push` or merge to `main` that carries
+a migration. CI rebuilds and tests the schema, but merging does not deploy it.
+The **Deploy DB** workflow is manual and uses the protected `production`
+environment so the operator can review the exact revision first.
 
 Migrations only change the **database**. They never bump the app version —
 `zona/app.json`'s `version` is edited separately (or via
@@ -12,8 +13,9 @@ app.json bump **and** a changelog migration with the matching label.
 
 ## 1. Before writing
 
-- [ ] Read the existing migrations. New file = `supabase/migrations/YYYYMMDDHHNNN_<slug>.sql`
-      with the next sequence. **Never edit an already-applied migration** —
+- [ ] Read the existing migrations, then create the next file with
+      `supabase migration new <slug>` from the repository root. Do not invent
+      or hand-order a timestamp. **Never edit an already-applied migration** —
       fixes are new forward-only migrations.
 - [ ] Confirm the change belongs in the DB (schema, constraint, RLS, seed
       content) and not in app code.
@@ -63,10 +65,13 @@ app.json bump **and** a changelog migration with the matching label.
       `supabase db reset` first. Otherwise re-read the SQL top to bottom as
       the reviewer.
 
-## 4. After the push (manual or CI)
+## 4. Deploy and verify
 
-- [ ] Confirm the apply: check the workflow run (Actions → Deploy DB) or the
-      `db push` output — "Applying migration …" then "Finished".
+- [ ] Wait for CI on the release revision. Then dispatch **Actions → Deploy
+      DB** from that exact ref, approve the production environment if required,
+      and confirm `migration list` contains only the expected pending rows.
+- [ ] Confirm the apply in the workflow or local `db push` output — "Applying
+      migration …" then "Finished".
 - [ ] **Verify the effect remotely, don't assume**: probe via REST/RPC
       (anonymous-session queries work for read paths). Examples: select the
       new row, attempt a write the constraint should reject, call the RPC

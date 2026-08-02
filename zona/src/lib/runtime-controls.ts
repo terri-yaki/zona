@@ -68,7 +68,6 @@ export const featureKeys = [
   'background.push_registration',
   'background.client_telemetry',
   'ios.widget',
-  'ios.shortcuts',
 ] as const;
 
 export type FeatureKey = (typeof featureKeys)[number];

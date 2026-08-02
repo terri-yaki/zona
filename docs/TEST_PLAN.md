@@ -2,7 +2,7 @@
 
 This plan is the release-verification contract for the private TestFlight
 version of Zona. It covers the Expo SDK 56 app, Supabase migration and Edge
-Functions, sender API, and physical-iPhone push behavior.
+Functions, sender API, and physical iOS/Android push behavior.
 
 Passing a compiler or finding no known bug is not proof of production
 readiness. Every release requires the evidence defined below.
@@ -165,11 +165,15 @@ through Zona's app-level recent-proof gate.
 
 ### Mobile component and integration tests
 
-Use React Native Testing Library with network/native modules mocked at their
-boundaries. In addition to the existing inbox and lifecycle coverage, verify
-search debounce, saved-filter restore/delete, pin and mark-unread state,
-repeated-alert expansion, schedule validation, diagnostic redaction, first-alert
-templates, and widget prop selection.
+The current automated mobile suite uses Vitest for pure helpers and parsers,
+plus focused `react-test-renderer` probes where hook lifecycle behavior matters;
+network and native modules are mocked at their boundaries. It does not claim
+React Native Testing Library coverage. Keep verifying search matching,
+saved-filter parsing, pin/mark-unread helpers, repeated-alert grouping,
+schedule validation, diagnostic redaction, first-alert templates, widget prop
+selection, foreground refresh, and themed-style rerenders. Interaction-heavy
+screen behavior remains part of the physical-device matrix until a dedicated
+native component harness is added.
 
 Native iOS release checks must generate the WidgetKit target and compile the
 App Intents source. On a physical iPhone, exercise every configured widget
@@ -263,11 +267,12 @@ generated tokens. Automate the following sequence:
 
 The suite must delete its synthetic Auth users and data after completion.
 
-## Physical-iPhone TestFlight matrix
+## Physical iOS and Android matrix
 
-Run on at least one currently supported physical iPhone/iOS version and, before
-external reliance, the oldest supported iOS version. Record device model, iOS,
-build ID, EAS build URL, account, time, and evidence link.
+Run on at least one currently supported physical iPhone/iOS version and one
+physical Android device with configured FCM credentials. Before external
+reliance, also exercise the oldest supported OS versions. Record device model,
+OS, build ID, EAS build URL, account, time, and evidence link.
 
 | Scenario | Expected result |
 | --- | --- |
@@ -281,7 +286,7 @@ build ID, EAS build URL, account, time, and evidence link.
 | Rename source | Future push uses new name; old inbox row keeps old name |
 | Revoke one of two sources | Only revoked source fails |
 | Expo service failure simulation | Inbox row still appears after refresh |
-| Magic link from Mail | Deep link returns to app and restores intended routing |
+| Enabled email/provider recovery | Callback returns to the app and restores intended routing |
 | Seven-day boundary | Expired item disappears and current item remains |
 | VoiceOver and large text | Primary flows remain understandable and operable |
 | Lock-screen preview settings | Content exposure matches documented user expectations |
@@ -336,7 +341,7 @@ Copy this table into the release ticket. Blank evidence is a failed gate.
 
 ## v0.0.10 Control Room matrix
 
-- Compare the 57 compiled feature keys with `private.app_control_catalog` and
+- Compare the 69 compiled runtime feature keys with `private.app_control_catalog` and
   assert that every key has one safe global baseline without duplicating the
   existing v0.0.6 rows.
 - Exercise `enabled`, `disabled`, `hidden`, and `read_only` on one control in

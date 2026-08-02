@@ -1,8 +1,9 @@
 # Zona
 
-Zona is a private, multi-source notification inbox for iOS and Android. Any local app can
-send an alert through an authenticated Supabase Edge Function; Expo delivers the
-push and the app keeps a seven-day inbox.
+Zona is a private, multi-source notification inbox for iOS and Android. Any local
+app can send an alert through an authenticated Supabase Edge Function. Zona
+stores the inbox item first, then a durable worker delivers eligible pushes and
+retries transient provider failures. Standard accounts keep a seven-day inbox.
 
 ## Projects
 
@@ -38,31 +39,35 @@ The deployed sender endpoint is
 `https://gerncrjtrdjtjvybvseb.supabase.co/functions/v1/notify`. The source token
 is the only sender credential; never use a Supabase secret key in a local app.
 
-The **API Keys** tab shows each key's name, safe prefix, last use, active state,
-per-source notification sound, and a reusable test-alert action. Settings
-includes server-backed switches for push delivery, global sound, and
-lock-screen message previews.
+The **Sources** tab opens each source's access-key list, including key name, safe
+prefix, last use, active state, and rotation/revocation actions. The source card
+also controls its sound and can send a reusable test alert. Settings includes
+server-backed switches for push delivery, global sound, and lock-screen message
+previews.
 
 ## Production-readiness documentation
 
+- `docs/README.md` — current documentation map and source-of-truth rules.
+- `docs/FEATURE_STATUS.md` — implemented, conditional, limited, and future
+  behavior reconciled against the app and backend.
 - `docs/PRD.md` — product scope, requirements, acceptance matrix, and blockers.
 - `docs/ARCHITECTURE.md` — data flow, trust boundaries, and extension rules.
 - `docs/ACCOUNT_MANAGEMENT.md` — v0.0.8 guest protection, provider sign-in,
   recovery, devices, deletion, and future integration boundaries.
 - `docs/openapi.yaml` — machine-readable Edge Function API contract.
-- `docs/TEST_PLAN.md` — automated and physical-iPhone release verification.
-- `docs/ROADMAP.md` — v0.0.8–v0.0.10 architecture and the path to Zona Plus.
+- `docs/TEST_PLAN.md` — automated and physical iOS/Android release verification.
+- `docs/ROADMAP.md` — release direction and the path to Zona Plus.
 - `docs/CHANGELOG_WRITING.md` — benefit-led, non-technical What's New copy.
 - `docs/BRANDING.md` — Zona Notify naming, voice, store copy, and N-to-Z motion.
-- `versions/` — separate database and documentation packages for v0.0.1–v0.0.6.
+- `versions/` — immutable database and documentation packages for v0.0.1–v0.0.8.
 - `docs/THREAT_MODEL.md` and `SECURITY.md` — risks and security policy.
 - `PRIVACY.md` — release-draft data and retention notice.
 - `docs/RUNBOOK.md` and `docs/RELEASE.md` — operations and TestFlight release.
 - `docs/PUBLIC_LAUNCH_PLAN.md` — public distribution, monetization, hosting,
   DevOps, and measured scaling roadmap.
 
-Zona is pre-production while the explicit release blockers in the PRD and
-release procedure remain open.
+Zona is distributed through private TestFlight and Android preview builds. The
+remaining public-launch gates are tracked in the PRD and release procedure.
 
 ## Security model
 

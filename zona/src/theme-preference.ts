@@ -38,6 +38,14 @@ export function useThemePreferenceId(): string {
 }
 
 /**
+ * Subscribed preset accessor for components that need the full preset
+ * (appearance flag, Live Activity palette), not just the id.
+ */
+export function useActiveThemePreset(): ThemePreset {
+  return useSyncExternalStore(subscribeThemePreference, getActiveThemePreset);
+}
+
+/**
  * Rebuilds styles on every render and subscribes the component to preset
  * changes, so `StyleSheet.create(...)` bodies re-read the live-bound `colors`
  * after a theme switch instead of keeping the values baked at module load.

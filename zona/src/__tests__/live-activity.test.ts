@@ -6,8 +6,10 @@ import {
   buildLiveActivityState,
   LIVE_ACTIVITY_COLORS,
   LIVE_ACTIVITY_SYMBOL,
+  liveActivityPalette,
   type ZonaLiveActivitySnapshot,
 } from '../lib/live-activity-presentation';
+import { findThemePreset, themePresets } from '../theme-presets';
 import { setActiveLanguage } from '../i18n';
 
 beforeEach(() => setActiveLanguage('en'));
@@ -93,6 +95,38 @@ describe('buildLiveActivityConfig', () => {
       '/notification/550e8400-e29b-41d4-a716-446655440000',
     );
     expect(buildLiveActivityConfig(snapshot({ latestId: null })).deepLinkUrl).toBe('/');
+  });
+
+  it('renders an explicit palette picked by the user', () => {
+    const ocean = findThemePreset('ocean')!;
+    const config = buildLiveActivityConfig(snapshot(), liveActivityPalette(ocean));
+    expect(config.backgroundColor).toBe(ocean.colors.primaryDark);
+    expect(config.titleColor).toBe(ocean.colors.white);
+    expect(config.subtitleColor).toBe(ocean.colors.primarySoft);
+  });
+});
+
+describe('liveActivityPalette', () => {
+  it('derives the palette from the preset primary family by default', () => {
+    for (const preset of themePresets.filter((candidate) => !candidate.liveActivity)) {
+      expect(liveActivityPalette(preset), `preset ${preset.id}`).toEqual({
+        background: preset.colors.primaryDark,
+        title: preset.colors.white,
+        subtitle: preset.colors.primarySoft,
+      });
+    }
+  });
+
+  it('honors an explicit preset override (neon)', () => {
+    const neon = findThemePreset('neon')!;
+    expect(neon.liveActivity).toBeDefined();
+    expect(liveActivityPalette(neon)).toEqual(neon.liveActivity);
+  });
+
+  it('changes the rendered palette when the picked theme changes', () => {
+    const meadowConfig = buildLiveActivityConfig(snapshot(), liveActivityPalette(findThemePreset('meadow')!));
+    const neonConfig = buildLiveActivityConfig(snapshot(), liveActivityPalette(findThemePreset('neon')!));
+    expect(meadowConfig.backgroundColor).not.toBe(neonConfig.backgroundColor);
   });
 });
 

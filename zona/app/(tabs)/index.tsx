@@ -65,7 +65,8 @@ export default function InboxScreen() {
   }), [debouncedSearch, effectiveSource, effectiveSince, effectiveUnreadOnly, pinnedFilterVisible, pinnedOnly, searchVisible, severity, severityFilterVisible]);
 
   const pageSize = runtimeNumber(snapshot, 'inbox.page_size', 30, 10, 100);
-  const inbox = useInbox(session?.user.id ?? '', filters, pageSize);
+  const widgetEnabled = isVisible('ios.widget') && isEnabled('ios.widget');
+  const inbox = useInbox(session?.user.id ?? '', filters, pageSize, widgetEnabled);
   const sourceState = useSources(true);
   const timeFilterMilliseconds = runtimeNumber(snapshot, 'inbox.time_filter_hours', 24, 1, 720) * 60 * 60 * 1_000;
   const maxSourceFilters = runtimeNumber(snapshot, 'inbox.max_source_filters', 50, 1, 200);

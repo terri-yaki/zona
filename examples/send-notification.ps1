@@ -4,7 +4,7 @@ param(
   [string]$Category = "test",
   [ValidateSet("low", "medium", "high", "critical")][string]$Severity,
   [string]$IdempotencyKey = "ps-$([guid]::NewGuid().ToString())",
-  # Optional evidence image path (PNG/JPEG/WebP, at most 5 MiB).
+  # Optional evidence image path (PNG/JPEG/WebP; the server enforces the account limit).
   [string]$Attachment
 )
 
@@ -24,8 +24,6 @@ if ($Attachment) {
   # HttpClient for multipart uploads on every PowerShell version.
   Add-Type -AssemblyName System.Net.Http
   $file = Get-Item -LiteralPath $Attachment -ErrorAction Stop
-  if ($file.Length -gt 5MB) { throw "Attachment must be no larger than 5 MiB." }
-
   $mime = switch ($file.Extension.ToLowerInvariant()) {
     ".png"  { "image/png" }
     ".jpg"  { "image/jpeg" }

@@ -1,11 +1,12 @@
 import { Redirect } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { DynamicColorIOS, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors } from '@/theme';
+import { useThemePreferenceId } from '@/theme-preference';
 
 /**
  * Native liquid glass tab bar via Expo Router NativeTabs (SDK 56).
@@ -16,6 +17,9 @@ import { colors } from '@/theme';
 export default function TabsLayout() {
   const { session, loading } = useAuth();
   const { t } = useI18n();
+  // Re-render on theme switches so the tab bar re-reads the live-bound colors;
+  // the explicit preset wins over the OS light/dark scheme by design.
+  useThemePreferenceId();
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/sign-in" />;
 
@@ -24,15 +28,10 @@ export default function TabsLayout() {
       backgroundColor={Platform.OS === 'ios' ? undefined : colors.surface}
       blurEffect="systemChromeMaterial"
       disableTransparentOnScrollEdge={false}
-      iconColor={Platform.OS === 'ios'
-        ? {
-            default: DynamicColorIOS({ light: colors.mutedLight, dark: '#A8B3AE' }),
-            selected: DynamicColorIOS({ light: colors.primary, dark: '#6FBFAD' }),
-          }
-        : {
-            default: colors.mutedLight,
-            selected: colors.primary,
-          }}
+      iconColor={{
+        default: colors.mutedLight,
+        selected: colors.primary,
+      }}
       indicatorColor={colors.primarySoft}
       labelVisibilityMode="labeled"
       labelStyle={{

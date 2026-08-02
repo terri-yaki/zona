@@ -1,10 +1,12 @@
 import { relativeTimeShort } from './format';
 import { translate, translateCount } from '../i18n';
+import type { ThemePreset } from '../theme-presets';
 
 /**
  * Presentation for the Live Status Live Activity — pure functions only.
  * Kept free of react-native / expo imports so it stays unit-testable
- * (see src/__tests__/live-activity.test.ts).
+ * (see src/__tests__/live-activity.test.ts). `@/theme-presets` is imported
+ * type-only: it stays pure data, so no runtime module is pulled in.
  */
 
 export type ZonaLiveActivitySnapshot = {
@@ -15,16 +17,36 @@ export type ZonaLiveActivitySnapshot = {
   latestCreatedAt: string | null;
 };
 
+export type LiveActivityPalette = {
+  background: string;
+  title: string;
+  subtitle: string;
+};
+
 /**
- * Lock-screen palette. Mirrors theme `primaryDark` / `white` / `primarySoft`;
- * hexes are duplicated because this module must not import `@/theme`
- * (react-native). The test locks the values so a rebrand fails loudly.
+ * Default lock-screen palette, matching the default (meadow) preset.
+ * Mirrors theme `primaryDark` / `white` / `primarySoft`; hexes are duplicated
+ * because this module must not import `@/theme` (react-native). The test
+ * locks the values so a rebrand fails loudly.
  */
-export const LIVE_ACTIVITY_COLORS = {
+export const LIVE_ACTIVITY_COLORS: LiveActivityPalette = {
   background: '#25564C',
   title: '#FFFFFF',
   subtitle: '#DDECE6',
-} as const;
+};
+
+/**
+ * Lock-screen palette for the user's picked theme preset: an explicit
+ * `liveActivity` override wins, otherwise the preset's primary family
+ * (primaryDark surface, white title, primarySoft subtitle).
+ */
+export function liveActivityPalette(preset: ThemePreset): LiveActivityPalette {
+  return preset.liveActivity ?? {
+    background: preset.colors.primaryDark,
+    title: preset.colors.white,
+    subtitle: preset.colors.primarySoft,
+  };
+}
 
 /** Native SF Symbol rendered by the iOS widget extension, not a bundled image. */
 export const LIVE_ACTIVITY_SYMBOL = 'sf:bell.badge.fill' as const;
@@ -56,15 +78,18 @@ export function buildLiveActivityState(snapshot: ZonaLiveActivitySnapshot) {
   };
 }
 
-export function buildLiveActivityConfig(snapshot: ZonaLiveActivitySnapshot) {
+export function buildLiveActivityConfig(
+  snapshot: ZonaLiveActivitySnapshot,
+  palette: LiveActivityPalette = LIVE_ACTIVITY_COLORS,
+) {
   const deepLinkUrl = snapshot.latestId
     ? `/notification/${snapshot.latestId}`
     : '/';
 
   return {
-    backgroundColor: LIVE_ACTIVITY_COLORS.background,
-    titleColor: LIVE_ACTIVITY_COLORS.title,
-    subtitleColor: LIVE_ACTIVITY_COLORS.subtitle,
+    backgroundColor: palette.background,
+    titleColor: palette.title,
+    subtitleColor: palette.subtitle,
     deepLinkUrl,
     padding: { horizontal: 16, top: 14, bottom: 14 },
     imagePosition: 'left' as const,

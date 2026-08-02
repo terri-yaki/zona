@@ -10,6 +10,7 @@ import { ImageLightbox } from '@/components/ImageLightbox';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useBottomSafePadding } from '@/components/TabScreen';
 import { deleteNotification, getNotification, getNotificationDeliverySummary, markNotificationRead, setNotificationPinned } from '@/data/notifications';
+import { deliveryStatusVisible } from '@/lib/app-version';
 import { userMessage } from '@/lib/errors';
 import { relativeTime, sourceInitial } from '@/lib/format';
 import { severityAppearance } from '@/lib/notification-severity';
@@ -54,7 +55,9 @@ export default function NotificationDetailScreen() {
   const [copied, setCopied] = useState(false);
   const [savingState, setSavingState] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const deliveryVisible = isVisible('notification.delivery_status') && isEnabled('notification.delivery_status');
+  const deliveryVisible = deliveryStatusVisible()
+    && isVisible('notification.delivery_status')
+    && isEnabled('notification.delivery_status');
   const deliveryPollMilliseconds = runtimeNumber(snapshot, 'notification.delivery_poll_seconds', 15, 5, 300) * 1_000;
   const attachmentUrlTtlSeconds = runtimeNumber(snapshot, 'notification.attachment_url_ttl_seconds', 3600, 60, 86400);
 

@@ -99,6 +99,10 @@ Recommended order:
 7. Compare deployed source/checksum and migration list to the release revision.
 8. Observe dashboards through the agreed bake period before mobile rollout.
 
+The repository's **Deploy DB** workflow is intentionally manual. Dispatch it
+from the reviewed release revision after CI passes; a merge to `main` alone does
+not authorize or apply production migrations.
+
 Never apply a destructive rollback or data rewrite without reviewed SQL, exact
 scope preview, backup evidence, and data-owner approval.
 
@@ -165,8 +169,10 @@ evidence. Use synthetic notification content only.
 
 An installed TestFlight binary cannot be remotely removed. Stop adding testers,
 expire/disable the affected build where supported, communicate the issue, and
-ship a corrected binary. Do not rely on OTA rollback because EAS Update is not
-configured.
+ship a corrected binary. Expo Updates is configured, but an OTA can change only
+compatible JavaScript/assets on the same app-version runtime and channel. Do not
+use it to mask a native, schema-contract, signing, privacy, or store-metadata
+problem; ship a corrected binary for those cases.
 
 ### Edge Functions
 

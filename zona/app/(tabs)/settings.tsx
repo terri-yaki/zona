@@ -12,6 +12,7 @@ import { getAppOptions, getCachedAppOptions, updateAppOptions, type AppOptionFla
 import { deleteAccount } from '@/lib/api';
 import { clearPrivateUserState } from '@/cache/private-state';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
+import { deliveryStatusVisible } from '@/lib/app-version';
 import {
   advanceDeleteConfirmation,
   cancelDeleteConfirmation,
@@ -342,6 +343,7 @@ export default function SettingsScreen() {
     : languageAutonym(preference);
   const showLanguage = isVisible('settings.language');
   const showTheme = isVisible('settings.theme');
+  const showDeliveryStatus = deliveryStatusVisible() && isVisible('settings.delivery_status');
   const showWhatsNew = isVisible('settings.whats_new');
   const showManualUpdate = isVisible('settings.manual_update');
   const showUserGuide = isVisible('settings.user_guide');
@@ -444,7 +446,7 @@ export default function SettingsScreen() {
         {optionsError ? <Text accessibilityLiveRegion="polite" style={styles.optionsError}>{optionsError}</Text> : null}
       </View></> : null}
 
-      {isVisible('settings.delivery_status') ? <><Text style={styles.section}>{t('settings.sectionDelivery')}</Text>
+      {showDeliveryStatus ? <><Text style={styles.section}>{t('settings.sectionDelivery')}</Text>
       <View style={styles.card}>
         <SettingRow icon="bell" label={t('settings.iosPermission')} value={permissionStatus} />
         <View style={styles.divider} />
@@ -518,10 +520,7 @@ export default function SettingsScreen() {
         {showOfflineCache ? <>{showLanguage || showTheme || showWhatsNew || showManualUpdate || showUserGuide ? <View style={styles.divider} /> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.offline_cache') }} disabled={!isEnabled('settings.offline_cache')} onPress={clearOfflineCache} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.offline_cache') && styles.disabled, pressed && styles.pressed]}>
           <View style={styles.rowIcon}><AppIcon color={colors.primary} fallback="□" name="internaldrive" size={17} /></View>
-          <View style={styles.cacheCopy}>
-            <Text style={styles.link}>{t('settings.offlineCache')}</Text>
-            <Text style={styles.cacheDescription}>{t('settings.offlineCacheDesc')}</Text>
-          </View>
+          <Text style={styles.link}>{t('settings.offlineCache')}</Text>
           <Text numberOfLines={1} style={styles.languageValue}>{formatCacheSize(visibleCacheBytes)}</Text>
           <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
         </Pressable></> : null}
@@ -701,7 +700,7 @@ const createStyles = () => StyleSheet.create({
   profileIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 22, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
   profileCopy: { flex: 1 },
   profileTitle: { color: colors.white, fontSize: 15, fontWeight: '800' },
-  profileEmail: { color: '#D8EAE4', fontSize: 12, marginTop: 3 },
+  profileEmail: { color: colors.primarySoft, fontSize: 12, marginTop: 3 },
   section: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 7, marginLeft: 5, marginTop: 18 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, overflow: 'hidden', paddingHorizontal: 14 },
   row: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },

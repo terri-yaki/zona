@@ -79,7 +79,7 @@ different security principals and must never share credentials.
 | Google | OAuth/PKCE or native ID token | `linkIdentity` | Yes | Yes |
 | GitHub | OAuth/PKCE | `linkIdentity` | Yes | Yes |
 
-Apple is a first-class method because Zona is an iPhone app and offers other
+Apple is a first-class method on iOS because Zona also offers other
 social login methods. Provider profile names and avatars are convenience data,
 not authorization claims. Zona stores only the minimum profile data needed for
 the account UI.

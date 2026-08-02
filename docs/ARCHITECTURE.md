@@ -101,11 +101,13 @@ than putting transport or persistence directly into screens.
 
 ### Authentication and account ownership
 
-v0.0.8 keeps private guest start while adding passwordless email, Apple,
-Google, and GitHub recovery. A guest is normally upgraded in place by linking
-a verified identity to the current Supabase Auth user; changing the Auth user
-ID during that flow is a failure. Sign-in on a replacement phone restores
-server-held account data but never reveals a source's one-time plaintext key.
+Zona keeps private guest start and includes passwordless email, Apple, Google,
+and GitHub recovery flows. The app reads Supabase's public Auth settings and
+shows only methods enabled for that deployment. A guest is normally upgraded in
+place by linking a verified identity to the current Supabase Auth user; changing
+the Auth user ID during that flow is a failure. Sign-in on a replacement phone
+restores server-held account data but never reveals a source's one-time
+plaintext key.
 
 An additive personal account and membership layer becomes the future resource,
 billing, and integration boundary. Existing `user_id` ownership remains
@@ -130,13 +132,15 @@ protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
 - `delete-account`: runs the durable account-deletion job with reauth.
 - `auth-transaction`: binds auth flows (protect_guest, link_method) to the
   current installation.
-- `test-source`: verifies a source credential with a queued test notification.
+- `test-source`: creates a test inbox item and reports how many durable delivery
+  jobs were queued. It uses the same quiet-schedule, retry, and receipt path as
+  normal sender traffic.
 
 Supabase gateway JWT verification is intentionally disabled in configuration;
 these functions call Supabase Auth to validate the Bearer user token. This is a
-security-sensitive invariant; handler contract tests live in
-`supabase/functions/_shared` and CI runs `deno test` + `deno check` (full
-endpoint tests need live secrets and are not yet present).
+security-sensitive invariant. Handler contract tests live in
+`supabase/functions/_shared`; CI runs Deno tests/type checks, then serves the
+functions against a disposable local Supabase stack for endpoint smoke tests.
 
 ### Notification ingestion
 
@@ -156,12 +160,14 @@ because ticket and receipt work is asynchronous. The
 transient failures with backoff, and polls receipts. Ticket acceptance is not
 device delivery proof.
 
-The app reads one notification's delivery state only through
+The v0.0.10 app reads one notification's delivery state only through
 `get_notification_delivery_summary()`. That owner-checked RPC reduces private
 jobs to safe counts and one of `not_sent`, `queued`, `sent`, or
 `needs_attention`; it never exposes push tokens, ticket IDs, worker leases, or
 raw provider messages. `sent` means APNs or FCM accepted at least one delivery,
-not that a person saw it.
+not that a person saw it. The v0.0.11 development build retains this backend
+but hides its notification-detail and Settings cards through
+`src/lib/app-version.ts`.
 
 ### Database
 
@@ -169,7 +175,7 @@ not that a person saw it.
 | --- | --- | --- |
 | `public.notification_sources` | Stable source identity and lifecycle | Owner RLS read; service-managed writes |
 | `public.source_access_keys` | Safe key metadata: name, prefix, active/expiry/revocation, usage, and sound | Owner RLS read; owner-checked RPC writes |
-| `public.notification_source_overview` | Joined source/key data for the API Keys screen | Owner RLS read |
+| `public.notification_source_overview` | Joined source/key data for Sources and its access-key screen | Owner RLS read |
 | `public.user_notification_preferences` | Push, sound, lock-screen preview, and Live Status preferences | Owner-checked RPC read/write |
 | `private.account_entitlements` | Server-owned plan and subscription state | Service/database function only |
 | `public.push_registrations` | Per-owner installation/token mapping | Service-managed only |
@@ -221,11 +227,9 @@ event or account deletion.
 
 ### Source creation
 
-v0.0.7 currently generates and hashes the token in the app, then stores the
-hash through an authenticated PostgREST RPC. That RPC remains a compatibility
-surface for installed builds.
-
-v0.0.8 makes the authenticated Edge API canonical:
+The current app uses the authenticated Edge API as the canonical creation path.
+The older app-generated token/PostgREST RPC remains only as a compatibility
+surface for installed pre-v0.0.8 builds:
 
 1. The server generates an opaque `zona_live_…` token with cryptographic
    randomness.
@@ -236,13 +240,13 @@ v0.0.8 makes the authenticated Edge API canonical:
 4. A source may later receive a second independently revocable key for overlap
    rotation without changing the source UUID, display name, sound, or history.
 
-The one-to-many schema migration and old-client cutover are specified in
-[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and ADR 0001's v0.0.8
-amendment. OpenAPI changes ship with the implementation, not ahead of it.
+The one-to-many schema and old-client compatibility rules are specified in
+[ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and ADR 0001's v0.0.8 amendment.
+OpenAPI changes ship with the implementation, not ahead of it.
 
-Losing a token does not make it recoverable. Before v0.0.8, create a
-replacement source, verify it, and revoke the old source. In v0.0.8, create a
+Losing a token does not make it recoverable. In the current app, create a
 replacement key on the same source, verify it, then revoke only the lost key.
+Pre-v0.0.8 clients must instead create a replacement source.
 
 ### Notification acceptance
 
@@ -250,31 +254,33 @@ replacement key on the same source, verify it, then revoke only the lost key.
    `multipart/form-data` when attaching one evidence image.
 2. Edge Function hashes the token, validates the payload (image format comes
    from magic bytes, never from names or headers), and calls atomic ingestion.
-3. Database locks the source’s rate-limit key, verifies API-key active/expiry
-   state and revocation, records usage, snapshots the source name, and inserts
-   the notification. Severity and the image’s SHA-256 participate in the
-   idempotency hash.
+3. Database locks the source’s rate-limit key, verifies access-key active/expiry
+   state and revocation, records usage, snapshots the source name, inserts the
+   notification, and creates eligible per-phone delivery jobs. Account/source
+   quiet schedules suppress only those jobs. Severity and the image’s SHA-256
+   participate in the idempotency hash.
 4. A sent image is uploaded to the private `notification-attachments` bucket at
    `{user_id}/{notification_id}` and its metadata is written to the row.
-5. Function reads the owner's notification preferences and the originating
-   access key's `sound_name`; it
-   may skip push, remove sound, choose a bundled per-source sound, or replace
-   lock-screen content with a generic private preview before Expo delivery.
-6. Function records tickets/failures and returns HTTP 202.
+5. The function reads the durable queue count and returns HTTP 202 without
+   waiting for Expo. `pushQueued: 0` is valid when push is disabled, no eligible
+   phone exists, or a quiet schedule applies.
+6. The worker later applies preview/sound preferences, sends Expo batches,
+   records tickets and receipts, and retries bounded transient failures.
 7. The app receives a realtime event or fetches the row on refresh, and reads
    the image through an owner-scoped signed URL.
 
-If step 4 or 5 fails, steps 3 and 7 remain valid; attachment storage is
-best-effort exactly like push.
+If attachment upload or push delivery fails, steps 3 and 7 remain valid. The
+accepted inbox row is authoritative; attachment storage is best effort and push
+has its own durable retry lifecycle.
 
 ### Rename, pause, and revoke
 
-Rename updates the source and API-key metadata names; existing notification
-snapshots do not change. Pausing sets `api_keys.is_active = false` and is
-reversible. Revocation sets `revoked_at` and permanently deactivates the key.
+Rename updates the source and access-key metadata names; existing notification
+snapshots do not change. Pausing sets the access key's `is_active` flag false
+and is reversible. Revocation sets `revoked_at` and permanently deactivates the key.
 The credential hash remains until account deletion or an approved purge policy.
 Routine rename/pause actions also use authenticated PostgREST RPC wrappers so
-the API Keys screen does not wait for an Edge Function cold start.
+the Sources/access-key screens do not wait for an Edge Function cold start.
 
 ### Push interaction
 
@@ -287,7 +293,7 @@ record access.
 
 | Boundary | Credential | Storage rule |
 | --- | --- | --- |
-| iPhone to Supabase Auth/RLS | User access/refresh session | Platform-appropriate client storage managed by Supabase client configuration |
+| Mobile app to Supabase Auth/RLS | User access/refresh session | Platform-appropriate client storage managed by Supabase client configuration |
 | Sender to `notify` | Per-source Bearer token | OS-backed secret store; never source control, logs, URL, or metadata |
 | Edge Function to database | Supabase secret/service role | Hosted secret only; never Expo or sender configuration |
 | Backend to Expo | Expo push token payload | Server-side request; token stored as account data |

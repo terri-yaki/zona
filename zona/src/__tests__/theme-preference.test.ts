@@ -49,8 +49,18 @@ describe('theme preference', () => {
 
   it('rejects unknown presets without changing the active theme', async () => {
     await setActiveThemePreset('meadow');
-    await expect(setActiveThemePreset('neon')).rejects.toThrowError('UNKNOWN_THEME_PRESET');
+    await expect(setActiveThemePreset('ultraviolet')).rejects.toThrowError('UNKNOWN_THEME_PRESET');
     expect(getActiveThemePresetId()).toBe('meadow');
+  });
+
+  it('selects the newly added minimalist and neon presets', async () => {
+    await setActiveThemePreset('minimalist');
+    expect(getActiveThemePresetId()).toBe('minimalist');
+    expect(colors.primary).toBe(findThemePreset('minimalist')!.colors.primary);
+
+    await setActiveThemePreset('neon');
+    expect(getActiveThemePresetId()).toBe('neon');
+    expect(colors.background).toBe(findThemePreset('neon')!.colors.background);
   });
 
   it('persists the choice across a simulated restart', async () => {

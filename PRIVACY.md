@@ -12,10 +12,12 @@ Connect privacy answers before distribution. It is not legal advice.
 
 ## What Zona does
 
-Zona lets a signed-in user receive a synchronized seven-day alert inbox from
+Zona lets a signed-in user receive a synchronized alert inbox from
 trusted PCs or local applications. A sender submits an alert to Supabase. Zona
-stores the alert and makes one best-effort request through Expo Push Service and
-Apple Push Notification service (APNs) to registered iPhones.
+stores the alert first, then queues eligible delivery through Expo Push Service
+and Apple Push Notification service (APNs) or Google FCM. Transient delivery
+failures may be retried for registered phones. Retention is plan-resolved and
+shown in the app; the standard plan currently keeps alerts for seven days.
 
 ## Data processed
 
@@ -57,9 +59,11 @@ Data is processed by infrastructure needed to provide Zona:
   and scheduled cleanup.
 - **Expo Push Service** receives push tokens and notification payloads to submit
   messages to platform push services.
-- **Apple APNs and iOS** deliver and display push notifications.
-- **Expo/EAS and Apple Developer/App Store Connect** process build,
-  distribution, signing, tester, and operational account data.
+- **Apple APNs/iOS and Google FCM/Android** deliver and display push
+  notifications on their respective platforms.
+- **Expo/EAS, Apple Developer/App Store Connect, and Android distribution
+  services used by the operator** process build, distribution, signing, tester,
+  and operational account data.
 
 Before release, identify the actual providers, operator entity, hosting regions,
 data-processing terms, international transfer mechanism, and subprocessors in
@@ -69,19 +73,21 @@ to protect users/service security, subject to applicable requirements.
 ## Notification-content warning
 
 The title, body, source label, and selected routing metadata are sent through
-Supabase, Expo, and APNs. Depending on iOS settings, they may be visible on the
-lock screen or to someone with physical access to the device.
+Supabase, Expo, and APNs or FCM. Depending on phone settings, they may be visible
+on the lock screen or to someone with physical access to the device. Zona's
+preview setting can replace the remote push text with a generic message; the
+full inbox item remains stored in Zona.
 
 Do not submit passwords, API keys, source tokens, personal access tokens, magic
 links, or unnecessary sensitive/regulated information as notification content
-or metadata. Users control notification previews in iOS Settings. A future
-redacted-push option would require a product/privacy update.
+or metadata. Users can also control notification previews in operating-system
+settings.
 
 ## Retention
 
 | Data | Intended retention |
 | --- | --- |
-| Notifications, evidence images, and associated push-delivery diagnostics | Seven days from acceptance, then automated deletion |
+| Notifications, evidence images, and associated push-delivery diagnostics | The plan-resolved period shown in the app (seven days for the standard plan), then automated deletion |
 | Per-source rate-limit request rows | One day |
 | Active sources and credential hashes | Until source/account deletion |
 | Revoked source records and hashes | Until account deletion or an approved documented archival purge |
@@ -95,16 +101,16 @@ and period rather than silently overriding this table.
 
 ## User choices and rights
 
-Users can choose not to grant iOS notification permission and still use the
+Users can choose not to grant notification permission and still use the
 synchronized inbox. They can rename/revoke a source, mark/delete individual
 notifications, deregister the current installation through safe sign-out, and
-control lock-screen previews in iOS Settings.
+control lock-screen previews in Zona and operating-system settings.
 
-Before release, Zona must provide an easy-to-find in-app method to initiate full
-account deletion. It must delete the Supabase Auth account and owned sources,
-credential hashes, push registrations, notifications, and delivery data that
-the operator is not legally required to retain. Until implemented and verified,
-external distribution is blocked.
+Zona provides an easy-to-find, confirmed in-app method to initiate full account
+deletion. It deletes the Supabase Auth account and owned sources, credential
+hashes, push registrations, notifications, and delivery data that the operator
+is not legally required to retain. Public distribution still requires recorded
+end-to-end deletion evidence and final legal/provider retention wording.
 
 The final notice must explain how to request access, correction, deletion,
 restriction, portability, or objection where applicable, how identity is

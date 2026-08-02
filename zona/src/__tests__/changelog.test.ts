@@ -124,7 +124,7 @@ describe('bundledChangelog', () => {
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 
     const zh = bundledChangelog('zh-Hant');
-    expect(zh[0].title).toBe('一打開，信箱已經準備好');
+    expect(zh[0].title).toBe('一打開，收件匣已經準備好');
     expect(zh[0].dateLabel).toBe('2026 年 7 月');
   });
 });

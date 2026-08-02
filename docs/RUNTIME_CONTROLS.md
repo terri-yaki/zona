@@ -52,9 +52,17 @@ safe to draft a rule before publishing it.
 | Settings/account | `settings.account_summary`, `settings.delivery_status`, `settings.push`, `settings.push_registration`, `settings.sound`, `settings.preview`, `settings.live_activity`, `settings.language`, `settings.theme`, `settings.whats_new`, `settings.manual_update`, `settings.user_guide`, `settings.offline_cache`, `settings.app_status`, `settings.quiet_hours`, `account.usage` |
 | App Status | `status.control_summary`, `status.plan_limits`, `status.configuration_details`, `status.support_link`, `status.copy_diagnostics` |
 | Onboarding/background | `onboarding.push`, `onboarding.first_alert`, `background.live_activity`, `background.push_registration`, `background.client_telemetry` |
-| Native iOS | `ios.widget`, `ios.shortcuts` |
+| Native iOS | `ios.widget` (controls whether the app writes new widget snapshots) |
 
 Source revocation and the Privacy/account controls are intentionally absent.
+Apple Shortcuts are compiled into the iOS binary and therefore are not a
+runtime feature control. Adding, removing, or changing those actions requires
+a new signed build.
+
+`notification.delivery_status` and `settings.delivery_status` remain in the
+catalog for v0.0.10 compatibility. The v0.0.11 development build has an
+additional compiled version gate that hides both surfaces; an enabled runtime
+rule cannot override that build capability decision.
 
 ### Typed setting catalog
 

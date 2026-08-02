@@ -21,7 +21,7 @@ import { savePendingNotificationId, takePendingNotificationId } from '@/lib/pend
 import { isUuid } from '@/lib/validation';
 import { translate } from '@/i18n';
 import { colors, radius } from '@/theme';
-import { hydrateThemePreference, useThemedStyles } from '@/theme-preference';
+import { hydrateThemePreference, useActiveThemePreset, useThemedStyles } from '@/theme-preference';
 
 function NotificationNavigation() {
   const router = useRouter();
@@ -124,6 +124,11 @@ export default function RootLayout() {
 function RootNavigator() {
   const { t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
+  // Subscribing to the active preset re-renders the navigator on a theme
+  // switch so the Stack screenOptions below re-resolve the live-bound colors
+  // instead of keeping the palette baked at first render.
+  const themePreset = useActiveThemePreset();
+  const chromeStyle = themePreset.appearance === 'dark' ? 'light' : 'dark';
   return (
     <>
       <CacheLifecycleSync />
@@ -132,8 +137,8 @@ function RootNavigator() {
           {isVisible('background.push_registration') && isEnabled('background.push_registration') ? <PushRegistrationSync /> : null}
           {isVisible('background.live_activity') && isEnabled('background.live_activity') ? <LiveActivitySync /> : null}
           <NotificationNavigation />
-          <NavigationBar style="dark" />
-          <StatusBar style="dark" />
+          <NavigationBar style={chromeStyle} />
+          <StatusBar style={chromeStyle} />
           <Stack screenOptions={{
             contentStyle: { backgroundColor: colors.background },
             headerBackButtonDisplayMode: 'minimal',

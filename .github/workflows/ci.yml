@@ -56,6 +56,7 @@ jobs:
           node-version: 24
       - run: npx --yes @redocly/cli@2.43.2 lint docs/openapi.yaml --format=github-actions
       - run: node scripts/check-openapi-contract.mjs
+      - run: node scripts/check-documentation.mjs
 
   database:
     runs-on: ubuntu-latest
