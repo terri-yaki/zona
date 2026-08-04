@@ -6,7 +6,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
-No entries yet.
+### Fixed
+
+- The inbox and sources loading indicators no longer stay stuck when a refresh hangs or is superseded while opening or reopening Zona.
 
 ## [0.0.11] - 2026-08-02
 
