@@ -75,7 +75,8 @@ returns 409.
 - `src/lib/` — `supabase.ts` (public client), account/auth callback helpers, `api.ts` (Edge
   Function transport), `push.ts`, `auth-storage.ts`,
   `env.ts`, `validation.ts`, `errors.ts`, `format.ts`,
-  `pending-notification.ts`.
+  `pending-notification.ts`, `timeout.ts` (`withTimeout`
+  helper bounding inbox/sources fetches and cache reads).
 - `src/data/` — `notifications.ts`, `sources.ts` (query layer).
 - `src/hooks/` — `useInbox.ts`, `useSources.ts`.
 - `src/components/` — presentation-only controls.
