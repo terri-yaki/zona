@@ -11,6 +11,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 - Opening or returning to Zona no longer leaves the inbox or sources list
   stuck on a spinning indicator; a refresh that stalls now steps aside so the
   latest content can load.
+- Quiet hours in Settings now lines up with the other notification rows
+  (same label, description, and spacing as the switches above it).
 
 ## [0.0.11] - 2026-08-02
 

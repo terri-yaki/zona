@@ -437,8 +437,19 @@ export default function SettingsScreen() {
         ) : null}
         {isVisible('settings.quiet_hours') ? <>
           {isVisible('settings.push') || isVisible('settings.sound') || isVisible('settings.preview') || (liveActivitySupported && isVisible('settings.live_activity')) ? <View style={styles.divider} /> : null}
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isEnabled('settings.quiet_hours') }} disabled={!isEnabled('settings.quiet_hours')} onPress={() => router.push('/notification-schedule' as never)} style={({ pressed }) => [styles.registerRow, !isEnabled('settings.quiet_hours') && styles.disabled, pressed && styles.pressed]}>
-            <View style={styles.cacheCopy}><Text style={styles.link}>{t('settings.quietHours')}</Text><Text style={styles.cacheDescription}>{t('settings.quietHoursDesc')}</Text></View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !isEnabled('settings.quiet_hours') }}
+            disabled={!isEnabled('settings.quiet_hours')}
+            onPress={() => router.push('/notification-schedule' as never)}
+            style={({ pressed }) => [styles.optionRow, !isEnabled('settings.quiet_hours') && styles.disabled, pressed && styles.pressed]}
+          >
+            <View style={styles.optionCopy}>
+              <Text style={styles.optionLabel}>{t('settings.quietHours')}</Text>
+              <Text style={styles.optionDescription}>
+                {controlDescription('settings.quiet_hours', t('settings.quietHoursDesc'))}
+              </Text>
+            </View>
             <AppIcon color={colors.mutedLight} fallback="›" name="chevron.right" size={13} />
           </Pressable>
         </> : null}
