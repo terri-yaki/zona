@@ -62,6 +62,15 @@ export function useSources(includeRevoked = true) {
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
   const loadGeneration = useRef(0);
+  const cacheKeyRef = useRef(cacheKey);
+  // In-flight load for the current cache key. Cold start fires both the focus
+  // effect and the foreground handler; the second caller joins the in-flight
+  // load instead of issuing a duplicate fetch.
+  const loadInFlightKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    cacheKeyRef.current = cacheKey;
+  }, [cacheKey]);
 
   useEffect(() => {
     const request = ++generation.current;
@@ -101,7 +110,10 @@ export function useSources(includeRevoked = true) {
       } catch (storageError) {
         console.warn('Could not hydrate the source cache.', storageError);
       } finally {
-        if (request === generation.current) setHydratedCacheKey(cacheKey);
+        if (request === generation.current) {
+          setHydratedCacheKey(cacheKey);
+          setLoading(false);
+        }
       }
     });
     return () => { active = false; };
@@ -119,11 +131,17 @@ export function useSources(includeRevoked = true) {
 
   const load = useCallback(async (refresh = false) => {
     if (!userId) return;
+    const key = cacheKey;
+    if (loadInFlightKey.current === key) {
+      if (refresh) setRefreshing(true);
+      return;
+    }
+    loadInFlightKey.current = key;
     const request = ++generation.current;
     const loadRequest = ++loadGeneration.current;
     const lease = currentCacheLease(userId);
     if (refresh) setRefreshing(true);
-    else if (!sourceCache.has(cacheKey)) setLoading(true);
+    else if (!sourceCache.has(key)) setLoading(true);
     setError(null);
     try {
       const next = await withTimeout(
@@ -131,16 +149,19 @@ export function useSources(includeRevoked = true) {
         FOREGROUND_REFRESH_TIMEOUT_MS,
         translate('error.connection'),
       );
-      if (request === generation.current && isCacheLeaseCurrent(lease)) {
+      if (request === generation.current && key === cacheKeyRef.current && isCacheLeaseCurrent(lease)) {
         commit(next);
         void syncAndroidSourceNotificationChannels(next).catch((channelError) => {
           console.warn('Could not synchronize Android source notification channels.', channelError);
         });
       }
     } catch (caught) {
-      if (request === generation.current) setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
+      if (request === generation.current && key === cacheKeyRef.current) {
+        setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
+      }
     } finally {
-      if (loadRequest === loadGeneration.current) {
+      if (loadInFlightKey.current === key) loadInFlightKey.current = null;
+      if (loadRequest === loadGeneration.current && key === cacheKeyRef.current) {
         setLoading(false);
         setRefreshing(false);
       }

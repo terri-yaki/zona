@@ -159,6 +159,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
   const loadMoreGeneration = useRef(0);
   const cacheKeyRef = useRef(cacheKey);
   const cacheVariantRef = useRef(cacheVariant);
+  // In-flight load for the current cache key. Cold start fires both the focus
+  // effect and the foreground handler; the second caller joins the in-flight
+  // load instead of issuing a duplicate fetch, and a refresh/realtime join
+  // upgrades it so it never short-circuits on a fresh cache.
+  const loadInFlightRef = useRef<{ key: string; refresh: boolean } | null>(null);
 
   useEffect(() => {
     cacheKeyRef.current = cacheKey;
@@ -191,9 +196,21 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
   }, [userId, widgetEligible, widgetEnabled]);
 
   const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
+    const key = cacheKeyRef.current;
+    const inFlight = loadInFlightRef.current;
+    if (inFlight && inFlight.key === key) {
+      if (mode === 'refresh') {
+        inFlight.refresh = true;
+        setRefreshing(true);
+      } else if (mode === 'realtime') {
+        inFlight.refresh = true;
+      }
+      return;
+    }
+    const context = { key, refresh: mode === 'refresh' || mode === 'realtime' };
+    loadInFlightRef.current = context;
     const request = ++generation.current;
     const loadRequest = ++loadGeneration.current;
-    const key = cacheKeyRef.current;
     const variant = cacheVariantRef.current;
     let memory = pageCache.get(key);
 
@@ -203,7 +220,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
     setError(null);
 
     try {
-      if (!memory && mode !== 'refresh' && mode !== 'realtime') {
+      if (!memory && mode !== 'realtime') {
         const cached = await withTimeout(
           readCache<StoredInboxPage>(userId, 'inbox', variant),
           FOREGROUND_REFRESH_TIMEOUT_MS,
@@ -215,11 +232,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
           memory = pageCache.get(key);
           setBootstrapping(false);
           setFilterLoading(false);
-          if (cached.state === 'fresh') return;
+          if (cached.state === 'fresh' && !context.refresh) return;
         }
       }
 
-      if (memory && isFresh(memory) && mode !== 'refresh' && mode !== 'realtime') return;
+      if (!context.refresh && memory && isFresh(memory)) return;
 
       const snapshot = await withTimeout(
         getInboxSnapshot(filters, pageSize),
@@ -233,6 +250,7 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
         setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
       }
     } finally {
+      if (loadInFlightRef.current === context) loadInFlightRef.current = null;
       if (loadRequest === loadGeneration.current && key === cacheKeyRef.current) {
         setBootstrapping(false);
         setFilterLoading(false);
@@ -280,7 +298,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
     setError(null);
     try {
       const readAt = new Date().toISOString();
-      await markAllNotificationsRead(readAt);
+      await withTimeout(
+        markAllNotificationsRead(readAt),
+        FOREGROUND_REFRESH_TIMEOUT_MS,
+        translate('error.connection'),
+      );
       markMemoryItemsRead(userId, readAt);
       void markCacheDirty(userId, 'inbox').catch(() => undefined);
       setUnreadCount(0);
