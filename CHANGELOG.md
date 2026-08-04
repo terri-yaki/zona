@@ -24,6 +24,8 @@ No entries yet.
   diagnostics remain in place.
 - Settings now says "Clear cache" plainly, and the confirmation dialog uses the
   same wording.
+- Quiet hours now line up cleanly with the rest of Settings and automatically
+  follow the phone's time zone, with no time-zone field to manage.
 
 ### Fixed
 

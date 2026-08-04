@@ -43,11 +43,11 @@ function parseFilter(value: unknown): SavedInboxFilter | null {
 }
 
 async function call(name: string, args: Record<string, unknown> = {}) {
-  const rpc = supabase.rpc as unknown as (
-    rpcName: string,
-    rpcArgs?: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
-  const { data, error } = await rpc(name, args);
+  // Method call preserves the Supabase client receiver (`this.rest`).
+  const { data, error } = await supabase.rpc(name as never, args as never) as unknown as {
+    data: unknown;
+    error: { code?: string; message?: string } | null;
+  };
   if (error) throw dataError(error, translate('inbox.savedFilterError'));
   return data;
 }

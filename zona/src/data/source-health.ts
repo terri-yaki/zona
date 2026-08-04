@@ -40,10 +40,10 @@ function parseHealth(value: unknown): SourceHealth | null {
 }
 
 export async function getSourceHealth() {
-  const rpc = supabase.rpc as unknown as (
-    name: string,
-  ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
-  const { data, error } = await rpc('get_source_health');
+  // Method call preserves the Supabase client receiver (`this.rest`).
+  const { data, error } = await supabase.rpc(
+    'get_source_health' as never,
+  ) as unknown as { data: unknown; error: { code?: string; message?: string } | null };
   if (error) throw dataError(error, translate('sources.healthLoadError'));
   return Array.isArray(data) ? data.flatMap((item) => parseHealth(item) ?? []) : [];
 }

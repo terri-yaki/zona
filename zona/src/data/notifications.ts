@@ -91,22 +91,22 @@ async function getInboxPageV2(
   cursor: InboxCursor | null,
   pageSize: number,
 ) {
-  const rpc = supabase.rpc as unknown as (
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
-  const { data, error } = await rpc('get_inbox_page_v2', {
-    p_cursor_created_at: cursor?.createdAt ?? null,
-    p_cursor_id: cursor?.id ?? null,
-    p_cursor_pinned: cursor?.pinned ?? null,
-    p_page_size: pageSize,
-    p_pinned_only: filters.pinnedOnly ?? false,
-    p_search: (filters.searchQuery ?? '').trim() || null,
-    p_severity: filters.severity ?? null,
-    p_since: filters.since,
-    p_source_id: filters.sourceId,
-    p_unread_only: filters.unreadOnly,
-  });
+  // Call as a method on the client so `this.rest` is defined (never extract `supabase.rpc`).
+  const { data, error } = await supabase.rpc(
+    'get_inbox_page_v2' as never,
+    {
+      p_cursor_created_at: cursor?.createdAt ?? null,
+      p_cursor_id: cursor?.id ?? null,
+      p_cursor_pinned: cursor?.pinned ?? null,
+      p_page_size: pageSize,
+      p_pinned_only: filters.pinnedOnly ?? false,
+      p_search: (filters.searchQuery ?? '').trim() || null,
+      p_severity: filters.severity ?? null,
+      p_since: filters.since,
+      p_source_id: filters.sourceId,
+      p_unread_only: filters.unreadOnly,
+    } as never,
+  ) as unknown as { data: unknown; error: { code?: string; message?: string } | null };
   if (error) {
     if (inboxV2Unavailable(error)
       && !filters.pinnedOnly
@@ -157,13 +157,10 @@ function deliveryRpcUnavailable(error: { code?: string; message?: string }) {
 }
 
 export async function getNotificationDeliverySummary(notificationId: string) {
-  const rpc = supabase.rpc as unknown as (
-    name: string,
-    args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>;
-  const { data, error } = await rpc('get_notification_delivery_summary', {
-    p_notification_id: notificationId,
-  });
+  const { data, error } = await supabase.rpc(
+    'get_notification_delivery_summary' as never,
+    { p_notification_id: notificationId } as never,
+  ) as unknown as { data: unknown; error: { code?: string; message?: string } | null };
   if (error) {
     // Keep a new binary compatible while the additive RPC reaches production.
     if (deliveryRpcUnavailable(error)) return null;

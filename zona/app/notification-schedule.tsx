@@ -1,4 +1,3 @@
-import { getCalendars } from 'expo-localization';
 import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
@@ -7,6 +6,7 @@ import { AppIcon } from '@/components/AppIcon';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { useBottomSafePadding } from '@/components/TabScreen';
 import { getNotificationSchedule, setNotificationSchedule, type NotificationSchedule } from '@/data/notification-schedules';
+import { resolveDeviceTimeZone } from '@/lib/device-timezone';
 import { userMessage } from '@/lib/errors';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -49,8 +49,7 @@ export default function NotificationScheduleScreen() {
     let active = true;
     void getNotificationSchedule(sourceId).then((value) => {
       if (!active) return;
-      const deviceTimezone = getCalendars()[0]?.timeZone;
-      const next = value.updatedAt || !deviceTimezone ? value : { ...value, timezone: deviceTimezone };
+      const next = { ...value, timezone: resolveDeviceTimeZone() };
       setSchedule(next);
       setStartText(formatMinute(next.startMinute));
       setEndText(formatMinute(next.endMinute));
@@ -77,13 +76,18 @@ export default function NotificationScheduleScreen() {
     if (!schedule || saving) return;
     const startMinute = parseMinute(startText);
     const endMinute = parseMinute(endText);
-    if (startMinute === null || endMinute === null || !schedule.timezone.trim()) {
+    if (startMinute === null || endMinute === null) {
       Alert.alert(t('schedule.invalidTitle'), t('schedule.invalidBody'));
       return;
     }
     setSaving(true);
     try {
-      const saved = await setNotificationSchedule({ ...schedule, startMinute, endMinute, timezone: schedule.timezone.trim() });
+      const saved = await setNotificationSchedule({
+        ...schedule,
+        startMinute,
+        endMinute,
+        timezone: resolveDeviceTimeZone(),
+      });
       setSchedule(saved);
       Alert.alert(t('schedule.savedTitle'), t('schedule.savedBody'));
       router.back();
@@ -128,10 +132,6 @@ export default function NotificationScheduleScreen() {
       </View>
       <Text style={styles.hint}>{t('schedule.windowHint')}</Text>
 
-      <Text style={styles.section}>{t('schedule.timezone')}</Text>
-      <TextInput accessibilityLabel={t('schedule.timezone')} autoCapitalize="none" editable={schedule.enabled} onChangeText={(timezone) => setSchedule({ ...schedule, timezone })} placeholder="Asia/Hong_Kong" placeholderTextColor={colors.muted} style={[styles.input, !schedule.enabled && styles.disabled]} value={schedule.timezone} />
-      <Text style={styles.hint}>{t('schedule.timezoneHint')}</Text>
-
       <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={({ pressed }) => [styles.save, saving && styles.disabled, pressed && styles.pressed]}>{saving ? <ActivityIndicator color={colors.white} /> : <><AppIcon color={colors.white} fallback="S" name="checkmark" size={16} /><Text style={styles.saveText}>{t('schedule.save')}</Text></>}</Pressable>
     </ScrollView>
   </>;
@@ -159,7 +159,6 @@ const createStyles = () => StyleSheet.create({
   timeField: { flex: 1 },
   fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginBottom: 6 },
   timeInput: { backgroundColor: colors.background, borderRadius: radius.small, color: colors.text, fontSize: 18, fontWeight: '700', minHeight: 48, paddingHorizontal: 12, textAlign: 'center' },
-  input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, color: colors.text, fontSize: 15, minHeight: 50, paddingHorizontal: 14 },
   hint: { color: colors.muted, fontSize: 11, lineHeight: 16, marginHorizontal: 3, marginTop: 7 },
   save: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 28, minHeight: 52 },
   saveText: { color: colors.white, fontSize: 15, fontWeight: '700' },

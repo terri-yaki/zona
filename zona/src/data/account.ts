@@ -31,7 +31,14 @@ export type AccountInstallation = {
 };
 
 type RpcResult = Promise<{ data: unknown; error: PostgrestError | null }>;
-const rpc = supabase.rpc as unknown as (name: string, args?: Record<string, unknown>) => RpcResult;
+
+/** Invoke RPC as a method on the client so `this.rest` remains defined. */
+function rpc(name: string, args?: Record<string, unknown>): RpcResult {
+  if (args === undefined) {
+    return supabase.rpc(name as never) as unknown as RpcResult;
+  }
+  return supabase.rpc(name as never, args as never) as unknown as RpcResult;
+}
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

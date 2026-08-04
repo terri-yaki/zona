@@ -19,13 +19,8 @@
       }
     },
     "preview": {
-      "distribution": "internal",
+      "extends": "production",
       "channel": "preview",
-      "environment": "preview",
-      "autoIncrement": true,
-      "ios": {
-        "simulator": false
-      },
       "android": {
         "buildType": "apk",
         "env": {
