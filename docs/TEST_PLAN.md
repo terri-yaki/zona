@@ -171,7 +171,10 @@ network and native modules are mocked at their boundaries. It does not claim
 React Native Testing Library coverage. Keep verifying search matching,
 saved-filter parsing, pin/mark-unread helpers, repeated-alert grouping,
 schedule validation, diagnostic redaction, first-alert templates, widget prop
-selection, foreground refresh, and themed-style rerenders. Interaction-heavy
+selection, foreground refresh, and themed-style rerenders. Fake-timer
+regression suites cover hung inbox/sources fetches and cache reads timing out
+without stranding the refreshing, loading-more, or bootstrap indicators, and
+superseded loads from mid-flight filter changes clearing their indicators. Interaction-heavy
 screen behavior remains part of the physical-device matrix until a dedicated
 native component harness is added.
 
