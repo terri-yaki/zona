@@ -8,7 +8,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
-- The inbox and sources loading indicators no longer stay stuck when a refresh hangs or is superseded while opening or reopening Zona.
+- Opening or returning to Zona no longer leaves the inbox or sources list
+  stuck on a spinning indicator; a refresh that stalls now steps aside so the
+  latest content can load.
 
 ## [0.0.11] - 2026-08-02
 
