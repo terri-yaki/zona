@@ -15,6 +15,7 @@ import { syncAndroidSourceNotificationChannels } from '@/lib/android-source-noti
 import { runOnForeground } from '@/lib/foreground';
 import { useAuth } from '@/providers/AuthProvider';
 import { translate } from '@/i18n';
+import { FOREGROUND_REFRESH_TIMEOUT_MS, withTimeout } from '@/lib/timeout';
 import type { Source } from '@/types';
 
 type SourceCacheEntry = { fetchedAt: number; values: Source[] };
@@ -60,6 +61,7 @@ export function useSources(includeRevoked = true) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const generation = useRef(0);
+  const loadGeneration = useRef(0);
 
   useEffect(() => {
     const request = ++generation.current;
@@ -84,7 +86,11 @@ export function useSources(includeRevoked = true) {
       setHydratedCacheKey(null);
       setLoading(true);
       try {
-        const disk = await readCache<Source[]>(userId, 'sources', variant);
+        const disk = await withTimeout(
+          readCache<Source[]>(userId, 'sources', variant),
+          FOREGROUND_REFRESH_TIMEOUT_MS,
+          translate('error.connection'),
+        );
         if (request !== generation.current) return;
         if (disk.value) {
           const entry = { fetchedAt: disk.fetchedAt, values: disk.value };
@@ -114,12 +120,17 @@ export function useSources(includeRevoked = true) {
   const load = useCallback(async (refresh = false) => {
     if (!userId) return;
     const request = ++generation.current;
+    const loadRequest = ++loadGeneration.current;
     const lease = currentCacheLease(userId);
     if (refresh) setRefreshing(true);
     else if (!sourceCache.has(cacheKey)) setLoading(true);
     setError(null);
     try {
-      const next = await listSources({ includeRevoked });
+      const next = await withTimeout(
+        listSources({ includeRevoked }),
+        FOREGROUND_REFRESH_TIMEOUT_MS,
+        translate('error.connection'),
+      );
       if (request === generation.current && isCacheLeaseCurrent(lease)) {
         commit(next);
         void syncAndroidSourceNotificationChannels(next).catch((channelError) => {
@@ -129,7 +140,7 @@ export function useSources(includeRevoked = true) {
     } catch (caught) {
       if (request === generation.current) setError(caught instanceof Error ? caught : new Error(translate('error.loadTitle')));
     } finally {
-      if (request === generation.current) {
+      if (loadRequest === loadGeneration.current) {
         setLoading(false);
         setRefreshing(false);
       }

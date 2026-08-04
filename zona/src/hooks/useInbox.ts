@@ -20,6 +20,7 @@ import { runOnForeground } from '@/lib/foreground';
 import { syncInboxWidget } from '@/lib/inbox-widget';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
+import { FOREGROUND_REFRESH_TIMEOUT_MS, withTimeout } from '@/lib/timeout';
 import type { InboxNotification } from '@/types';
 
 type InboxPageCache = {
@@ -175,6 +176,8 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
     setError(null);
     setBootstrapping(!entry && !hasEverLoaded);
     setFilterLoading(!entry && hasEverLoaded);
+    setRefreshing(false);
+    setLoadingMore(false);
   }
 
   const applyPage = useCallback((page: StoredInboxPage, fetchedAt = Date.now()) => {
@@ -201,9 +204,13 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
 
     try {
       if (!memory && mode !== 'refresh' && mode !== 'realtime') {
-        const cached = await readCache<StoredInboxPage>(userId, 'inbox', variant);
+        const cached = await withTimeout(
+          readCache<StoredInboxPage>(userId, 'inbox', variant),
+          FOREGROUND_REFRESH_TIMEOUT_MS,
+          translate('error.connection'),
+        ).catch(() => null);
         if (request !== generation.current || key !== cacheKeyRef.current) return;
-        if (cached.value) {
+        if (cached?.value) {
           applyPage(cached.value, cached.fetchedAt);
           memory = pageCache.get(key);
           setBootstrapping(false);
@@ -214,7 +221,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
 
       if (memory && isFresh(memory) && mode !== 'refresh' && mode !== 'realtime') return;
 
-      const snapshot = await getInboxSnapshot(filters, pageSize);
+      const snapshot = await withTimeout(
+        getInboxSnapshot(filters, pageSize),
+        FOREGROUND_REFRESH_TIMEOUT_MS,
+        translate('error.connection'),
+      );
       if (request !== generation.current || key !== cacheKeyRef.current) return;
       applyPage(snapshot);
     } catch (caught) {
@@ -237,7 +248,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
     const key = cacheKeyRef.current;
     setLoadingMore(true);
     try {
-      const page = await listNotifications(filters, cursor, pageSize);
+      const page = await withTimeout(
+        listNotifications(filters, cursor, pageSize),
+        FOREGROUND_REFRESH_TIMEOUT_MS,
+        translate('error.connection'),
+      );
       if (request !== generation.current || key !== cacheKeyRef.current) return;
       const merged = mergeUnique(items, page.items);
       const updated = {

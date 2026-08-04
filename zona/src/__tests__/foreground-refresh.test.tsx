@@ -1,12 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { act, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { create } from 'react-test-renderer';
 
+import { clearCachedContent } from '../cache/session';
 import { writeCache } from '../cache/store';
 import { useInbox } from '../hooks/useInbox';
 import { useSources } from '../hooks/useSources';
+import { FOREGROUND_REFRESH_TIMEOUT_MS } from '../lib/timeout';
 
 // Storage boundary mock (same in-memory pattern as offline-cache.test.ts).
 const storage = vi.hoisted(() => new Map<string, string>());
@@ -25,6 +27,8 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 
 // Transport boundary mock: supabase rpc (inbox snapshot) + query chain (sources).
 const server = vi.hoisted(() => ({
+  hangInbox: false,
+  hangSources: false,
   inboxCalls: 0,
   inboxSnapshot: { rows: [] as unknown[], unreadCount: 0 },
   sourcesCalls: 0,
@@ -34,6 +38,10 @@ const server = vi.hoisted(() => ({
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     rpc: (name: string) => {
+      if (server.hangInbox && (name === 'get_inbox_snapshot' || name === 'get_inbox_page_v2')) {
+        server.inboxCalls += 1;
+        return new Promise(() => undefined);
+      }
       if (name === 'get_inbox_snapshot') {
         server.inboxCalls += 1;
         return Promise.resolve({ data: server.inboxSnapshot, error: null });
@@ -47,6 +55,7 @@ vi.mock('@/lib/supabase', () => ({
       }
       chain.then = (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) => {
         server.sourcesCalls += 1;
+        if (server.hangSources) return new Promise(() => undefined);
         return Promise.resolve({ data: server.sourcesRows, error: null }).then(resolve, reject);
       };
       return chain;
@@ -147,8 +156,11 @@ function SourcesProbe() {
 }
 
 describe('foreground re-sync (network-first on open and resume)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     storage.clear();
+    await clearCachedContent(userId);
+    server.hangInbox = false;
+    server.hangSources = false;
     server.inboxCalls = 0;
     server.sourcesCalls = 0;
     server.inboxSnapshot = { rows: [], unreadCount: 0 };
@@ -157,6 +169,10 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     sourcesState = null;
     widgetSync.mockClear();
     (AppState as unknown as { __reset: () => void }).__reset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('inbox: fresh disk cache on cold start still fetches, and server rows win', async () => {
@@ -233,5 +249,96 @@ describe('foreground re-sync (network-first on open and resume)', () => {
 
     expect(server.sourcesCalls).toBeGreaterThan(callsBeforeResume);
     expect(sourcesState!.sources.map((source) => source.id)).toEqual(['source-v2']);
+  });
+
+  it('inbox: refreshing and bootstrapping clear after a hung cold-open load', async () => {
+    vi.useFakeTimers();
+    server.hangInbox = true;
+
+    await act(async () => {
+      create(<InboxProbe />);
+    });
+    expect(inboxState!.refreshing).toBe(true);
+
+    // The focus effect is mocked in these tests, so trigger the empty-cache
+    // initial load path directly to exercise bootstrapping.
+    act(() => {
+      inboxState!.retry();
+    });
+    expect(inboxState!.bootstrapping).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+
+    expect(inboxState!.refreshing).toBe(false);
+    expect(inboxState!.bootstrapping).toBe(false);
+  });
+
+  it('inbox: refreshing clears after a hung AppState resume load', async () => {
+    vi.useFakeTimers();
+    server.hangInbox = true;
+
+    await act(async () => {
+      create(<InboxProbe />);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+    expect(inboxState!.refreshing).toBe(false);
+
+    act(() => {
+      (AppState as unknown as { __fire: (state: string) => void }).__fire('background');
+      (AppState as unknown as { __fire: (state: string) => void }).__fire('active');
+    });
+    expect(inboxState!.refreshing).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+
+    expect(inboxState!.refreshing).toBe(false);
+  });
+
+  it('sources: loading and refreshing clear after a hung cold-open load', async () => {
+    vi.useFakeTimers();
+    server.hangSources = true;
+
+    await act(async () => {
+      create(<SourcesProbe />);
+    });
+    expect(sourcesState!.refreshing || sourcesState!.loading).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+
+    expect(sourcesState!.loading).toBe(false);
+    expect(sourcesState!.refreshing).toBe(false);
+  });
+
+  it('sources: refreshing clears after a hung AppState resume load', async () => {
+    vi.useFakeTimers();
+    server.hangSources = true;
+
+    await act(async () => {
+      create(<SourcesProbe />);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+    expect(sourcesState!.refreshing).toBe(false);
+
+    act(() => {
+      (AppState as unknown as { __fire: (state: string) => void }).__fire('background');
+      (AppState as unknown as { __fire: (state: string) => void }).__fire('active');
+    });
+    expect(sourcesState!.refreshing).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
+    });
+
+    expect(sourcesState!.refreshing).toBe(false);
   });
 });
