@@ -244,20 +244,38 @@ export default function InboxScreen() {
       {filtersVisible && (sourceFilterVisible || unreadFilterVisible || timeFilterVisible || pinnedFilterVisible || severityFilterVisible) ? <><View style={styles.filterLabelRow}>
         <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
         <View style={styles.filterHeaderActions}>
-        {filtersActive && savedFilterVisible ? <Pressable accessibilityRole="button" disabled={!isEnabled('inbox.saved_filters')} onPress={() => setSaveFilterOpen(true)} style={styles.clearButton}>
-          <Text style={styles.saveFilter}>{t('inbox.saveFilter')}</Text>
-        </Pressable> : null}
-        {filtersActive ? (
+          {/* Always mount action slots so showing/hiding them never shifts the chip row. */}
+          {savedFilterVisible ? (
+            <Pressable
+              accessibilityElementsHidden={!filtersActive}
+              accessibilityRole="button"
+              disabled={!filtersActive || !isEnabled('inbox.saved_filters')}
+              importantForAccessibility={filtersActive ? 'auto' : 'no-hide-descendants'}
+              onPress={() => setSaveFilterOpen(true)}
+              pointerEvents={filtersActive ? 'auto' : 'none'}
+              style={[styles.clearButton, !filtersActive && styles.filterActionHidden]}
+            >
+              <Text style={styles.saveFilter}>{t('inbox.saveFilter')}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
+            accessibilityElementsHidden={!filtersActive}
             accessibilityLabel={t('inbox.clearFiltersA11y')}
             accessibilityRole="button"
+            disabled={!filtersActive}
             hitSlop={4}
+            importantForAccessibility={filtersActive ? 'auto' : 'no-hide-descendants'}
             onPress={clearFilters}
-            style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+            pointerEvents={filtersActive ? 'auto' : 'none'}
+            style={({ pressed }) => [
+              styles.clearButton,
+              !filtersActive && styles.filterActionHidden,
+              filtersActive && pressed && styles.pressed,
+            ]}
           >
             <Text style={styles.clear}>{t('inbox.clear')}</Text>
           </Pressable>
-        ) : null}</View>
+        </View>
       </View>
       <ScrollView
         accessibilityLabel={t('inbox.filtersA11y')}
@@ -451,16 +469,18 @@ const createStyles = () => StyleSheet.create({
     paddingHorizontal: 12,
   },
   readAllText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
-  filterLabelRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 36, paddingBottom: 2, paddingHorizontal: 18 },
-  filterHeaderActions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  filterLabelRow: { alignItems: 'center', flexDirection: 'row', height: 36, justifyContent: 'space-between', paddingBottom: 2, paddingHorizontal: 18 },
+  filterHeaderActions: { alignItems: 'center', flexDirection: 'row', gap: 4, height: 36 },
   filterLabel: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.7 },
-  clearButton: { alignItems: 'center', justifyContent: 'center', minHeight: 36, minWidth: 44 },
+  clearButton: { alignItems: 'center', height: 36, justifyContent: 'center', minWidth: 44, paddingHorizontal: 4 },
+  filterActionHidden: { opacity: 0 },
   clear: { color: colors.primary, fontSize: 11, fontWeight: '700' },
   saveFilter: { color: colors.accent, fontSize: 11, fontWeight: '800' },
   searchBox: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', marginBottom: 10, marginHorizontal: 16, minHeight: 48, paddingLeft: 13 },
   searchInput: { color: colors.text, flex: 1, fontSize: 14, minHeight: 46, paddingHorizontal: 10, paddingVertical: 8 },
   searchClear: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44 },
-  filtersScroll: { flexGrow: 0, marginBottom: 4, overflow: 'visible' },
+  // Fixed height keeps the chip strip from jumping when a chip's fill/text style changes.
+  filtersScroll: { flexGrow: 0, height: 60, marginBottom: 4 },
   savedFiltersScroll: { flexGrow: 0, marginBottom: 6 },
   savedFilters: { alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   savedLabel: { color: colors.mutedLight, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
@@ -470,11 +490,12 @@ const createStyles = () => StyleSheet.create({
   filters: {
     alignItems: 'center',
     gap: 8,
+    height: 60,
     paddingBottom: 12,
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  filterLoading: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+  filterLoading: { alignItems: 'center', height: 40, justifyContent: 'center', width: 44 },
   filterListLoading: { alignItems: 'center', flexGrow: 1, justifyContent: 'center', minHeight: 160, paddingVertical: 40 },
   chip: {
     alignItems: 'center',
@@ -482,11 +503,10 @@ const createStyles = () => StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
+    height: 40,
     justifyContent: 'center',
     maxWidth: 180,
-    minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: 8,
   },
   chipSource: {
     backgroundColor: colors.accentSoft,
@@ -495,10 +515,11 @@ const createStyles = () => StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipSourceActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipMuted: { opacity: 0.52 },
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  // Keep weight/metrics identical across states so selection only repaints color.
+  chipText: { color: colors.muted, fontSize: 12, fontWeight: '600', includeFontPadding: false, lineHeight: 16, textAlign: 'center' },
   chipSourceText: { color: colors.accent },
   chipTextActive: { color: colors.white },
-  chipTextMuted: { fontWeight: '500' },
+  chipTextMuted: { color: colors.muted },
   list: { flexGrow: 1 },
   emptyList: { flexGrow: 1 },
   pagination: { alignItems: 'center', padding: 14 },

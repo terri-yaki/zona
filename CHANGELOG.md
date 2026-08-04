@@ -13,6 +13,8 @@ to use semantic application versions. Build numbers are managed by EAS.
   latest content can load.
 - Quiet hours in Settings now lines up with the other notification rows
   (same label, description, and spacing as the switches above it).
+- Inbox filter chips no longer nudge the whole row when you tap them;
+  Save/Clear stay reserved in place and chip size stays fixed.
 
 ## [0.0.11] - 2026-08-02
 
