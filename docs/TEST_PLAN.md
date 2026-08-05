@@ -221,7 +221,20 @@ Additional lifecycle cases:
 - an integration-owned source with no Zona source key is absent from the legacy
   key view but remains attributable and filterable by its permanent source ID;
 - inbox loading, empty, error, refresh, realtime insert/update/delete,
-  pagination, source/unread/date filters, and filter count semantics;
+  pagination, source/unread/date filters, and filter count semantics — initial
+  and filter loading render skeleton placeholder rows (the
+  `inbox.loadingFiltered` accessibility label survives) instead of full-screen
+  or filter-row spinners, and the source filter chips keep active sources first
+  with revoked sources sunk to the end when the row is capped;
+- the notification-detail Delivery card renders nothing until a real summary or
+  an error exists, shows a fixed bell.slash icon on the error branch, and stops
+  polling a `queued` summary after 120 seconds (restarting on id change or
+  manual retry);
+- dropped Realtime channels (inbox, runtime bootstrap, Live Status sync)
+  resubscribe silently with backoff starting at 5 seconds and capped at one
+  attempt per minute, deferred while backgrounded until the next foreground
+  transition, and Settings shows a neutral relay state instead of raw error
+  text during the outage;
 - notification read and delete authorization/errors, including early purge of
   an attached image;
 - attachment loading, rendering, and failure states in the detail screen, and
@@ -290,6 +303,7 @@ OS, build ID, EAS build URL, account, time, and evidence link.
 | Rename source | Future push uses new name; old inbox row keeps old name |
 | Revoke one of two sources | Only revoked source fails |
 | Expo service failure simulation | Inbox row still appears after refresh |
+| Realtime drop and reconnect | Severing connectivity drops inbox updates temporarily; the channel resubscribes silently and the inbox refreshes without manual pull-to-refresh, and reopening a backgrounded app recovers without a stuck relay error in Settings |
 | Enabled email/provider recovery | Callback returns to the app and restores intended routing |
 | Password sign-in | User signs in with email and password on a second phone and recovers sources and recent inbox |
 | Guest protection by password | A guest adds email + password, verifies the 6-digit code, and keeps existing sources and history |

@@ -162,7 +162,12 @@ export notification content unless strictly necessary and authorized.
 2. Check Supabase database/API/Realtime status and RLS errors.
 3. Confirm the app session is valid and the retained notification is unexpired.
 4. Verify publication configuration and deployed schema parity.
-5. If realtime alone fails, communicate manual refresh as temporary mitigation.
+5. The v0.0.12 client resubscribes dropped Realtime channels silently (first
+   retry after 5 seconds, exponential backoff up to one attempt per minute,
+   deferred while backgrounded until the next foreground transition), so a
+   transient Realtime blip recovers without user action. If realtime stays
+   down past that retry loop, communicate manual refresh as temporary
+   mitigation.
 
 ### Sign-in failure
 

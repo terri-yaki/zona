@@ -84,6 +84,16 @@ keep stale content visible while revalidating, and never queue offline writes.
 Sign-out increments a per-user cache generation before clearing storage, so a
 late network response cannot put private data back after the session ends.
 
+Realtime channels (inbox, runtime bootstrap, and iOS Live Status sync) are
+subscribed through one shared helper that recovers silently from dropped
+connections. The first resubscribe runs 5 seconds after a failure and
+consecutive failures back off exponentially to at most one attempt per minute;
+attempts made while the app is backgrounded are deferred to the next
+foreground transition. Each successful resubscribe triggers a data refresh,
+with repeats suppressed inside a 30-second window so a flapping connection
+cannot amplify into reload storms. The Settings relay row shows a neutral
+"not checked" state during these outages instead of raw error text.
+
 Recommended internal boundaries as the application grows:
 
 - `providers/`: session and application-wide lifecycle state.
@@ -170,9 +180,14 @@ The v0.0.10 app reads one notification's delivery state only through
 jobs to safe counts and one of `not_sent`, `queued`, `sent`, or
 `needs_attention`; it never exposes push tokens, ticket IDs, worker leases, or
 raw provider messages. `sent` means APNs or FCM accepted at least one delivery,
-not that a person saw it. The v0.0.11 development build retains this backend
-but hides its notification-detail and Settings cards through
-`src/lib/app-version.ts`.
+not that a person saw it. The notification-detail Delivery card renders nothing
+until a real summary (or an error) exists, so an alert already landed in the
+inbox never claims to be "still delivering" from a placeholder state; a `queued`
+summary is re-polled on the configured interval for at most 120 seconds per
+notification, with the window restarting on a manual retry. The
+notification-detail and Settings delivery surfaces render only on app version
+0.0.10 or later (gated in `src/lib/app-version.ts`) and remain subject to the
+`notification.delivery_status` runtime control.
 
 ### Database
 
