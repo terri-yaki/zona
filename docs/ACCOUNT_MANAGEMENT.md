@@ -45,7 +45,6 @@ different security principals and must never share credentials.
 - Microsoft and custom OIDC/SAML providers.
 - Team accounts, invitations, and role management.
 - Public OAuth consent for third-party Zona clients.
-- Password login. Email OTP or magic link is the initial email method.
 - Self-service merging of two protected accounts. The schema and audit model
   allow it, but v0.0.8 only transfers an unprotected guest into a protected
   account after proving both sessions.
@@ -75,6 +74,7 @@ different security principals and must never share credentials.
 | Method | New protected account | Protect current guest | Link later | Initial recovery use |
 | --- | --- | --- | --- | --- |
 | Email OTP/magic link | Explicit sign-up or sign-in intent | `updateUser({ email })`, then verify | Yes | Yes |
+| Email + password | `signUp({ email, password })`, then verify code | `updateUser({ email, password })`, then verify code | Yes | Yes |
 | Apple | Native ID token preferred on iOS | `linkIdentity` or native ID-token linking | Yes | Yes |
 | Google | OAuth/PKCE or native ID token | `linkIdentity` | Yes | Yes |
 | GitHub | OAuth/PKCE | `linkIdentity` | Yes | Yes |
@@ -294,6 +294,13 @@ the Zona app flow as defense in depth, not claimed as an unbypassable Auth
 control. Server enforcement remains strict for Zona-owned transfer, session,
 source, integration, billing, export, and deletion operations. A stronger
 identity-mutation gate requires a future Auth proxy/provider capability.
+
+For v0.0.12, email/password linking, email changes, and password changes use
+the same app-level defense-in-depth policy as provider linking. The app
+prompts for recent reauthentication where the existing identity-mutation flow
+does, but it does not introduce a new server-side reauth gate ahead of
+Supabase's direct Auth APIs. Reauth-gated credential mutation is a named
+hardening follow-up.
 
 ### Account deletion
 
