@@ -19,6 +19,7 @@ additional_redirect_urls = ["zona://auth/callback", "exp://**"]
 enable_signup = true
 enable_anonymous_sign_ins = true
 enable_manual_linking = true
+minimum_password_length = 8
 
 [functions.create-source]
 verify_jwt = false

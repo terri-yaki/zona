@@ -6,6 +6,11 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
+### Added
+
+- Save your Zona with an email address and password, then sign back in on
+  another phone and pick up where you left off.
+
 ### Fixed
 
 - Opening or returning to Zona no longer leaves the inbox or sources list

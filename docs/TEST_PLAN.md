@@ -290,6 +290,12 @@ OS, build ID, EAS build URL, account, time, and evidence link.
 | Revoke one of two sources | Only revoked source fails |
 | Expo service failure simulation | Inbox row still appears after refresh |
 | Enabled email/provider recovery | Callback returns to the app and restores intended routing |
+| Password sign-in | User signs in with email and password on a second phone and recovers sources and recent inbox |
+| Guest protection by password | A guest adds email + password, verifies the 6-digit code, and keeps existing sources and history |
+| Cross-device restore with password | Same password signs into the same account from a fresh install and receives the correct owner-scoped data |
+| Wrong-password error | Invalid password returns a non-enumerating error with no account or existence hint |
+| Unconfirmed-email pending state | After sign-up or email change, the app routes to pending confirmation and blocks protected actions until the code is verified |
+| Signup-code resend | Resend stays within the provider cooldown and delivers a fresh usable code |
 | Seven-day boundary | Expired item disappears and current item remains |
 | VoiceOver and large text | Primary flows remain understandable and operable |
 | Lock-screen preview settings | Content exposure matches documented user expectations |
