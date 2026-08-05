@@ -29,6 +29,9 @@ if (-not (Test-Path -LiteralPath $sshKey)) {
 function Invoke-Remote {
     param([Parameter(Mandatory)][string]$Command)
 
+    # Here-strings inherit this file's line endings; a CRLF checkout would send
+    # stray carriage returns that the remote shell rejects ("bad option: -^M").
+    $Command = $Command -replace "`r`n", "`n"
     & ssh -o BatchMode=yes -o ConnectTimeout=8 -i $sshKey $sshTarget $Command
     if ($LASTEXITCODE -ne 0) {
         throw 'The command on the Mac build VM failed.'
