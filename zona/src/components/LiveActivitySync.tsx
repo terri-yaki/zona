@@ -9,6 +9,7 @@ import {
   syncLiveActivity,
   type ZonaLiveActivitySnapshot,
 } from '@/lib/live-activity';
+import { subscribeWithRetry } from '@/lib/realtime';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -114,23 +115,25 @@ export function LiveActivitySync() {
       if (state === 'active') void runSync(true);
     });
 
-    const channel = supabase
-      .channel(`zona:live:${userId}`, { config: { private: true } })
-      .on(
-        'broadcast',
-        { event: 'changed' },
-        () => {
-          // Respect the 2s throttle so inbox bursts coalesce instead of forcing
-          // a serial unread+list round-trip on every broadcast event.
-          void runSync(false);
-        },
-      )
-      .subscribe();
+    const cleanup = subscribeWithRetry(
+      () => supabase
+        .channel(`zona:live:${userId}`, { config: { private: true } })
+        .on(
+          'broadcast',
+          { event: 'changed' },
+          () => {
+            // Respect the 2s throttle so inbox bursts coalesce instead of forcing
+            // a serial unread+list round-trip on every broadcast event.
+            void runSync(false);
+          },
+        ),
+      { onSubscribed: () => runSync(true), retryMs: 5_000 },
+    );
 
     return () => {
       detachState?.();
       appStateSub.remove();
-      void supabase.removeChannel(channel);
+      cleanup();
     };
   }, [runSync, themePresetId, userId]);
 

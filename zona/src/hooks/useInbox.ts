@@ -19,6 +19,7 @@ import {
 import { runOnForeground } from '@/lib/foreground';
 import { syncInboxWidget } from '@/lib/inbox-widget';
 import { translate } from '@/i18n';
+import { subscribeWithRetry } from '@/lib/realtime';
 import { supabase } from '@/lib/supabase';
 import { FOREGROUND_REFRESH_TIMEOUT_MS, withTimeout } from '@/lib/timeout';
 import type { InboxNotification } from '@/types';
@@ -336,20 +337,25 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
   useEffect(() => {
     if (!userId) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const channel = supabase
-      .channel(`zona:inbox:${userId}`, { config: { private: true } })
-      .on('broadcast', { event: 'changed' }, () => {
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => {
-          markMemoryPagesDirty(userId);
-          void markCacheDirty(userId, 'inbox').catch(() => undefined);
-          void loadRef.current('realtime');
-        }, 200);
-      })
-      .subscribe();
+    const cleanup = subscribeWithRetry(
+      () => supabase
+        .channel(`zona:inbox:${userId}`, { config: { private: true } })
+        .on('broadcast', { event: 'changed' }, () => {
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            markMemoryPagesDirty(userId);
+            void markCacheDirty(userId, 'inbox').catch(() => undefined);
+            void loadRef.current('realtime');
+          }, 200);
+        }),
+      {
+        onSubscribed: () => loadRef.current('realtime'),
+        retryMs: 5_000,
+      },
+    );
     return () => {
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      cleanup();
     };
   }, [userId]);
 

@@ -22,6 +22,7 @@ import {
   type FeatureKey,
   type RuntimeSnapshot,
 } from '@/lib/runtime-controls';
+import { subscribeWithRetry } from '@/lib/realtime';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { supabase } from '@/lib/supabase';
@@ -187,18 +188,22 @@ export function RuntimeConfigProvider({ children }: PropsWithChildren) {
         void refresh();
       }, 200);
     };
-    const globalChannel = supabase
-      .channel('zona:config', { config: { private: true } })
-      .on('broadcast', { event: 'changed' }, onChange)
-      .subscribe();
-    const accountChannel = supabase
-      .channel(`zona:config:${userId}`, { config: { private: true } })
-      .on('broadcast', { event: 'changed' }, onChange)
-      .subscribe();
+    const cleanupGlobal = subscribeWithRetry(
+      () => supabase
+        .channel('zona:config', { config: { private: true } })
+        .on('broadcast', { event: 'changed' }, onChange),
+      { onSubscribed: refresh, retryMs: 5_000 },
+    );
+    const cleanupAccount = subscribeWithRetry(
+      () => supabase
+        .channel(`zona:config:${userId}`, { config: { private: true } })
+        .on('broadcast', { event: 'changed' }, onChange),
+      { onSubscribed: refresh, retryMs: 5_000 },
+    );
     return () => {
       if (timer) clearTimeout(timer);
-      void supabase.removeChannel(globalChannel);
-      void supabase.removeChannel(accountChannel);
+      cleanupGlobal();
+      cleanupAccount();
     };
   }, [refresh, userId]);
 
