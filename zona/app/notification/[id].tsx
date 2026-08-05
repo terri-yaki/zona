@@ -41,6 +41,7 @@ export default function NotificationDetailScreen() {
   const userId = session?.user.id;
   const generation = useRef(0);
   const deliveryGeneration = useRef(0);
+  const deliveryFirstPollAt = useRef<number | null>(null);
   const [item, setItem] = useState<InboxNotification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -73,6 +74,10 @@ export default function NotificationDetailScreen() {
     setDeliveryLoading(true);
     setLoading(true);
   }
+
+  useEffect(() => {
+    deliveryFirstPollAt.current = null;
+  }, [id]);
 
   const loadDelivery = useCallback(async (notificationId: string, showSpinner = false) => {
     const request = ++deliveryGeneration.current;
@@ -136,7 +141,14 @@ export default function NotificationDetailScreen() {
 
   useEffect(() => {
     if (!deliveryVisible || !id || delivery?.state !== 'queued') return;
-    const timer = setInterval(() => void loadDelivery(id), deliveryPollMilliseconds);
+    deliveryFirstPollAt.current = Date.now();
+    const timer = setInterval(() => {
+      if (deliveryFirstPollAt.current && Date.now() - deliveryFirstPollAt.current > 120_000) {
+        clearInterval(timer);
+        return;
+      }
+      void loadDelivery(id);
+    }, deliveryPollMilliseconds);
     return () => clearInterval(timer);
   }, [delivery?.state, deliveryPollMilliseconds, deliveryVisible, id, loadDelivery]);
 
@@ -333,7 +345,10 @@ export default function NotificationDetailScreen() {
       {deliveryVisible ? <DeliveryCard
           error={deliveryError}
           loading={deliveryLoading}
-          onRetry={() => void loadDelivery(item.id, true)}
+          onRetry={() => {
+            deliveryFirstPollAt.current = Date.now();
+            void loadDelivery(item.id, true);
+          }}
           summary={delivery}
         /> : null}
 
@@ -500,30 +515,49 @@ function DeliveryCard({
 }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
-  if (!loading && !error && !summary) return null;
+  if (!summary && !error) return null;
 
-  const state = summary?.state ?? 'queued';
+  if (error && !summary) {
+    return (
+      <View accessibilityLiveRegion="polite" style={[styles.deliveryCard, styles.deliveryCardDanger]}>
+        <View style={[styles.deliveryIcon, styles.deliveryIconDanger]}>
+          <AppIcon color={colors.danger} fallback="!" name="bell.slash.fill" size={18} />
+        </View>
+        <View style={styles.deliveryCopy}>
+          <Text style={styles.deliveryLabel}>{t('notification.delivery.label')}</Text>
+          <Text style={[styles.deliveryTitle, styles.deliveryTitleDanger]}>
+            {t('notification.delivery.unavailable')}
+          </Text>
+        </View>
+        <Pressable accessibilityRole="button" disabled={loading} onPress={onRetry} style={styles.deliveryRetry}>
+          {loading ? <ActivityIndicator color={colors.primary} size="small" /> : <Text style={styles.deliveryRetryText}>{t('common.retry')}</Text>}
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!summary) return null;
+
+  const state = summary.state;
   const danger = state === 'needs_attention';
   const muted = state === 'not_sent';
   const tint = danger ? colors.danger : muted ? colors.muted : colors.primary;
   return (
     <View accessibilityLiveRegion="polite" style={[styles.deliveryCard, danger && styles.deliveryCardDanger]}>
       <View style={[styles.deliveryIcon, danger && styles.deliveryIconDanger]}>
-        {loading && !summary
+        {loading
           ? <ActivityIndicator color={tint} size="small" />
           : <AppIcon color={tint} fallback="•" name={deliveryIcons[state]} size={18} />}
       </View>
       <View style={styles.deliveryCopy}>
         <Text style={styles.deliveryLabel}>{t('notification.delivery.label')}</Text>
         <Text style={[styles.deliveryTitle, danger && styles.deliveryTitleDanger]}>
-          {error && !summary ? t('notification.delivery.unavailable') : t(deliveryTitleKeys[state])}
+          {t(deliveryTitleKeys[state])}
         </Text>
-        {summary ? (
-          <Text style={styles.deliveryBody}>
-            {t(deliveryBodyKey(summary), { accepted: summary.providerAccepted, count: summary.targetedPhones })}
-          </Text>
-        ) : null}
-        {summary && summary.targetedPhones > 1 ? (
+        <Text style={styles.deliveryBody}>
+          {t(deliveryBodyKey(summary), { accepted: summary.providerAccepted, count: summary.targetedPhones })}
+        </Text>
+        {summary.targetedPhones > 1 ? (
           <Text style={styles.deliveryMeta}>
             {t('notification.delivery.summary', {
               accepted: summary.providerAccepted,
