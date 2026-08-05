@@ -65,11 +65,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     startProviderAuth(provider, intent)
   ), []);
 
-  const verifyEmailCode = useCallback(async (input: Parameters<typeof verifyEmailAuthCode>[0]) => {
-    const user = await verifyEmailAuthCode(input);
-    await refreshSession();
-    return user;
-  }, [refreshSession]);
+  // verifyOtp already persists the session and fires onAuthStateChange (which
+  // applies it); an extra refreshSession here would only add a redundant
+  // token-refresh round trip to every OTP verification.
+  const verifyEmailCode = useCallback((input: Parameters<typeof verifyEmailAuthCode>[0]) => (
+    verifyEmailAuthCode(input)
+  ), []);
 
   useEffect(() => {
     let active = true;

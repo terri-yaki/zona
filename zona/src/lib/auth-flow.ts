@@ -2,6 +2,8 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import type { Provider, Session } from '@supabase/supabase-js';
 
+import { translate } from '../i18n';
+import type { TranslationKey } from '../i18n/en';
 import { parseAuthCallbackUrl, assertSameUserUpgrade, type AuthCallbackParams } from './auth-callback';
 import {
   beginAuthTransaction,
@@ -24,6 +26,27 @@ export function normalizeAuthEmail(email: string) {
   const value = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(value) || value.length > 254) throw new Error('INVALID_EMAIL');
   return value;
+}
+
+const codedAuthErrorKeys: Record<string, TranslationKey> = {
+  EMAIL_IN_USE: 'auth.emailInUse',
+  INVALID_EMAIL: 'auth.emailInvalid',
+};
+
+// GoTrue answers password sign-in failures with raw English messages; map the
+// non-enumerating ones to localized copy so the UI never shows raw server text.
+const supabaseAuthMessageKeys: Record<string, TranslationKey> = {
+  'Email not confirmed': 'auth.emailNotConfirmed',
+  'Invalid login credentials': 'auth.passwordInvalid',
+};
+
+export function describeAuthError(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const key = codedAuthErrorKeys[error.message] ?? supabaseAuthMessageKeys[error.message];
+    if (key) return translate(key);
+    return error.message;
+  }
+  return fallback;
 }
 
 export async function startEmailAuth(email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) {
@@ -88,6 +111,14 @@ export async function startPasswordAuth(
       await consumeAuthTransaction(transaction.id);
       return data.session;
     }
+    if (!data.user || (Array.isArray(data.user.identities) && data.user.identities.length === 0)) {
+      // Supabase answers a duplicate sign-up non-enumerating: a user object
+      // with no identities, no session, and no error. No confirmation code is
+      // sent, so routing to check-email would dead-end; fail with a coded
+      // error the UI can translate into "sign in instead".
+      await cancelAuthTransaction(transaction.id);
+      throw new Error(data.user ? 'EMAIL_IN_USE' : 'UNAUTHORIZED');
+    }
     return transaction;
   }
 
@@ -110,8 +141,16 @@ export async function startPasswordAuth(
     await cancelAuthTransaction(transaction.id);
     throw error;
   }
+  // updateUser rewrites the stored session; re-read it so callers receive the
+  // user object carrying the freshly linked email/password identity instead
+  // of the stale pre-update snapshot.
+  const { data: linked } = await supabase.auth.getSession();
+  if (!linked.session) {
+    await cancelAuthTransaction(transaction.id);
+    throw new Error('UNAUTHORIZED');
+  }
   await consumeAuthTransaction(transaction.id);
-  return sessionData.session!;
+  return linked.session;
 }
 
 export async function verifyEmailAuthCode(input: {
@@ -165,6 +204,19 @@ export async function resendEmailVerification(email: string, transactionId: stri
     });
   }
   throw new Error('AUTH_TRANSACTION_MISMATCH');
+}
+
+export async function resendSignupConfirmation(email: string): Promise<AuthTransaction> {
+  const normalized = normalizeAuthEmail(email);
+  const { error } = await supabase.auth.resend({ type: 'signup', email: normalized });
+  if (error) throw error;
+  return beginAuthTransaction({
+    confirmation: 'signup',
+    email: normalized,
+    expectedUserId: null,
+    intent: 'sign_up',
+    provider: 'email',
+  });
 }
 
 export async function startProviderAuth(provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) {

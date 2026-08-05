@@ -53,6 +53,7 @@ export default function AccountScreen() {
   const [installations, setInstallations] = useState<AccountInstallation[]>([]);
   const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
   const [email, setEmail] = useState('');
+  const [passwordEmail, setPasswordEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [usage, setUsage] = useState<AccountUsage | null>(null);
@@ -113,6 +114,10 @@ export default function AccountScreen() {
 
   const isAnonymous = summary?.isAnonymous ?? session?.user.is_anonymous ?? true;
   const linkedProviders = useMemo(() => new Set(identities.map((identity) => identity.provider)), [identities]);
+  const linkedEmail = useMemo(() => {
+    const identity = identities.find((candidate) => candidate.provider === 'email');
+    return (identity ? identityHint(identity) : null) ?? summary?.recoveryEmail ?? null;
+  }, [identities, summary]);
 
   if (!session) return <Redirect href="/sign-in" />;
 
@@ -133,7 +138,10 @@ export default function AccountScreen() {
   }
 
   async function addPassword() {
-    if (!email.trim() || !password || busy) return;
+    // With a confirmed email identity the password attaches to that address;
+    // entering a different one would silently trigger an email change too.
+    const targetEmail = linkedEmail ?? passwordEmail;
+    if (!targetEmail.trim() || !password || busy) return;
     const passwordError = validateAuthPassword(password);
     if (passwordError) {
       Alert.alert(t('account.linkError'), passwordError);
@@ -144,11 +152,11 @@ export default function AccountScreen() {
     // are recorded by WS2 in ADR 0005 and ACCOUNT_MANAGEMENT.md.
     setBusy('password');
     try {
-      const result = await startPasswordAuth(email, password, isAnonymous ? 'protect_guest' : 'link_method');
+      const result = await startPasswordAuth(targetEmail, password, isAnonymous ? 'protect_guest' : 'link_method');
       if ('id' in result) {
         router.push({
           pathname: '/auth/check-email' as never,
-          params: { email: result.email ?? email, intent: result.intent, transaction: result.id },
+          params: { email: result.email ?? targetEmail, intent: result.intent, transaction: result.id },
         });
       } else {
         await refresh();
@@ -339,12 +347,12 @@ export default function AccountScreen() {
 
         {capabilities?.email === true ? (
           <View style={styles.linkCard}>
-            <Text style={styles.linkTitle}>{t('account.addPassword')}</Text>
-            <Text style={styles.linkBody}>{t('account.passwordHelp')}</Text>
-            <TextInput autoCapitalize="none" autoComplete="email" autoCorrect={false} editable={!busy} keyboardType="email-address" onChangeText={setEmail} placeholder={t('auth.emailPlaceholder')} placeholderTextColor={colors.mutedLight} style={styles.input} value={email} />
+            <Text style={styles.linkTitle}>{linkedEmail ? t('account.changePassword') : t('account.addPassword')}</Text>
+            <Text style={styles.linkBody}>{linkedEmail ? t('account.changePasswordHelp', { email: linkedEmail }) : t('account.passwordHelp')}</Text>
+            {linkedEmail ? null : <TextInput autoCapitalize="none" autoComplete="email" autoCorrect={false} editable={!busy} keyboardType="email-address" onChangeText={setPasswordEmail} placeholder={t('auth.emailPlaceholder')} placeholderTextColor={colors.mutedLight} style={styles.input} value={passwordEmail} />}
             <TextInput autoCapitalize="none" autoComplete="new-password" autoCorrect={false} editable={!busy} onChangeText={setPassword} placeholder={t('auth.passwordPlaceholder')} placeholderTextColor={colors.mutedLight} secureTextEntry style={styles.input} textContentType="newPassword" value={password} />
-            <Pressable disabled={Boolean(busy) || !email.trim() || !password} onPress={() => void addPassword()} style={[styles.primaryButton, (busy || !email.trim() || !password) && styles.disabled]}>
-              {busy === 'password' ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>{t('account.addPassword')}</Text>}
+            <Pressable disabled={Boolean(busy) || !password || (!linkedEmail && !passwordEmail.trim())} onPress={() => void addPassword()} style={[styles.primaryButton, (busy || !password || (!linkedEmail && !passwordEmail.trim())) && styles.disabled]}>
+              {busy === 'password' ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>{linkedEmail ? t('account.changePassword') : t('account.addPassword')}</Text>}
             </Pressable>
           </View>
         ) : null}

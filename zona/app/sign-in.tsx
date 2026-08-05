@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/AppIcon';
 import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { describeAuthError, resendSignupConfirmation } from '@/lib/auth-flow';
 import { validateAuthPassword } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -67,11 +68,14 @@ export default function SignInScreen() {
           router.replace('/');
         }
       } catch (error) {
-        Alert.alert(t('auth.signInError'), error instanceof Error && error.message === 'INVALID_EMAIL'
-          ? t('auth.emailInvalid')
-          : error instanceof Error && error.message === 'INVALID_PASSWORD'
-            ? t('auth.passwordInvalid')
-            : error instanceof Error ? error.message : t('auth.connectionError'));
+        if (error instanceof Error && error.message === 'Email not confirmed') {
+          Alert.alert(t('auth.signInError'), t('auth.emailNotConfirmed'), [
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('auth.resendEmail'), onPress: () => void resendConfirmation() },
+          ]);
+        } else {
+          Alert.alert(t('auth.signInError'), describeAuthError(error, t('auth.connectionError')));
+        }
       } finally {
         setSigningIn(false);
       }
@@ -86,9 +90,23 @@ export default function SignInScreen() {
         params: { email: transaction.email ?? email, intent: transaction.intent, transaction: transaction.id },
       });
     } catch (error) {
-      Alert.alert(t('auth.signInError'), error instanceof Error && error.message === 'INVALID_EMAIL'
-        ? t('auth.emailInvalid')
-        : error instanceof Error ? error.message : t('auth.connectionError'));
+      Alert.alert(t('auth.signInError'), describeAuthError(error, t('auth.connectionError')));
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    if (signingIn) return;
+    setSigningIn(true);
+    try {
+      const transaction = await resendSignupConfirmation(email);
+      router.push({
+        pathname: '/auth/check-email' as never,
+        params: { email: transaction.email ?? email, intent: transaction.intent, transaction: transaction.id },
+      });
+    } catch (error) {
+      Alert.alert(t('auth.emailResendFailed'), describeAuthError(error, t('auth.connectionError')));
     } finally {
       setSigningIn(false);
     }

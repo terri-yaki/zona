@@ -66,6 +66,7 @@ vi.mock('../lib/supabase', () => ({
 
 // eslint-disable-next-line import/first
 import {
+  describeAuthError,
   resendEmailVerification,
   startPasswordAuth,
   verifyEmailAuthCode,
@@ -171,6 +172,38 @@ describe('verifyEmailAuthCode signup confirmation', () => {
       token: '123456',
       type: 'signup',
     });
+  });
+
+  it('uses OTP type email_change for password-link confirmation transactions', async () => {
+    getAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    await verifyEmailAuthCode({ code: '123456', email: 'user@example.com', transactionId: 'tx-1' });
+    expect(verifyOtp).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      token: '123456',
+      type: 'email_change',
+    });
+  });
+});
+
+describe('describeAuthError', () => {
+  it('maps the wrong-password response to the localized non-enumerating message', () => {
+    expect(describeAuthError(new Error('Invalid login credentials'), 'fallback'))
+      .toBe(translate('auth.passwordInvalid'));
+  });
+
+  it('maps the unconfirmed-email response to the localized message', () => {
+    expect(describeAuthError(new Error('Email not confirmed'), 'fallback'))
+      .toBe(translate('auth.emailNotConfirmed'));
+  });
+
+  it('maps coded errors to their localized messages', () => {
+    expect(describeAuthError(new Error('EMAIL_IN_USE'), 'fallback')).toBe(translate('auth.emailInUse'));
+    expect(describeAuthError(new Error('INVALID_EMAIL'), 'fallback')).toBe(translate('auth.emailInvalid'));
+  });
+
+  it('passes other error messages through and uses the fallback for non-errors', () => {
+    expect(describeAuthError(new Error('network down'), 'fallback')).toBe('network down');
+    expect(describeAuthError(null, 'fallback')).toBe('fallback');
   });
 });
 

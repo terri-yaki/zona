@@ -4,7 +4,7 @@ All notable changes to Zona are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) structure and intends
 to use semantic application versions. Build numbers are managed by EAS.
 
-## [Unreleased]
+## [0.0.12] - 2026-08-05
 
 ### Added
 
@@ -20,6 +20,14 @@ to use semantic application versions. Build numbers are managed by EAS.
   (same label, description, and spacing as the switches above it).
 - Inbox filter chips no longer nudge the whole row when you tap them;
   Save/Clear stay reserved in place and chip size stays fixed.
+- Password sign-in now explains a wrong password or an unconfirmed email in
+  your language and offers to send a new confirmation code, instead of
+  showing raw server messages.
+- Creating an account with an email that already has one now asks you to sign
+  in instead of sending you to wait for a code that never arrives.
+- The Account screen's email and password cards no longer share one email
+  field, and an account that already signs in with email sees "Change
+  password" for its current address instead of a silent email change.
 
 ## [0.0.11] - 2026-08-02
 

@@ -79,6 +79,7 @@ vi.mock('../lib/supabase', () => ({
 import {
   completeAuthCallback,
   normalizeAuthEmail,
+  resendSignupConfirmation,
   startEmailAuth,
   startPasswordAuth,
   startProviderAuth,
@@ -302,5 +303,52 @@ describe('auth-flow recovery paths', () => {
       token: '123456',
       type: 'signup',
     });
+  });
+
+  it('verifyEmailAuthCode uses email_change OTP type for link transactions', async () => {
+    getAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    const user = await verifyEmailAuthCode({ code: '123456', email: 'user@example.com', transactionId: 'tx-1' });
+    expect(verifyOtp).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      token: '123456',
+      type: 'email_change',
+    });
+    expect(consumeAuthTransaction).toHaveBeenCalledWith('tx-1');
+    expect(user.id).toBe('user-a');
+  });
+
+  it('startPasswordAuth treats an identity-less sign-up response as an existing account', async () => {
+    signUp.mockResolvedValue({ data: { user: { id: 'user-a', identities: [] }, session: null }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', intent: 'sign_up' });
+    await expect(startPasswordAuth('user@example.com', 'password123', 'sign_up')).rejects.toThrow('EMAIL_IN_USE');
+    expect(cancelAuthTransaction).toHaveBeenCalledWith('tx-1');
+    expect(consumeAuthTransaction).not.toHaveBeenCalled();
+  });
+
+  it('startPasswordAuth returns the refreshed session after linking without confirmation', async () => {
+    const stale = { user: { id: 'user-a' } };
+    const fresh = { user: { id: 'user-a', email: 'owner@example.com' } };
+    getSession
+      .mockResolvedValueOnce({ data: { session: stale } })
+      .mockResolvedValueOnce({ data: { session: fresh } });
+    updateUser.mockResolvedValue({ data: { user: { id: 'user-a', new_email: null } }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    const result = await startPasswordAuth('owner@example.com', 'password123', 'link_method');
+    expect(getSession).toHaveBeenCalledTimes(2);
+    expect(result).toEqual(fresh);
+  });
+
+  it('resendSignupConfirmation resends the signup code and begins a signup-marked transaction', async () => {
+    beginAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', id: 'tx-2', intent: 'sign_up' });
+    const result = await resendSignupConfirmation('User@Example.COM');
+    expect(resend).toHaveBeenCalledWith({ type: 'signup', email: 'user@example.com' });
+    expect(beginAuthTransaction).toHaveBeenCalledWith({
+      confirmation: 'signup',
+      email: 'user@example.com',
+      expectedUserId: null,
+      intent: 'sign_up',
+      provider: 'email',
+    });
+    expect(result.id).toBe('tx-2');
   });
 });
