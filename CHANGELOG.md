@@ -10,6 +10,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 - Save your Zona with an email address and password, then sign back in on
   another phone and pick up where you left off.
+- Started privately as a guest? Add an email and password whenever you are
+  ready, without losing your sources or history.
+- New email addresses are confirmed with a short code sent to your inbox
+  before they can protect your account.
 
 ### Fixed
 

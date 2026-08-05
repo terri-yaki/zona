@@ -113,18 +113,17 @@ describe('bundledChangelog', () => {
     const en = bundledChangelog('en');
     expect(en.length).toBeGreaterThan(0);
     expect(en[0].latest).toBe(true);
-    expect(en[0].title).toBe('Your inbox is ready when you are');
-    expect(en[0].dateLabel).toBe('July 2026');
+    expect(en[0].title).toBe('Sign in with email and password');
+    expect(en[0].dateLabel).toBe('August 2026');
     expect(en[0].items.map((item) => item.title)).toEqual([
-      'Open and get moving',
-      'Still useful offline',
-      'Saved only for you',
-      'You decide what stays',
+      'Sign in with email and password',
+      'Protect a guest account',
+      'Confirm by email code',
     ]);
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 
     const zh = bundledChangelog('zh-Hant');
-    expect(zh[0].title).toBe('一打開，收件匣已經準備好');
-    expect(zh[0].dateLabel).toBe('2026 年 7 月');
+    expect(zh[0].title).toBe('使用電郵和密碼登入');
+    expect(zh[0].dateLabel).toBe('2026 年 8 月');
   });
 });
