@@ -24,7 +24,7 @@ import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
 import { useThemedStyles } from '@/theme-preference';
 import type { InboxNotification } from '@/types';
-import type { NotificationDeliveryState, NotificationDeliverySummary } from '@/lib/notification-delivery';
+import { deliveryCardVisible, deliveryQueuedPollExpired, type NotificationDeliveryState, type NotificationDeliverySummary } from '@/lib/notification-delivery';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -52,6 +52,9 @@ export default function NotificationDetailScreen() {
   const [delivery, setDelivery] = useState<NotificationDeliverySummary | null>(null);
   const [deliveryError, setDeliveryError] = useState(false);
   const [deliveryLoading, setDeliveryLoading] = useState(true);
+  // Bumped by the delivery-card retry so the queued-poll effect re-runs (and
+  // recreates its interval) even when the summary state is unchanged.
+  const [deliveryPollCycle, setDeliveryPollCycle] = useState(0);
   const [attachment, setAttachment] = useState<{ path: string; url: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
   const [savingState, setSavingState] = useState(false);
@@ -143,14 +146,14 @@ export default function NotificationDetailScreen() {
     if (!deliveryVisible || !id || delivery?.state !== 'queued') return;
     deliveryFirstPollAt.current = Date.now();
     const timer = setInterval(() => {
-      if (deliveryFirstPollAt.current && Date.now() - deliveryFirstPollAt.current > 120_000) {
+      if (deliveryQueuedPollExpired(deliveryFirstPollAt.current, Date.now())) {
         clearInterval(timer);
         return;
       }
       void loadDelivery(id);
     }, deliveryPollMilliseconds);
     return () => clearInterval(timer);
-  }, [delivery?.state, deliveryPollMilliseconds, deliveryVisible, id, loadDelivery]);
+  }, [delivery?.state, deliveryPollCycle, deliveryPollMilliseconds, deliveryVisible, id, loadDelivery]);
 
   useEffect(() => {
     const path = item?.attachment_path;
@@ -347,6 +350,7 @@ export default function NotificationDetailScreen() {
           loading={deliveryLoading}
           onRetry={() => {
             deliveryFirstPollAt.current = Date.now();
+            setDeliveryPollCycle((cycle) => cycle + 1);
             void loadDelivery(item.id, true);
           }}
           summary={delivery}
@@ -515,7 +519,7 @@ function DeliveryCard({
 }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
-  if (!summary && !error) return null;
+  if (!deliveryCardVisible(summary, error)) return null;
 
   if (error && !summary) {
     return (

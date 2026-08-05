@@ -172,7 +172,11 @@ export default function InboxScreen() {
   if (inbox.bootstrapping && inbox.items.length === 0 && !inbox.error) {
     return (
       <TabScreen>
-        <InboxSkeleton />
+        {/* The skeleton hides itself from assistive technology, so the wrapper
+            carries the loading announcement like the filter-loading branch. */}
+        <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
+          <InboxSkeleton />
+        </View>
       </TabScreen>
     );
   }

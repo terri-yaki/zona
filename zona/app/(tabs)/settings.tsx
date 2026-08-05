@@ -35,6 +35,7 @@ import {
   type PushRegistrationHealth,
   unregisterThisInstallation,
 } from '@/lib/push';
+import { relayStatusLabelKey } from '@/lib/push-platform';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -328,11 +329,7 @@ export default function SettingsScreen() {
   }
 
   const busy = signingOut || deleting;
-  const relayStatus = health
-    ? health.status === 'error'
-      ? t('settings.relay.notChecked')
-      : t(`settings.relay.${health.status === 'not-granted' ? 'notGranted' : health.status === 'expo-go' ? 'expoGo' : health.status}`)
-    : t('settings.relay.notChecked');
+  const relayStatus = t(relayStatusLabelKey(health?.status ?? null));
   const permissionStatus = permission === 'granted'
     ? t('settings.permission.granted')
     : permission === 'denied'
