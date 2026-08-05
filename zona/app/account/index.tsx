@@ -21,6 +21,7 @@ import { formatAccountUsageBytes, type AccountUsage } from '@/lib/account-usage'
 import { relativeTime } from '@/lib/format';
 import { unregisterThisInstallation } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
+import { validateAuthPassword } from '@/lib/validation';
 import type { AuthProviderName } from '@/lib/auth-transactions';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -44,7 +45,7 @@ function identityHint(identity: UserIdentity) {
 export default function AccountScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { session, sendEmailAuth, startProvider } = useAuth();
+  const { session, sendEmailAuth, startPasswordAuth, startProvider } = useAuth();
   const { language, t } = useI18n();
   const { isEnabled, isVisible } = useRuntimeConfig();
   const [summary, setSummary] = useState<AccountSummary | null>(null);
@@ -52,6 +53,7 @@ export default function AccountScreen() {
   const [installations, setInstallations] = useState<AccountInstallation[]>([]);
   const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [usage, setUsage] = useState<AccountUsage | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
@@ -123,6 +125,34 @@ export default function AccountScreen() {
         pathname: '/auth/check-email' as never,
         params: { email: transaction.email ?? email, intent: transaction.intent, transaction: transaction.id },
       });
+    } catch (error) {
+      Alert.alert(t('account.linkError'), error instanceof Error ? error.message : t('auth.connectionError'));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addPassword() {
+    if (!email.trim() || !password || busy) return;
+    const passwordError = validateAuthPassword(password);
+    if (passwordError) {
+      Alert.alert(t('account.linkError'), passwordError);
+      return;
+    }
+    // Password linking inherits the current app-level (non-reauthenticated) linking
+    // behavior, matching addEmail/linkProvider. The rationale and hardening follow-up
+    // are recorded by WS2 in ADR 0005 and ACCOUNT_MANAGEMENT.md.
+    setBusy('password');
+    try {
+      const result = await startPasswordAuth(email, password, isAnonymous ? 'protect_guest' : 'link_method');
+      if ('id' in result) {
+        router.push({
+          pathname: '/auth/check-email' as never,
+          params: { email: result.email ?? email, intent: result.intent, transaction: result.id },
+        });
+      } else {
+        await refresh();
+      }
     } catch (error) {
       Alert.alert(t('account.linkError'), error instanceof Error ? error.message : t('auth.connectionError'));
     } finally {
@@ -303,6 +333,18 @@ export default function AccountScreen() {
             <TextInput autoCapitalize="none" autoComplete="email" autoCorrect={false} editable={!busy} keyboardType="email-address" onChangeText={setEmail} placeholder={t('auth.emailPlaceholder')} placeholderTextColor={colors.mutedLight} style={styles.input} value={email} />
             <Pressable disabled={Boolean(busy) || !email.trim()} onPress={() => void addEmail()} style={[styles.primaryButton, (busy || !email.trim()) && styles.disabled]}>
               {busy === 'email' ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>{t('account.sendCode')}</Text>}
+            </Pressable>
+          </View>
+        ) : null}
+
+        {capabilities?.email === true ? (
+          <View style={styles.linkCard}>
+            <Text style={styles.linkTitle}>{t('account.addPassword')}</Text>
+            <Text style={styles.linkBody}>{t('account.passwordHelp')}</Text>
+            <TextInput autoCapitalize="none" autoComplete="email" autoCorrect={false} editable={!busy} keyboardType="email-address" onChangeText={setEmail} placeholder={t('auth.emailPlaceholder')} placeholderTextColor={colors.mutedLight} style={styles.input} value={email} />
+            <TextInput autoCapitalize="none" autoComplete="new-password" autoCorrect={false} editable={!busy} onChangeText={setPassword} placeholder={t('auth.passwordPlaceholder')} placeholderTextColor={colors.mutedLight} secureTextEntry style={styles.input} textContentType="newPassword" value={password} />
+            <Pressable disabled={Boolean(busy) || !email.trim() || !password} onPress={() => void addPassword()} style={[styles.primaryButton, (busy || !email.trim() || !password) && styles.disabled]}>
+              {busy === 'password' ? <ActivityIndicator color={colors.white} /> : <Text style={styles.primaryButtonText}>{t('account.addPassword')}</Text>}
             </Pressable>
           </View>
         ) : null}

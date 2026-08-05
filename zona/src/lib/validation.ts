@@ -2,12 +2,49 @@ import { translate } from '../i18n';
 import type { DeleteAccountResult } from '../types';
 
 export const limits = {
+  passwordMinBytes: 8,
+  passwordMaxBytes: 72,
   sourceName: 80,
   hostname: 255,
   title: 120,
   body: 2_000,
   category: 80,
 };
+
+export function utf8ByteLength(value: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(value).length;
+  }
+  let length = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x7f) {
+      length += 1;
+    } else if (code <= 0x7ff) {
+      length += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length) {
+      const low = value.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        length += 4;
+        i += 1;
+      } else {
+        length += 3;
+      }
+    } else {
+      length += 3;
+    }
+  }
+  return length;
+}
+
+export function validateAuthPassword(password: string): string | null {
+  if (password.length === 0) return translate('validation.passwordRequired');
+  if (password !== password.trim()) return translate('validation.passwordWhitespace');
+  const bytes = utf8ByteLength(password);
+  if (bytes < limits.passwordMinBytes) return translate('validation.passwordTooShort', { count: limits.passwordMinBytes });
+  if (bytes > limits.passwordMaxBytes) return translate('validation.passwordTooLong', { count: limits.passwordMaxBytes });
+  return null;
+}
 
 export function normalizeOptional(value: string): string | null {
   const normalized = value.trim();

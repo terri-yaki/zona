@@ -3,7 +3,7 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 import { AppState, Platform } from 'react-native';
 
 import { clearPrivateUserState } from '@/cache/private-state';
-import { startEmailAuth, startProviderAuth, verifyEmailAuthCode } from '@/lib/auth-flow';
+import { startEmailAuth, startPasswordAuth, startProviderAuth, verifyEmailAuthCode } from '@/lib/auth-flow';
 import type { AuthIntent, AuthProviderName } from '@/lib/auth-transactions';
 import { supabase } from '@/lib/supabase';
 import { translate } from '@/i18n';
@@ -16,6 +16,7 @@ type AuthState = {
   continueAsGuest: () => Promise<void>;
   refreshSession: () => Promise<void>;
   sendEmailAuth: (email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startEmailAuth>;
+  startPasswordAuth: (email: string, password: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startPasswordAuth>;
   startProvider: (provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => ReturnType<typeof startProviderAuth>;
   verifyEmailCode: typeof verifyEmailAuthCode;
 };
@@ -54,6 +55,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const sendEmailAuth = useCallback((email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
     startEmailAuth(email, intent)
+  ), []);
+
+  const startPasswordAuthCb = useCallback((email: string, password: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
+    startPasswordAuth(email, password, intent)
   ), []);
 
   const startProvider = useCallback((provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) => (
@@ -108,9 +113,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     continueAsGuest,
     refreshSession,
     sendEmailAuth,
+    startPasswordAuth: startPasswordAuthCb,
     startProvider,
     verifyEmailCode,
-  }), [authError, clearAuthError, continueAsGuest, loading, refreshSession, sendEmailAuth, session, startProvider, verifyEmailCode]);
+  }), [authError, clearAuthError, continueAsGuest, loading, refreshSession, sendEmailAuth, session, startPasswordAuthCb, startProvider, verifyEmailCode]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
