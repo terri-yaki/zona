@@ -18,6 +18,9 @@ export type AuthTransaction = {
 };
 
 const storageKey = 'zona.auth-transaction.v1';
+// Pending password for protect_guest/link_method: Supabase only accepts a
+// password after the email is verified, so we stash it until OTP succeeds.
+const pendingPasswordKey = 'zona.auth-pending-password.v1';
 const lifetimeMs = 10 * 60 * 1_000;
 
 async function readRaw() {
@@ -36,6 +39,58 @@ async function writeRaw(value: string | null) {
   else await SecureStore.setItemAsync(storageKey, value, {
     keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
   });
+}
+
+type PendingPassword = { expiresAt: number; password: string; transactionId: string };
+
+async function readPendingPasswordRaw() {
+  return Platform.OS === 'web'
+    ? AsyncStorage.getItem(pendingPasswordKey)
+    : SecureStore.getItemAsync(pendingPasswordKey);
+}
+
+async function writePendingPasswordRaw(value: string | null) {
+  if (Platform.OS === 'web') {
+    if (value === null) await AsyncStorage.removeItem(pendingPasswordKey);
+    else await AsyncStorage.setItem(pendingPasswordKey, value);
+    return;
+  }
+  if (value === null) await SecureStore.deleteItemAsync(pendingPasswordKey);
+  else await SecureStore.setItemAsync(pendingPasswordKey, value, {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+  });
+}
+
+export async function stashPendingPassword(transactionId: string, password: string) {
+  const payload: PendingPassword = {
+    expiresAt: Date.now() + lifetimeMs,
+    password,
+    transactionId,
+  };
+  await writePendingPasswordRaw(JSON.stringify(payload));
+}
+
+export async function takePendingPassword(transactionId: string) {
+  const raw = await readPendingPasswordRaw();
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<PendingPassword>;
+    await writePendingPasswordRaw(null);
+    if (value.transactionId !== transactionId
+      || typeof value.password !== 'string'
+      || typeof value.expiresAt !== 'number'
+      || value.expiresAt <= Date.now()) {
+      return null;
+    }
+    return value.password;
+  } catch {
+    await writePendingPasswordRaw(null);
+    return null;
+  }
+}
+
+export async function clearPendingPassword() {
+  await writePendingPasswordRaw(null);
 }
 
 export function isAuthIntent(value: unknown): value is AuthIntent {
@@ -91,10 +146,22 @@ export async function consumeAuthTransaction(id: string) {
   const transaction = await getAuthTransaction(id);
   if (!transaction) return null;
   await writeRaw(null);
+  // Leave pending password for the verify step to consume when needed;
+  // clear orphans when the transaction id no longer matches.
+  const raw = await readPendingPasswordRaw();
+  if (raw) {
+    try {
+      const value = JSON.parse(raw) as Partial<PendingPassword>;
+      if (value.transactionId !== id) await writePendingPasswordRaw(null);
+    } catch {
+      await writePendingPasswordRaw(null);
+    }
+  }
   return transaction;
 }
 
 export async function cancelAuthTransaction(id?: string) {
+  await clearPendingPassword();
   if (!id) return writeRaw(null);
   const current = await getAuthTransaction(id);
   if (current) await writeRaw(null);

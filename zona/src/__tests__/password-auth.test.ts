@@ -7,12 +7,15 @@ beforeEach(() => setActiveLanguage('en'));
 
 const beginAuthTransaction = vi.fn();
 const cancelAuthTransaction = vi.fn();
+const clearPendingPassword = vi.fn();
 const consumeAuthTransaction = vi.fn();
 const getAuthTransaction = vi.fn();
 const getSession = vi.fn();
 const resend = vi.fn();
 const signInWithPassword = vi.fn();
 const signUp = vi.fn();
+const stashPendingPassword = vi.fn();
+const takePendingPassword = vi.fn();
 const updateUser = vi.fn();
 const verifyOtp = vi.fn();
 const getUser = vi.fn();
@@ -45,10 +48,13 @@ vi.mock('expo-secure-store', () => ({
 vi.mock('../lib/auth-transactions', () => ({
   beginAuthTransaction: (...args: unknown[]) => beginAuthTransaction(...args),
   cancelAuthTransaction: (...args: unknown[]) => cancelAuthTransaction(...args),
+  clearPendingPassword: (...args: unknown[]) => clearPendingPassword(...args),
   consumeAuthTransaction: (...args: unknown[]) => consumeAuthTransaction(...args),
   getAuthTransaction: (...args: unknown[]) => getAuthTransaction(...args),
   isAuthIntent: (value: unknown) =>
     value === 'link_method' || value === 'protect_guest' || value === 'sign_in' || value === 'sign_up',
+  stashPendingPassword: (...args: unknown[]) => stashPendingPassword(...args),
+  takePendingPassword: (...args: unknown[]) => takePendingPassword(...args),
 }));
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -149,11 +155,51 @@ describe('startPasswordAuth password forwarding', () => {
     expect(signUp).toHaveBeenCalledWith({ email: 'user@example.com', password });
   });
 
-  it('forwards the exact password bytes to updateUser without trimming', async () => {
-    getSession.mockResolvedValue({ data: { session: { user: { id: 'user-a' } } } });
+  it('sets password only when the signed-in user already has that email verified', async () => {
+    getSession
+      .mockResolvedValueOnce({
+        data: {
+          session: {
+            user: {
+              id: 'user-a',
+              email: 'user@example.com',
+              email_confirmed_at: '2026-08-01T00:00:00.000Z',
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          session: {
+            user: {
+              id: 'user-a',
+              email: 'user@example.com',
+              email_confirmed_at: '2026-08-01T00:00:00.000Z',
+            },
+          },
+        },
+      });
     const password = 'pässwörd中文';
     await startPasswordAuth('user@example.com', password, 'link_method');
-    expect(updateUser).toHaveBeenCalledWith({ email: 'user@example.com', password });
+    expect(updateUser).toHaveBeenCalledWith({ password });
+    expect(stashPendingPassword).not.toHaveBeenCalled();
+  });
+
+  it('stashes the password and only links email when the address is not verified yet', async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-a', email: null, email_confirmed_at: null, is_anonymous: true } } },
+    });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'protect_guest' });
+    updateUser.mockResolvedValue({
+      data: { user: { id: 'user-a', new_email: 'user@example.com', email_confirmed_at: null } },
+      error: null,
+    });
+    const password = 'pässwörd中文';
+    const result = await startPasswordAuth('user@example.com', password, 'protect_guest');
+    expect(stashPendingPassword).toHaveBeenCalledWith('tx-1', password);
+    expect(updateUser).toHaveBeenCalledWith({ email: 'user@example.com' });
+    expect(updateUser).not.toHaveBeenCalledWith(expect.objectContaining({ password }));
+    expect(result).toMatchObject({ id: 'tx-1', intent: 'protect_guest' });
   });
 });
 
@@ -176,12 +222,26 @@ describe('verifyEmailAuthCode signup confirmation', () => {
 
   it('uses OTP type email_change for password-link confirmation transactions', async () => {
     getAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    takePendingPassword.mockResolvedValue(null);
     await verifyEmailAuthCode({ code: '123456', email: 'user@example.com', transactionId: 'tx-1' });
     expect(verifyOtp).toHaveBeenCalledWith({
       email: 'user@example.com',
       token: '123456',
       type: 'email_change',
     });
+  });
+
+  it('applies a stashed password after email_change verification succeeds', async () => {
+    getAuthTransaction.mockResolvedValue({
+      ...transaction,
+      expectedUserId: 'user-a',
+      intent: 'protect_guest',
+    });
+    takePendingPassword.mockResolvedValue('stashed-password');
+    updateUser.mockResolvedValue({ data: { user: { id: 'user-a' } }, error: null });
+    await verifyEmailAuthCode({ code: '123456', email: 'user@example.com', transactionId: 'tx-1' });
+    expect(takePendingPassword).toHaveBeenCalledWith('tx-1');
+    expect(updateUser).toHaveBeenCalledWith({ password: 'stashed-password' });
   });
 });
 
@@ -194,6 +254,13 @@ describe('describeAuthError', () => {
   it('maps the unconfirmed-email response to the localized message', () => {
     expect(describeAuthError(new Error('Email not confirmed'), 'fallback'))
       .toBe(translate('auth.emailNotConfirmed'));
+  });
+
+  it('maps AuthApiError codes as well as messages', () => {
+    expect(describeAuthError({ code: 'email_not_confirmed', message: 'Email not confirmed' }, 'fallback'))
+      .toBe(translate('auth.emailNotConfirmed'));
+    expect(describeAuthError({ code: 'invalid_credentials', message: 'Invalid login credentials' }, 'fallback'))
+      .toBe(translate('auth.passwordInvalid'));
   });
 
   it('maps coded errors to their localized messages', () => {

@@ -8,8 +8,11 @@ import { parseAuthCallbackUrl, assertSameUserUpgrade, type AuthCallbackParams } 
 import {
   beginAuthTransaction,
   cancelAuthTransaction,
+  clearPendingPassword,
   consumeAuthTransaction,
   getAuthTransaction,
+  stashPendingPassword,
+  takePendingPassword,
   type AuthIntent,
   type AuthProviderName,
   type AuthTransaction,
@@ -40,13 +43,35 @@ const supabaseAuthMessageKeys: Record<string, TranslationKey> = {
   'Invalid login credentials': 'auth.passwordInvalid',
 };
 
+const supabaseAuthCodeKeys: Record<string, TranslationKey> = {
+  email_not_confirmed: 'auth.emailNotConfirmed',
+  invalid_credentials: 'auth.passwordInvalid',
+  user_already_exists: 'auth.emailInUse',
+};
+
 export function describeAuthError(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    const key = codedAuthErrorKeys[error.message] ?? supabaseAuthMessageKeys[error.message];
+  if (error && typeof error === 'object') {
+    const code = 'code' in error && typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : '';
+    const message = 'message' in error && typeof (error as { message?: unknown }).message === 'string'
+      ? (error as { message: string }).message
+      : error instanceof Error ? error.message : '';
+    const key = codedAuthErrorKeys[message]
+      ?? supabaseAuthCodeKeys[code]
+      ?? supabaseAuthMessageKeys[message];
     if (key) return translate(key);
-    return error.message;
+    if (message) return message;
   }
   return fallback;
+}
+
+function hasVerifiedEmail(user: { email?: string | null; email_confirmed_at?: string | null }, email: string) {
+  return Boolean(
+    user.email
+    && user.email.toLowerCase() === email
+    && user.email_confirmed_at,
+  );
 }
 
 export async function startEmailAuth(email: string, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) {
@@ -122,35 +147,73 @@ export async function startPasswordAuth(
     return transaction;
   }
 
-  const { data, error } = await supabase.auth.updateUser({ email: normalized, password });
-  if (error) {
-    await cancelAuthTransaction(transaction.id);
-    throw error;
+  // protect_guest / link_method — Supabase only accepts a password once the
+  // email identity is verified. Setting email+password together on an
+  // anonymous guest silently drops the password, so sign-in later fails.
+  const currentUser = sessionData.session?.user;
+  if (currentUser && hasVerifiedEmail(currentUser, normalized)) {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      await cancelAuthTransaction(transaction.id);
+      throw error;
+    }
+    const { data: linked } = await supabase.auth.getSession();
+    if (!linked.session) {
+      await cancelAuthTransaction(transaction.id);
+      throw new Error('UNAUTHORIZED');
+    }
+    try {
+      assertSameUserUpgrade(intent, expectedUserId, linked.session.user.id);
+    } catch (upgradeError) {
+      await cancelAuthTransaction(transaction.id);
+      throw upgradeError;
+    }
+    await consumeAuthTransaction(transaction.id);
+    await clearPendingPassword();
+    return linked.session;
   }
-  if (data.user?.new_email) {
-    return transaction;
-  }
-  const { data: verified, error: userError } = await supabase.auth.getUser();
-  if (userError || !verified.user) {
-    await cancelAuthTransaction(transaction.id);
-    throw userError ?? new Error('UNAUTHORIZED');
-  }
+
+  // Email not verified yet: confirm the email first, stash the password, and
+  // apply it in verifyEmailAuthCode after the OTP succeeds.
   try {
-    assertSameUserUpgrade(intent, expectedUserId, verified.user.id);
+    await stashPendingPassword(transaction.id, password);
+    const { data, error } = await supabase.auth.updateUser({ email: normalized });
+    if (error) {
+      await cancelAuthTransaction(transaction.id);
+      throw error;
+    }
+    // Only a pending new_email means the user still has to enter a code.
+    // When confirm-email is off, updateUser applies the address immediately
+    // (new_email is null) and we can set the password in this same step.
+    if (data.user?.new_email) {
+      return transaction;
+    }
+    // Email stuck immediately — set the stashed password now.
+    const pending = await takePendingPassword(transaction.id);
+    if (pending) {
+      const { error: passwordError } = await supabase.auth.updateUser({ password: pending });
+      if (passwordError) {
+        await cancelAuthTransaction(transaction.id);
+        throw passwordError;
+      }
+    }
+    const { data: linked } = await supabase.auth.getSession();
+    if (!linked.session) {
+      await cancelAuthTransaction(transaction.id);
+      throw new Error('UNAUTHORIZED');
+    }
+    try {
+      assertSameUserUpgrade(intent, expectedUserId, linked.session.user.id);
+    } catch (upgradeError) {
+      await cancelAuthTransaction(transaction.id);
+      throw upgradeError;
+    }
+    await consumeAuthTransaction(transaction.id);
+    return linked.session;
   } catch (error) {
-    await cancelAuthTransaction(transaction.id);
+    await clearPendingPassword();
     throw error;
   }
-  // updateUser rewrites the stored session; re-read it so callers receive the
-  // user object carrying the freshly linked email/password identity instead
-  // of the stale pre-update snapshot.
-  const { data: linked } = await supabase.auth.getSession();
-  if (!linked.session) {
-    await cancelAuthTransaction(transaction.id);
-    throw new Error('UNAUTHORIZED');
-  }
-  await consumeAuthTransaction(transaction.id);
-  return linked.session;
 }
 
 export async function verifyEmailAuthCode(input: {
@@ -175,6 +238,16 @@ export async function verifyEmailAuthCode(input: {
   if (error) throw error;
   if (!data.user) throw new Error('UNAUTHORIZED');
   assertSameUserUpgrade(transaction.intent, transaction.expectedUserId, data.user.id);
+
+  // Apply a stashed password only after email verification (anonymous → permanent).
+  if (transaction.intent === 'protect_guest' || transaction.intent === 'link_method') {
+    const pendingPassword = await takePendingPassword(transaction.id);
+    if (pendingPassword) {
+      const { error: passwordError } = await supabase.auth.updateUser({ password: pendingPassword });
+      if (passwordError) throw passwordError;
+    }
+  }
+
   await consumeAuthTransaction(transaction.id);
   return data.user;
 }

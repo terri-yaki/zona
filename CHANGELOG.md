@@ -17,6 +17,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
+- Setting a password on a guest account now works for later sign-in: Zona
+  confirms the email first (as Supabase requires), then attaches the password
+  after the code check instead of dropping it.
 - Opening or returning to Zona no longer leaves the inbox or sources list
   stuck on a spinning indicator; a refresh that stalls now steps aside so the
   latest content can load.

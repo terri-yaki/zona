@@ -170,6 +170,7 @@ export default function SignInScreen() {
               {usePasswordMode ? (
                 <TextInput
                   accessibilityLabel={t('auth.password')}
+                  autoCapitalize="none"
                   autoComplete={creatingAccount ? 'new-password' : 'password'}
                   autoCorrect={false}
                   editable={!signingIn}
@@ -178,6 +179,7 @@ export default function SignInScreen() {
                   placeholder={t('auth.passwordPlaceholder')}
                   placeholderTextColor={colors.mutedLight}
                   secureTextEntry
+                  spellCheck={false}
                   style={[styles.input, styles.passwordInput]}
                   textContentType={creatingAccount ? 'newPassword' : 'password'}
                   value={password}
