@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, S
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { InboxSkeleton } from '@/components/InboxSkeleton';
 import { NotificationCard } from '@/components/NotificationCard';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
 import { useInbox } from '@/hooks/useInbox';
@@ -13,6 +13,7 @@ import { useSources } from '@/hooks/useSources';
 import { deleteSavedInboxFilter, listSavedInboxFilters, saveInboxFilter, type NotificationSeverityFilter, type SavedInboxFilter } from '@/data/inbox-filters';
 import { userMessage } from '@/lib/errors';
 import { groupRepeatedNotifications } from '@/lib/notification-grouping';
+import { sortSourcesForFilters } from '@/lib/source-filters';
 import { runtimeNumber } from '@/lib/runtime-controls';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
@@ -71,12 +72,12 @@ export default function InboxScreen() {
   const timeFilterMilliseconds = runtimeNumber(snapshot, 'inbox.time_filter_hours', 24, 1, 720) * 60 * 60 * 1_000;
   const maxSourceFilters = runtimeNumber(snapshot, 'inbox.max_source_filters', 50, 1, 200);
   const sourceOptions = useMemo(
-    () => sourceState.sources
-      .filter((source) => !source.revoked_at || (
+    () => sortSourcesForFilters(
+      sourceState.sources.filter((source) => !source.revoked_at || (
         isVisible('inbox.show_revoked_filters') && isEnabled('inbox.show_revoked_filters')
-      ))
-      .sort((left, right) => left.display_name.localeCompare(right.display_name, getLocaleTag(language)))
-      .slice(0, maxSourceFilters),
+      )),
+      getLocaleTag(language),
+    ).slice(0, maxSourceFilters),
     [isEnabled, isVisible, language, maxSourceFilters, sourceState.sources],
   );
   const filtersActive = Boolean(effectiveSource || effectiveUnreadOnly || last24Hours || filters.pinnedOnly || filters.severity || filters.searchQuery);
@@ -171,7 +172,7 @@ export default function InboxScreen() {
   if (inbox.bootstrapping && inbox.items.length === 0 && !inbox.error) {
     return (
       <TabScreen>
-        <LoadingScreen />
+        <InboxSkeleton />
       </TabScreen>
     );
   }
@@ -330,7 +331,7 @@ export default function InboxScreen() {
         ListEmptyComponent={
           inbox.filterLoading ? (
             <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
-              <ActivityIndicator color={colors.primary} size="small" />
+              <InboxSkeleton />
             </View>
           ) : (
             <EmptyState title={t('inbox.emptyTitle')} message={emptyMessage} />
