@@ -4,7 +4,7 @@ All notable changes to Zona are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) structure and intends
 to use semantic application versions. Build numbers are managed by EAS.
 
-## [0.0.12] - 2026-08-05
+## [0.0.12] - 2026-08-05 (re-released 2026-08-06)
 
 ### Added
 
@@ -35,6 +35,19 @@ to use semantic application versions. Build numbers are managed by EAS.
 - The Account screen's email and password cards no longer share one email
   field, and an account that already signs in with email sees "Change
   password" for its current address instead of a silent email change.
+- The delivery card no longer claims an alert is still delivering once it has
+  already landed in the inbox.
+- Zona Relay reconnects silently every 5 seconds after a disconnect instead of
+  showing raw error text under the relay status.
+
+### Changed
+
+- Inbox loading states now show skeleton placeholder rows that mirror the
+  notification-card layout instead of a centered spinner, keeping the existing
+  accessibility loading announcement intact.
+- Source filter chips order revoked sources after active ones so active
+  senders stay reachable and revoked chips cannot displace them when the row
+  is capped.
 
 ## [0.0.11] - 2026-08-02
 
