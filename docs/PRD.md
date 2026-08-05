@@ -76,8 +76,9 @@ The user must be able to:
   must offer an easy-to-find, confirmed account-deletion flow that deletes the
   Supabase Auth account and application data that is not legally retained.
 - **AUTH-05** The app retains private guest start and can protect the same
-  account with email, Apple, Google, or GitHub without changing its Auth user ID
-  or existing ownership. Each method is shown only when that provider is enabled
+  account with email (one-time code or password), Apple, Google, or GitHub
+  without changing its Auth user ID or existing ownership. Each method is shown
+  only when that provider is enabled
   in the connected Supabase project; provider availability is deployment
   configuration, not a hard-coded promise.
 - **AUTH-06** A protected user can restore server-held sources, preferences,

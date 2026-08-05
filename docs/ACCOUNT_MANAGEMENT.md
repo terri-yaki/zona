@@ -7,8 +7,9 @@ section below records the pre-v0.0.8 state it replaced.
 ## Product outcome
 
 Zona should be effortless to try and safe to keep. A new user may continue as
-a private guest, then protect that same Zona with email, Apple, Google, or
-GitHub without losing sources, settings, or inbox history. After protection,
+a private guest, then protect that same Zona with email (one-time code or
+password), Apple, Google, or GitHub without losing sources, settings, or inbox
+history. After protection,
 the user can sign in on a replacement phone and recover server-held data.
 
 The word **account** means the container that owns Zona data and future paid
@@ -101,6 +102,16 @@ verifies the current anonymous user. Outward responses remain non-enumerating,
 so a mistyped address never silently creates an empty account from the sign-in
 form.
 
+Password sign-in follows the same intents. `sign_in` calls
+`signInWithPassword`; `sign_up` calls `signUp({ email, password })`;
+`protect_guest` and `link_method` call `updateUser({ email, password })`. The
+client validates the raw password string (8–72 UTF-8 bytes, no leading or
+trailing whitespace) and forwards it unchanged; Supabase stores only a bcrypt
+hash. Sign-up and guest-protection passwords stay pending until the user enters
+the 6-digit confirmation code sent to the address, and resending that code is
+only offered while a confirmation is outstanding. See
+[ADR 0005](adr/0005-email-password-sign-in.md).
+
 The canonical recovery email is a verified Supabase `email` identity. An email
 inside Google/GitHub/Apple profile metadata is only a display hint and is not a
 Zona email recovery method. Adding or changing the recovery email completes
@@ -152,7 +163,8 @@ work because the Auth user ID remains stable.
 
 ### Signing in and restoring
 
-A signed-out user selects a provider or requests an email OTP/magic link. On
+A signed-out user selects a provider, requests an email OTP/magic link, or
+signs in with an email and password. On
 success, Zona resolves the personal account, registers the current
 installation, refreshes the push token, and synchronizes server-held data.
 
@@ -801,7 +813,8 @@ sessions working.
 - New guest gets one personal account and can use all existing v0.0.7 flows.
 - Concurrent first-session calls still create exactly one personal account,
   owner mapping, membership, and profile.
-- Email, Apple, Google, and GitHub each create a protected account.
+- Email (one-time code or password), Apple, Google, and GitHub each create a
+  protected account.
 - Each provider protects an existing guest without changing the Auth user ID,
   account ID, source IDs, existing source-key validity, preferences, or history.
 - A protected account restores on a second iPhone and Android device; both get

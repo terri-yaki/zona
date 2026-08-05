@@ -45,6 +45,13 @@ redirects. Provider secrets stay in Supabase and never enter the Expo bundle.
 The app reads the public Auth settings endpoint and hides methods that are not
 enabled.
 
+Password sign-in (v0.0.12) uses the same Email provider: keep Confirm email
+enabled, set the minimum password length to 8 (mirrored as
+`minimum_password_length = 8` under `[auth]` in `config.toml`), and make sure
+the Confirm signup and Change Email templates render `{{ .Token }}` so the app
+can collect the 6-digit confirmation code. See
+`docs/adr/0005-email-password-sign-in.md`.
+
 The migrations enable `pg_cron`, schedule hourly database expiry cleanup,
 enable Realtime for the inbox, create the private attachment bucket, and create
 all row-level security policies. Attachment objects must be removed through the

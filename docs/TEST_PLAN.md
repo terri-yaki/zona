@@ -185,7 +185,8 @@ family and the **Open Zona Inbox** and **Prepare a Zona Alert** Shortcuts action
 Additional lifecycle cases:
 
 - anonymous sign-in pending, success, and provider error;
-- email, Apple, Google, and GitHub sign-in and guest-protection flows;
+- email (one-time code and password), Apple, Google, and GitHub sign-in and
+  guest-protection flows;
 - same-UUID guest upgrade preserving sources, keys, preferences, inbox, cache,
   installation registration, and entitlements;
 - auth callbacks from cold, warm, background, terminated, duplicate, expired,

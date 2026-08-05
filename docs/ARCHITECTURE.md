@@ -101,9 +101,13 @@ than putting transport or persistence directly into screens.
 
 ### Authentication and account ownership
 
-Zona keeps private guest start and includes passwordless email, Apple, Google,
-and GitHub recovery flows. The app reads Supabase's public Auth settings and
-shows only methods enabled for that deployment. A guest is normally upgraded in
+Zona keeps private guest start and includes passwordless email, email and
+password, Apple, Google, and GitHub recovery flows. The app reads Supabase's
+public Auth settings and shows only methods enabled for that deployment.
+Password credentials are validated client-side (8–72 UTF-8 bytes, no leading or
+trailing whitespace) and forwarded unchanged to Supabase Auth; sign-up and
+guest protection confirm the address with a 6-digit code before the credential
+activates. A guest is normally upgraded in
 place by linking a verified identity to the current Supabase Auth user; changing
 the Auth user ID during that flow is a failure. Sign-in on a replacement phone
 restores server-held account data but never reveals a source's one-time
@@ -113,8 +117,9 @@ An additive personal account and membership layer becomes the future resource,
 billing, and integration boundary. Existing `user_id` ownership remains
 authoritative during the old-client compatibility window. Account transfer is
 server-only, requires proof of both sessions, and never silently merges two
-protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md) and
-[ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md).
+protected accounts. See [ACCOUNT_MANAGEMENT.md](ACCOUNT_MANAGEMENT.md),
+[ADR 0004](adr/0004-recoverable-accounts-and-principal-separation.md), and
+[ADR 0005](adr/0005-email-password-sign-in.md).
 
 ### User-authenticated Edge Functions
 

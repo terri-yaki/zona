@@ -1,6 +1,6 @@
 # Zona feature status
 
-Development mobile version: **0.0.11** on Expo SDK 56. The latest completed
+Development mobile version: **0.0.12** on Expo SDK 56. The latest completed
 release record in this repository is **0.0.10**.
 
 This is the reconciliation layer between product wording and shipped behavior.
@@ -12,7 +12,7 @@ configured, or that Apple/Google has approved a store release.
 
 | Area | Actual behavior | Important limit |
 | --- | --- | --- |
-| Accounts | A user can start as a private guest. Recovery by email, Apple, Google, or GitHub appears only when that method is enabled in the connected Supabase project. | Provider code existing in the app is not proof that the provider is configured. Plaintext source keys cannot be recovered. |
+| Accounts | A user can start as a private guest. Recovery by email (one-time code or password), Apple, Google, or GitHub appears only when that method is enabled in the connected Supabase project. | Provider code existing in the app is not proof that the provider is configured. Plaintext source keys cannot be recovered. Passwords are validated client-side at 8–72 UTF-8 bytes and confirmed by a 6-digit email code on sign-up and guest protection. |
 | Sources and keys | Sources have stable identities, names, optional hostnames, per-source sounds, and independently revocable access keys. A new plaintext key is shown once. | Source activity comes from accepted alerts; Zona has no PC heartbeat and does not prove a computer is online. |
 | Notification API | A source token submits JSON or one optional image. The database accepts the inbox record first, then a durable worker sends eligible pushes, retries transient failures, and checks receipts. | HTTP `202` proves inbox acceptance, not that a banner appeared or a person saw it. |
 | Inbox | Seven-day standard retention, cursor pagination, source/unread/time/severity/pinned filters, text search, saved views, repeated-alert grouping, pinning, mark-unread, deletion, and offline read cache. | Offline mode never queues writes. Search and filters cover the retained server inbox, not deleted or expired history. |

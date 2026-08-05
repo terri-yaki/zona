@@ -52,8 +52,9 @@ previews.
   behavior reconciled against the app and backend.
 - `docs/PRD.md` — product scope, requirements, acceptance matrix, and blockers.
 - `docs/ARCHITECTURE.md` — data flow, trust boundaries, and extension rules.
-- `docs/ACCOUNT_MANAGEMENT.md` — v0.0.8 guest protection, provider sign-in,
-  recovery, devices, deletion, and future integration boundaries.
+- `docs/ACCOUNT_MANAGEMENT.md` — v0.0.8 guest protection, provider and
+  email/password sign-in, recovery, devices, deletion, and future integration
+  boundaries.
 - `docs/openapi.yaml` — machine-readable Edge Function API contract.
 - `docs/TEST_PLAN.md` — automated and physical iOS/Android release verification.
 - `docs/ROADMAP.md` — release direction and the path to Zona Plus.

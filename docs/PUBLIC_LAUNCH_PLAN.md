@@ -107,8 +107,8 @@ Required flow:
 1. Allow anonymous evaluation within a small free quota.
 2. Require account linking before purchase or before creating a long-lived
    second source.
-3. Offer passwordless email, Apple, Google, and GitHub as recoverable methods;
-   keep Apple first-class in the iPhone experience.
+3. Offer passwordless email, email and password, Apple, Google, and GitHub as
+   recoverable methods; keep Apple first-class in the iPhone experience.
 4. Preserve the existing Supabase `auth.users.id` when linking the anonymous
    identity so existing sources and inbox rows do not move.
 5. Provide sign-in restoration, Restore Purchases, subscription management,
