@@ -329,7 +329,9 @@ export default function SettingsScreen() {
 
   const busy = signingOut || deleting;
   const relayStatus = health
-    ? t(`settings.relay.${health.status === 'not-granted' ? 'notGranted' : health.status === 'expo-go' ? 'expoGo' : health.status}`)
+    ? health.status === 'error'
+      ? t('settings.relay.notChecked')
+      : t(`settings.relay.${health.status === 'not-granted' ? 'notGranted' : health.status === 'expo-go' ? 'expoGo' : health.status}`)
     : t('settings.relay.notChecked');
   const permissionStatus = permission === 'granted'
     ? t('settings.permission.granted')
@@ -461,7 +463,6 @@ export default function SettingsScreen() {
         <SettingRow icon="bell" label={t('settings.iosPermission')} value={permissionStatus} />
         <View style={styles.divider} />
         <SettingRow icon="antenna.radiowaves.left.and.right" label={t('settings.relay')} value={relayStatus} />
-        {health?.error ? <Text accessibilityLiveRegion="polite" style={styles.healthError}>{health.error}</Text> : null}
         {isVisible('settings.push_registration') ? <>
           <View style={styles.divider} />
           <Pressable
@@ -718,7 +719,6 @@ const createStyles = () => StyleSheet.create({
   label: { color: colors.textSoft, flex: 1, fontSize: 13, fontWeight: '600' },
   value: { color: colors.muted, flexShrink: 1, fontSize: 12, maxWidth: '52%' },
   divider: { backgroundColor: colors.border, height: 1, marginLeft: 45 },
-  healthError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12, paddingLeft: 45 },
   optionRow: { alignItems: 'center', flexDirection: 'row', minHeight: 72, paddingVertical: 10 },
   optionCopy: { flex: 1, paddingRight: 12 },
   optionLabel: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
