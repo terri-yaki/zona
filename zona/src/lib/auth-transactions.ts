@@ -7,6 +7,7 @@ export type AuthIntent = 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'
 export type AuthProviderName = 'apple' | 'github' | 'google';
 
 export type AuthTransaction = {
+  confirmation?: 'signup';
   createdAt: number;
   email: string | null;
   expiresAt: number;
@@ -45,6 +46,7 @@ export function isAuthIntent(value: unknown): value is AuthIntent {
 }
 
 export async function beginAuthTransaction(input: {
+  confirmation?: 'signup';
   email?: string | null;
   expectedUserId?: string | null;
   intent: AuthIntent;
@@ -52,6 +54,7 @@ export async function beginAuthTransaction(input: {
 }) {
   const now = Date.now();
   const transaction: AuthTransaction = {
+    confirmation: input.confirmation,
     createdAt: now,
     email: input.email ?? null,
     expectedUserId: input.expectedUserId ?? null,

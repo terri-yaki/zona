@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/AppIcon';
 import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { validateAuthPassword } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
@@ -13,11 +14,13 @@ import { useThemedStyles } from '@/theme-preference';
 export default function SignInScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { session, authError, clearAuthError, continueAsGuest, sendEmailAuth, startProvider } = useAuth();
+  const { session, authError, clearAuthError, continueAsGuest, sendEmailAuth, startPasswordAuth, startProvider } = useAuth();
   const { t } = useI18n();
   const [signingIn, setSigningIn] = useState(false);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [creatingAccount, setCreatingAccount] = useState(false);
+  const [usePasswordMode, setUsePasswordMode] = useState(false);
   const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
 
   useEffect(() => {
@@ -45,6 +48,35 @@ export default function SignInScreen() {
 
   async function continueWithEmail() {
     if (signingIn || capabilities?.email !== true) return;
+    if (usePasswordMode) {
+      const passwordError = validateAuthPassword(password);
+      if (passwordError) {
+        Alert.alert(t('auth.signInError'), passwordError);
+        return;
+      }
+      setSigningIn(true);
+      clearAuthError();
+      try {
+        const result = await startPasswordAuth(email, password, creatingAccount ? 'sign_up' : 'sign_in');
+        if ('id' in result) {
+          router.push({
+            pathname: '/auth/check-email' as never,
+            params: { email: result.email ?? email, intent: result.intent, transaction: result.id },
+          });
+        } else {
+          router.replace('/');
+        }
+      } catch (error) {
+        Alert.alert(t('auth.signInError'), error instanceof Error && error.message === 'INVALID_EMAIL'
+          ? t('auth.emailInvalid')
+          : error instanceof Error && error.message === 'INVALID_PASSWORD'
+            ? t('auth.passwordInvalid')
+            : error instanceof Error ? error.message : t('auth.connectionError'));
+      } finally {
+        setSigningIn(false);
+      }
+      return;
+    }
     setSigningIn(true);
     clearAuthError();
     try {
@@ -117,8 +149,27 @@ export default function SignInScreen() {
                 style={styles.input}
                 value={email}
               />
-              <Pressable accessibilityRole="button" disabled={signingIn || !email.trim()} onPress={() => void continueWithEmail()} style={({ pressed }) => [styles.button, styles.emailButton, (signingIn || !email.trim()) && styles.disabled, pressed && styles.pressed]}>
-                {signingIn ? <ActivityIndicator color={colors.white} /> : <><Text style={styles.buttonText}>{creatingAccount ? t('auth.createWithEmail') : t('auth.continueEmail')}</Text><AppIcon color={colors.white} fallback="›" name="arrow.right" size={17} /></>}
+              {usePasswordMode ? (
+                <TextInput
+                  accessibilityLabel={t('auth.password')}
+                  autoComplete={creatingAccount ? 'new-password' : 'password'}
+                  autoCorrect={false}
+                  editable={!signingIn}
+                  onChangeText={setPassword}
+                  onSubmitEditing={() => void continueWithEmail()}
+                  placeholder={t('auth.passwordPlaceholder')}
+                  placeholderTextColor={colors.mutedLight}
+                  secureTextEntry
+                  style={[styles.input, styles.passwordInput]}
+                  textContentType={creatingAccount ? 'newPassword' : 'password'}
+                  value={password}
+                />
+              ) : null}
+              <Pressable accessibilityRole="button" disabled={signingIn || !email.trim() || (usePasswordMode && !password)} onPress={() => void continueWithEmail()} style={({ pressed }) => [styles.button, styles.emailButton, (signingIn || !email.trim() || (usePasswordMode && !password)) && styles.disabled, pressed && styles.pressed]}>
+                {signingIn ? <ActivityIndicator color={colors.white} /> : <><Text style={styles.buttonText}>{usePasswordMode ? t('auth.continueWithPassword') : creatingAccount ? t('auth.createWithEmail') : t('auth.continueEmail')}</Text><AppIcon color={colors.white} fallback="›" name="arrow.right" size={17} /></>}
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => setUsePasswordMode((value) => !value)} style={styles.modeButton}>
+                <Text style={styles.modeText}>{usePasswordMode ? t('auth.useCodeInstead') : t('auth.usePassword')}</Text>
               </Pressable>
               <Pressable accessibilityRole="button" onPress={() => setCreatingAccount((value) => !value)} style={styles.modeButton}>
                 <Text style={styles.modeText}>{creatingAccount ? t('auth.haveAccount') : t('auth.needAccount')}</Text>
@@ -163,6 +214,7 @@ const createStyles = () => StyleSheet.create({
   dividerText: { color: colors.mutedLight, fontSize: 11, fontWeight: '600' },
   emailSpacer: { height: 16 },
   input: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, color: colors.text, fontSize: 15, minHeight: 51, paddingHorizontal: 14 },
+  passwordInput: { marginTop: 10 },
   button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 53, padding: 14 },
   emailButton: { marginTop: 10 },
   modeButton: { alignItems: 'center', minHeight: 38, justifyContent: 'center' },

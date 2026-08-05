@@ -5,7 +5,10 @@ const cancelAuthTransaction = vi.fn();
 const consumeAuthTransaction = vi.fn();
 const getAuthTransaction = vi.fn();
 const getSession = vi.fn();
+const resend = vi.fn();
 const signInWithOtp = vi.fn();
+const signInWithPassword = vi.fn();
+const signUp = vi.fn();
 const updateUser = vi.fn();
 const verifyOtp = vi.fn();
 const exchangeCodeForSession = vi.fn();
@@ -58,7 +61,10 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: (...args: unknown[]) => getSession(...args),
+      resend: (...args: unknown[]) => resend(...args),
       signInWithOtp: (...args: unknown[]) => signInWithOtp(...args),
+      signInWithPassword: (...args: unknown[]) => signInWithPassword(...args),
+      signUp: (...args: unknown[]) => signUp(...args),
       updateUser: (...args: unknown[]) => updateUser(...args),
       verifyOtp: (...args: unknown[]) => verifyOtp(...args),
       exchangeCodeForSession: (...args: unknown[]) => exchangeCodeForSession(...args),
@@ -74,6 +80,7 @@ import {
   completeAuthCallback,
   normalizeAuthEmail,
   startEmailAuth,
+  startPasswordAuth,
   startProviderAuth,
   verifyEmailAuthCode,
 } from '../lib/auth-flow';
@@ -97,8 +104,11 @@ describe('auth-flow recovery paths', () => {
     cancelAuthTransaction.mockResolvedValue(undefined);
     consumeAuthTransaction.mockResolvedValue(undefined);
     getAuthTransaction.mockResolvedValue(transaction);
+    resend.mockResolvedValue({ data: {}, error: null });
     signInWithOtp.mockResolvedValue({ data: {}, error: null });
-    updateUser.mockResolvedValue({ data: {}, error: null });
+    signInWithPassword.mockResolvedValue({ data: { session: { user: { id: 'user-a' } } }, error: null });
+    signUp.mockResolvedValue({ data: { user: { id: 'user-a' }, session: null }, error: null });
+    updateUser.mockResolvedValue({ data: { user: { id: 'user-a', new_email: null } }, error: null });
     verifyOtp.mockResolvedValue({ data: { user: { id: 'user-a' } }, error: null });
     exchangeCodeForSession.mockResolvedValue({
       data: { user: { id: 'user-a' }, session: { user: { id: 'user-a' } } },
@@ -211,5 +221,86 @@ describe('auth-flow recovery paths', () => {
       transactionId: null,
       type: null,
     })).rejects.toThrow('AUTH_TRANSACTION_MISSING');
+  });
+
+  it('startPasswordAuth signs in with password and returns the session', async () => {
+    const result = await startPasswordAuth('user@example.com', 'password123', 'sign_in');
+    expect(signInWithPassword).toHaveBeenCalledWith({ email: 'user@example.com', password: 'password123' });
+    expect(result).toEqual({ user: { id: 'user-a' } });
+  });
+
+  it('startPasswordAuth throws on password sign-in error', async () => {
+    signInWithPassword.mockResolvedValue({ data: { session: null }, error: new Error('Invalid login credentials') });
+    await expect(startPasswordAuth('user@example.com', 'password123', 'sign_in')).rejects.toThrow('Invalid login credentials');
+  });
+
+  it('startPasswordAuth signs up, begins a signup-marked transaction, and returns it when confirmation is pending', async () => {
+    signUp.mockResolvedValue({ data: { user: { id: 'user-a' }, session: null }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', intent: 'sign_up' });
+    const result = await startPasswordAuth('user@example.com', 'password123', 'sign_up');
+    expect(beginAuthTransaction).toHaveBeenCalledWith({
+      confirmation: 'signup',
+      email: 'user@example.com',
+      expectedUserId: null,
+      intent: 'sign_up',
+      provider: 'email',
+    });
+    expect('id' in result).toBe(true);
+    expect((result as { confirmation?: string }).confirmation).toBe('signup');
+    expect(consumeAuthTransaction).not.toHaveBeenCalled();
+  });
+
+  it('startPasswordAuth consumes the transaction when sign-up returns an immediate session', async () => {
+    signUp.mockResolvedValue({ data: { user: { id: 'user-a' }, session: { user: { id: 'user-a' } } }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', intent: 'sign_up' });
+    const result = await startPasswordAuth('user@example.com', 'password123', 'sign_up');
+    expect(consumeAuthTransaction).toHaveBeenCalledWith('tx-1');
+    expect('id' in result).toBe(false);
+  });
+
+  it('startPasswordAuth cancels the transaction when sign-up fails', async () => {
+    signUp.mockResolvedValue({ data: { user: null, session: null }, error: new Error('email taken') });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', intent: 'sign_up' });
+    await expect(startPasswordAuth('user@example.com', 'password123', 'sign_up')).rejects.toThrow('email taken');
+    expect(cancelAuthTransaction).toHaveBeenCalledWith('tx-1');
+  });
+
+  it('startPasswordAuth links a password and routes to check-email when confirmation is pending', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'guest-1' } } } });
+    updateUser.mockResolvedValue({ data: { user: { id: 'guest-1', new_email: 'owner@example.com' } }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'guest-1', intent: 'protect_guest' });
+    const result = await startPasswordAuth('owner@example.com', 'password123', 'protect_guest');
+    expect(updateUser).toHaveBeenCalledWith({ email: 'owner@example.com', password: 'password123' });
+    expect('id' in result).toBe(true);
+    expect(consumeAuthTransaction).not.toHaveBeenCalled();
+  });
+
+  it('startPasswordAuth links a password, asserts same user, and returns the session when no confirmation is needed', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'user-a' } } } });
+    updateUser.mockResolvedValue({ data: { user: { id: 'user-a', new_email: null } }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    const result = await startPasswordAuth('owner@example.com', 'password123', 'link_method');
+    expect(getUser).toHaveBeenCalled();
+    expect(consumeAuthTransaction).toHaveBeenCalledWith('tx-1');
+    expect('id' in result).toBe(false);
+  });
+
+  it('startPasswordAuth cancels the transaction when same-user assertion fails', async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'user-a' } } } });
+    updateUser.mockResolvedValue({ data: { user: { id: 'user-a', new_email: null } }, error: null });
+    getUser.mockResolvedValue({ data: { user: { id: 'other-user' } }, error: null });
+    beginAuthTransaction.mockResolvedValue({ ...transaction, expectedUserId: 'user-a', intent: 'link_method' });
+    await expect(startPasswordAuth('owner@example.com', 'password123', 'link_method')).rejects.toThrow('ACCOUNT_CHANGED_DURING_LINK');
+    expect(cancelAuthTransaction).toHaveBeenCalledWith('tx-1');
+  });
+
+  it('verifyEmailAuthCode uses signup OTP type for signup-marked transactions', async () => {
+    getAuthTransaction.mockResolvedValue({ ...transaction, confirmation: 'signup', intent: 'sign_up' });
+    await verifyEmailAuthCode({ code: '123456', email: 'user@example.com', transactionId: 'tx-1' });
+    expect(verifyOtp).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      token: '123456',
+      type: 'signup',
+    });
   });
 });

@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import type { Provider } from '@supabase/supabase-js';
+import type { Provider, Session } from '@supabase/supabase-js';
 
 import { parseAuthCallbackUrl, assertSameUserUpgrade, type AuthCallbackParams } from './auth-callback';
 import {
@@ -10,6 +10,7 @@ import {
   getAuthTransaction,
   type AuthIntent,
   type AuthProviderName,
+  type AuthTransaction,
 } from './auth-transactions';
 import { supabase } from './supabase';
 
@@ -50,6 +51,69 @@ export async function startEmailAuth(email: string, intent: Extract<AuthIntent, 
   return transaction;
 }
 
+export async function startPasswordAuth(
+  email: string,
+  password: string,
+  intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>,
+): Promise<Session | AuthTransaction> {
+  const normalized = normalizeAuthEmail(email);
+  const { data: sessionData } = await supabase.auth.getSession();
+  const expectedUserId = intent === 'protect_guest' || intent === 'link_method'
+    ? sessionData.session?.user.id ?? null
+    : null;
+  if ((intent === 'protect_guest' || intent === 'link_method') && !expectedUserId) throw new Error('UNAUTHORIZED');
+
+  if (intent === 'sign_in') {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalized, password });
+    if (error) throw error;
+    if (!data.session) throw new Error('UNAUTHORIZED');
+    return data.session;
+  }
+
+  const transaction = await beginAuthTransaction({
+    confirmation: intent === 'sign_up' ? 'signup' : undefined,
+    email: normalized,
+    expectedUserId,
+    intent,
+    provider: 'email',
+  });
+
+  if (intent === 'sign_up') {
+    const { data, error } = await supabase.auth.signUp({ email: normalized, password });
+    if (error) {
+      await cancelAuthTransaction(transaction.id);
+      throw error;
+    }
+    if (data.session) {
+      await consumeAuthTransaction(transaction.id);
+      return data.session;
+    }
+    return transaction;
+  }
+
+  const { data, error } = await supabase.auth.updateUser({ email: normalized, password });
+  if (error) {
+    await cancelAuthTransaction(transaction.id);
+    throw error;
+  }
+  if (data.user?.new_email) {
+    return transaction;
+  }
+  const { data: verified, error: userError } = await supabase.auth.getUser();
+  if (userError || !verified.user) {
+    await cancelAuthTransaction(transaction.id);
+    throw userError ?? new Error('UNAUTHORIZED');
+  }
+  try {
+    assertSameUserUpgrade(intent, expectedUserId, verified.user.id);
+  } catch (error) {
+    await cancelAuthTransaction(transaction.id);
+    throw error;
+  }
+  await consumeAuthTransaction(transaction.id);
+  return sessionData.session!;
+}
+
 export async function verifyEmailAuthCode(input: {
   code: string;
   email: string;
@@ -59,7 +123,11 @@ export async function verifyEmailAuthCode(input: {
   if (!transaction || transaction.provider !== 'email') throw new Error('AUTH_TRANSACTION_EXPIRED');
   const normalizedEmail = normalizeAuthEmail(input.email);
   if (!transaction.email || normalizedEmail !== transaction.email) throw new Error('AUTH_TRANSACTION_MISMATCH');
-  const type = transaction.intent === 'protect_guest' || transaction.intent === 'link_method' ? 'email_change' : 'email';
+  const type = transaction.confirmation === 'signup'
+    ? 'signup'
+    : transaction.intent === 'protect_guest' || transaction.intent === 'link_method'
+      ? 'email_change'
+      : 'email';
   const { data, error } = await supabase.auth.verifyOtp({
     email: transaction.email,
     token: input.code.trim(),
@@ -70,6 +138,33 @@ export async function verifyEmailAuthCode(input: {
   assertSameUserUpgrade(transaction.intent, transaction.expectedUserId, data.user.id);
   await consumeAuthTransaction(transaction.id);
   return data.user;
+}
+
+export async function resendEmailVerification(email: string, transactionId: string): Promise<AuthTransaction> {
+  const existing = await getAuthTransaction(transactionId);
+  if (!existing) throw new Error('AUTH_TRANSACTION_EXPIRED');
+  if (existing.confirmation === 'signup') {
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    if (error) throw error;
+    return beginAuthTransaction({
+      confirmation: 'signup',
+      email: existing.email ?? email,
+      expectedUserId: existing.expectedUserId,
+      intent: 'sign_up',
+      provider: 'email',
+    });
+  }
+  if (existing.intent === 'protect_guest' || existing.intent === 'link_method') {
+    const { error } = await supabase.auth.resend({ type: 'email_change', email });
+    if (error) throw error;
+    return beginAuthTransaction({
+      email: existing.email ?? email,
+      expectedUserId: existing.expectedUserId,
+      intent: existing.intent,
+      provider: 'email',
+    });
+  }
+  throw new Error('AUTH_TRANSACTION_MISMATCH');
 }
 
 export async function startProviderAuth(provider: AuthProviderName, intent: Extract<AuthIntent, 'link_method' | 'protect_guest' | 'sign_in' | 'sign_up'>) {

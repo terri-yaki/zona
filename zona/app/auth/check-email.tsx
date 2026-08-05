@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/AppIcon';
-import type { AuthIntent } from '@/lib/auth-transactions';
+import { getAuthTransaction, type AuthIntent } from '@/lib/auth-transactions';
+import { resendEmailVerification } from '@/lib/auth-flow';
 import { useAuth } from '@/providers/AuthProvider';
 import { useI18n } from '@/providers/LocalizationProvider';
 import { colors, radius } from '@/theme';
@@ -30,6 +31,20 @@ export default function CheckEmailScreen() {
   const [transactionId, setTransactionId] = useState(first(params.transaction));
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [hasLiveTransaction, setHasLiveTransaction] = useState(Boolean(transactionId));
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      if (!transactionId) {
+        if (active) setHasLiveTransaction(false);
+        return;
+      }
+      const transaction = await getAuthTransaction(transactionId);
+      if (active) setHasLiveTransaction(Boolean(transaction));
+    })();
+    return () => { active = false; };
+  }, [transactionId]);
 
   async function verify() {
     if (busy || code.trim().length < 6 || !transactionId) return;
@@ -48,8 +63,14 @@ export default function CheckEmailScreen() {
     if (busy) return;
     setBusy(true);
     try {
-      const transaction = await sendEmailAuth(email, intent);
-      setTransactionId(transaction.id);
+      const existing = await getAuthTransaction(transactionId);
+      let nextTransaction;
+      if (existing?.confirmation === 'signup' || existing?.intent === 'protect_guest' || existing?.intent === 'link_method') {
+        nextTransaction = await resendEmailVerification(email, transactionId);
+      } else {
+        nextTransaction = await sendEmailAuth(email, intent);
+      }
+      setTransactionId(nextTransaction.id);
       setCode('');
       Alert.alert(t('auth.emailResent'), t('auth.emailResentBody'));
     } catch (error) {
@@ -83,9 +104,11 @@ export default function CheckEmailScreen() {
           {busy ? <ActivityIndicator color={colors.white} /> : <Text style={styles.buttonText}>{t('auth.verifyCode')}</Text>}
         </Pressable>
         <Text style={styles.magicLinkHint}>{t('auth.magicLinkHint')}</Text>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void resend()} style={styles.linkButton}>
-          <Text style={styles.linkText}>{t('auth.resendEmail')}</Text>
-        </Pressable>
+        {hasLiveTransaction ? (
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void resend()} style={styles.linkButton}>
+            <Text style={styles.linkText}>{t('auth.resendEmail')}</Text>
+          </Pressable>
+        ) : null}
         <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.back()} style={styles.linkButton}>
           <Text style={styles.secondaryLinkText}>{t('common.cancel')}</Text>
         </Pressable>
