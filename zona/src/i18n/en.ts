@@ -451,6 +451,8 @@ export const en = {
   'whatsNew.protectGuest.body': 'If you started privately, you can now add an email and password without losing your sources or history.',
   'whatsNew.confirmCode.title': 'Confirm by email code',
   'whatsNew.confirmCode.body': 'New email addresses are verified with a short code before they can protect your account.',
+  'whatsNew.steadier.title': 'A steadier everyday experience',
+  'whatsNew.steadier.body': 'Your inbox loads with a calm preview, the connection quietly recovers on its own, and delivery status only speaks up when there is real news.',
   'whatsNew.releaseCache.date': 'July 2026',
   'whatsNew.releaseCache.title': 'Your inbox is ready when you are',
   'whatsNew.releaseCache.summary': 'Open Zona and your recent alerts are already waiting—even when the connection isn’t.',

@@ -31,6 +31,7 @@ export const whatsNewReleases: WhatsNewRelease[] = [
       { icon: 'lock.fill', titleKey: 'whatsNew.passwordSignIn.title', bodyKey: 'whatsNew.passwordSignIn.body' },
       { icon: 'shield.fill', titleKey: 'whatsNew.protectGuest.title', bodyKey: 'whatsNew.protectGuest.body' },
       { icon: 'envelope.fill', titleKey: 'whatsNew.confirmCode.title', bodyKey: 'whatsNew.confirmCode.body' },
+      { icon: 'sparkles', titleKey: 'whatsNew.steadier.title', bodyKey: 'whatsNew.steadier.body' },
     ],
   },
   {

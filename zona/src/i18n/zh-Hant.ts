@@ -453,6 +453,8 @@ export const zhHant = {
   'whatsNew.protectGuest.body': '如果你以私人訪客身份開始，現在可以新增電郵和密碼，而不會遺失來源或紀錄。',
   'whatsNew.confirmCode.title': '以電郵驗證碼確認',
   'whatsNew.confirmCode.body': '新電郵地址需先以短碼驗證，然後才能保護你的帳戶。',
+  'whatsNew.steadier.title': '更穩定的日常體驗',
+  'whatsNew.steadier.body': '收件匣載入時會顯示平和的預覽畫面，連線中斷時會靜靜自動恢復，送達狀態只會在有真正消息時才更新。',
   'whatsNew.releaseCache.date': '2026 年 7 月',
   'whatsNew.releaseCache.title': '一打開，收件匣已經準備好',
   'whatsNew.releaseCache.summary': '打開Zona，最近的通知已經在等你，即使網絡不穩，也能繼續查看。',

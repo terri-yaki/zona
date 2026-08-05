@@ -36,7 +36,9 @@ to use semantic application versions. Build numbers are managed by EAS.
   field, and an account that already signs in with email sees "Change
   password" for its current address instead of a silent email change.
 - The delivery card no longer claims an alert is still delivering once it has
-  already landed in the inbox.
+  already landed in the inbox, stays out of sight until there is real delivery
+  news to report, and stops re-checking a queued alert after about two minutes
+  unless you ask it to try again.
 - Zona Relay reconnects silently every 5 seconds after a disconnect instead of
   showing raw error text under the relay status.
 
