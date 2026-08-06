@@ -171,9 +171,20 @@ network and native modules are mocked at their boundaries. It does not claim
 React Native Testing Library coverage. Keep verifying search matching,
 saved-filter parsing, pin/mark-unread helpers, repeated-alert grouping,
 schedule validation, diagnostic redaction, first-alert templates, widget prop
-selection, foreground refresh, and themed-style rerenders. Fake-timer
+selection, foreground refresh, and themed-style rebuilding exactly on preset
+changes (themed styles are memoized per preset, not rebuilt per render). An
+automated WCAG contrast guard locks every audited theme-preset pairing —
+including the text-safe primary tone, semantic tint badges, severity card
+fills for both light and dark appearances, and inverted chip foregrounds —
+and requires documented pre-existing exceptions to keep failing, so a fixed
+palette forces the exception to be removed and the pairing asserted again.
+Preference sanitization must seed enabled-by-default options from empty or
+malformed payloads so a failed settings load never greys out the toggles.
+Fake-timer
 regression suites cover hung inbox/sources fetches and cache reads timing out
-without stranding the refreshing, loading-more, or bootstrap indicators, and
+without stranding the refreshing, loading-more, or bootstrap indicators,
+a hung notification-preferences RPC rejecting instead of disabling the
+settings toggles indefinitely, and
 superseded loads from mid-flight filter changes clearing their indicators. Interaction-heavy
 screen behavior remains part of the physical-device matrix until a dedicated
 native component harness is added.

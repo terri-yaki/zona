@@ -76,7 +76,8 @@ returns 409.
   Function transport), `push.ts`, `auth-storage.ts`,
   `env.ts`, `validation.ts`, `errors.ts`, `format.ts`,
   `pending-notification.ts`, `timeout.ts` (`withTimeout`
-  helper bounding inbox/sources fetches and cache reads).
+  helper bounding inbox/sources fetches, cache reads, and the
+  notification-preferences RPC).
 - `src/data/` — `notifications.ts`, `sources.ts` (query layer).
 - `src/hooks/` — `useInbox.ts`, `useSources.ts`.
 - `src/components/` — presentation-only controls.
