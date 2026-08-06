@@ -13,11 +13,10 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
-- New accounts no longer arrive at a greyed-out Settings button when the
-  push-health or options load fails; safe defaults keep the toggles enabled.
-  The options load now also runs in its own branch and is bounded by a
-  timeout, so a hung (not merely failed) connection can no longer leave the
-  toggles disabled indefinitely.
+- New accounts no longer arrive at greyed-out Settings toggles on first
+  launch: a failed push-health or preferences load now falls back to safe
+  defaults that keep every switch usable, and a hung (not merely failed)
+  connection can no longer leave them disabled indefinitely.
 - Severity-tinted inbox cards now pick light or deep tints based on the
   active preset: under dark themes the old pastel fills no longer render
   light text on light cards.
@@ -31,8 +30,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 - The sign-in Apple button's pressed state keeps its inverted-surface pairing
   readable instead of flashing light-on-light (or dark-on-dark).
 - The Neon theme is usable on light surfaces again: hardcoded light hexes are
-  gone, inverted surfaces pair background foregrounds correctly, and the neon
-  mint primary is deepened so white-on-primary passes WCAG AA.
+  gone, inverted surfaces pair background foregrounds correctly, dialog
+  scrims and shadows are neutral instead of tinted, and the neon mint
+  primary is deepened so white-on-primary passes WCAG AA.
 - After deleting an account, the "Use Zona on this device" control on the
   new-user screen now looks like a real button.
 
