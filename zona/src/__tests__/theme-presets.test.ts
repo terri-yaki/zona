@@ -6,8 +6,8 @@ import { defaultThemePreset, findThemePreset, themeColorKeys, themePresets } fro
 const hexColor = /^#[0-9A-Fa-f]{6}$/;
 
 describe('theme presets', () => {
-  it('offers six named themes with Meadow as the default', () => {
-    expect(themePresets).toHaveLength(6);
+  it('offers seven named themes with Meadow as the default', () => {
+    expect(themePresets).toHaveLength(7);
     expect(defaultThemePreset.id).toBe('meadow');
     expect(themePresets.map((preset) => preset.id)).toEqual([
       'meadow',
@@ -15,6 +15,7 @@ describe('theme presets', () => {
       'sunset',
       'violet',
       'minimalist',
+      'marshmallow',
       'neon',
     ]);
   });
@@ -58,8 +59,8 @@ describe('theme presets', () => {
         expect(value, `preset ${preset.id} live activity color`).toMatch(hexColor);
       }
     }
-    // Neon ships an explicit dark lock-screen card; the other presets derive
-    // their palette from the primary family instead.
+    // Neon ships an explicit dark lock-screen card; marshmallow and the other
+    // presets derive their palette from the primary family instead.
     expect(themePresets.filter((preset) => preset.liveActivity).map((preset) => preset.id)).toEqual(['neon']);
   });
 });
