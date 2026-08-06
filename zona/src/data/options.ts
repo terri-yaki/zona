@@ -9,6 +9,7 @@ import {
 import { dataError } from '@/lib/errors';
 import { translate } from '@/i18n';
 import { supabase } from '@/lib/supabase';
+import { FOREGROUND_REFRESH_TIMEOUT_MS, withTimeout } from '@/lib/timeout';
 import type { AppOptions } from '@/types';
 
 type PreferenceCacheEntry = { fetchedAt: number; value: AppOptions };
@@ -75,7 +76,13 @@ export async function getAppOptions(userId: string, force = false): Promise<AppO
   if (existing) return existing;
   const lease = currentCacheLease(userId);
   const request = (async () => {
-    const { data, error } = await supabase.rpc('get_user_notification_preferences');
+    // Bounded so a hung (not rejected) connection still surfaces as an error
+    // and callers can seed safe defaults instead of greying out toggles.
+    const { data, error } = await withTimeout(
+      Promise.resolve(supabase.rpc('get_user_notification_preferences')),
+      FOREGROUND_REFRESH_TIMEOUT_MS,
+      translate('settings.optionsLoadError'),
+    );
     if (error) throw dataError(error, translate('settings.optionsLoadError'));
     const value = sanitizeAppOptions(data);
     if (!isCacheLeaseCurrent(lease)) return value;

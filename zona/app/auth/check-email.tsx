@@ -128,7 +128,7 @@ const createStyles = () => StyleSheet.create({
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   magicLinkHint: { color: colors.mutedLight, fontSize: 11, lineHeight: 16, marginTop: 16, textAlign: 'center' },
   linkButton: { paddingHorizontal: 10, paddingVertical: 8 },
-  linkText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  linkText: { color: colors.primaryText, fontSize: 13, fontWeight: '700' },
   secondaryLinkText: { color: colors.muted, fontSize: 13, fontWeight: '600' },
   disabled: { opacity: 0.55 },
   pressed: { backgroundColor: colors.primaryDark },

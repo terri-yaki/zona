@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import { colors } from './theme';
 import { defaultThemePreset, findThemePreset, themePresets, type ThemePreset } from './theme-presets';
@@ -46,14 +46,18 @@ export function useActiveThemePreset(): ThemePreset {
 }
 
 /**
- * Rebuilds styles on every render and subscribes the component to preset
- * changes, so `StyleSheet.create(...)` bodies re-read the live-bound `colors`
- * after a theme switch instead of keeping the values baked at module load.
+ * Subscribes the component to preset changes and rebuilds styles exactly when
+ * the preset changes, so `StyleSheet.create(...)` bodies re-read the
+ * live-bound `colors` after a theme switch instead of keeping the values
+ * baked at module load. The factory closes over that live binding, so the
+ * preset id is the correct memoization key: unrelated re-renders (e.g.
+ * per-row inbox cards) reuse the style graph instead of reallocating it.
  * Use as `const styles = useThemedStyles(createStyles);` in each component.
  */
 export function useThemedStyles<T>(factory: () => T): T {
-  useThemePreferenceId();
-  return factory();
+  const presetId = useThemePreferenceId();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the factory reads the live-bound colors; the preset id invalidates it.
+  return useMemo(() => factory(), [presetId]);
 }
 
 function applyPreset(preset: ThemePreset) {

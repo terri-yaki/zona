@@ -63,5 +63,44 @@ describe('themed styles', () => {
     expect(captured!.title.color).toBe(violet!.colors.primary);
     expect(captured!.card.borderColor).toBe(violet!.colors.border);
     expect(captured!.title.color).not.toBe(meadow!.colors.primary);
+
+    await act(async () => {
+      await setActiveThemePreset('meadow');
+    });
+  });
+
+  it('reuses the style graph across re-renders until the preset changes', async () => {
+    let builds = 0;
+    const countingFactory = () => {
+      builds += 1;
+      return StyleSheet.create({ title: { color: colors.primary } });
+    };
+    function CountingProbe() {
+      useThemedStyles(countingFactory);
+      return null;
+    }
+
+    await setActiveThemePreset('meadow');
+    let renderer: ReturnType<typeof create> | undefined;
+    await act(async () => {
+      renderer = create(<CountingProbe />);
+    });
+    const afterMount = builds;
+
+    // Unrelated re-renders must not reallocate the style graph.
+    await act(async () => {
+      renderer!.update(<CountingProbe />);
+    });
+    expect(builds).toBe(afterMount);
+
+    // A theme switch re-reads the live-bound colors exactly once per render.
+    await act(async () => {
+      await setActiveThemePreset('violet');
+    });
+    expect(builds).toBeGreaterThan(afterMount);
+
+    await act(async () => {
+      await setActiveThemePreset('meadow');
+    });
   });
 });

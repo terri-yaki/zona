@@ -192,7 +192,7 @@ const createStyles = () => StyleSheet.create({
   primary: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 16, minHeight: 52, padding: 14 },
   primaryText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   secondary: { alignItems: 'center', borderColor: colors.primary, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 10, padding: 13 },
-  secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  secondaryText: { color: colors.primaryText, fontSize: 14, fontWeight: '700' },
   testButton: { alignItems: 'center', backgroundColor: colors.accentSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 7, justifyContent: 'center', marginTop: 12, minHeight: 48, padding: 13 },
   testButtonText: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   testMessage: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 9, textAlign: 'center' },

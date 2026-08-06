@@ -445,7 +445,10 @@ function FilterChip({
         style={[
           styles.chipText,
           tone === 'source' && styles.chipSourceText,
-          active && styles.chipTextActive,
+          // White-on-accent fails WCAG AA in neon (~3.3:1); the active source
+          // chip therefore uses the inverted background-on-accent pairing,
+          // which the contrast test asserts at >= 4.5:1 for every preset.
+          active && (tone === 'source' ? styles.chipSourceTextActive : styles.chipTextActive),
           muted && styles.chipTextMuted,
         ]}
       >
@@ -484,13 +487,13 @@ const createStyles = () => StyleSheet.create({
     minWidth: 84,
     paddingHorizontal: 12,
   },
-  readAllText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  readAllText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
   filterLabelRow: { alignItems: 'center', flexDirection: 'row', height: 36, justifyContent: 'space-between', paddingBottom: 2, paddingHorizontal: 18 },
   filterHeaderActions: { alignItems: 'center', flexDirection: 'row', gap: 4, height: 36 },
   filterLabel: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.7 },
   clearButton: { alignItems: 'center', height: 36, justifyContent: 'center', minWidth: 44, paddingHorizontal: 4 },
   filterActionHidden: { opacity: 0 },
-  clear: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  clear: { color: colors.primaryText, fontSize: 11, fontWeight: '700' },
   saveFilter: { color: colors.accent, fontSize: 11, fontWeight: '800' },
   searchBox: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', marginBottom: 10, marginHorizontal: 16, minHeight: 48, paddingLeft: 13 },
   searchInput: { color: colors.text, flex: 1, fontSize: 14, minHeight: 46, paddingHorizontal: 10, paddingVertical: 8 },
@@ -501,7 +504,7 @@ const createStyles = () => StyleSheet.create({
   savedFilters: { alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   savedLabel: { color: colors.mutedLight, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   savedChip: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.full, flexDirection: 'row', gap: 5, maxWidth: 170, minHeight: 34, paddingHorizontal: 11 },
-  savedChipText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  savedChipText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
   groupChildren: { borderLeftColor: colors.primarySoft, borderLeftWidth: 3, marginLeft: 29 },
   filters: {
     alignItems: 'center',
@@ -537,12 +540,13 @@ const createStyles = () => StyleSheet.create({
   chipText: { color: colors.muted, fontSize: 12, fontWeight: '600', includeFontPadding: false, lineHeight: 16, textAlign: 'center' },
   chipSourceText: { color: colors.accent },
   chipTextActive: { color: colors.white },
+  chipSourceTextActive: { color: colors.background },
   chipTextMuted: { color: colors.muted },
   list: { flexGrow: 1 },
   emptyList: { flexGrow: 1 },
   pagination: { alignItems: 'center', padding: 14 },
   loadMore: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.full, justifyContent: 'center', minHeight: 44, minWidth: 132, paddingHorizontal: 18 },
-  loadMoreText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  loadMoreText: { color: colors.primaryText, fontSize: 13, fontWeight: '700' },
   pressed: { opacity: 0.68 },
   disabled: { opacity: 0.55 },
   modalRoot: { alignItems: 'center', flex: 1, justifyContent: 'center', padding: 22 },

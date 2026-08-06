@@ -15,6 +15,21 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 - New accounts no longer arrive at a greyed-out Settings button when the
   push-health or options load fails; safe defaults keep the toggles enabled.
+  The options load now also runs in its own branch and is bounded by a
+  timeout, so a hung (not merely failed) connection can no longer leave the
+  toggles disabled indefinitely.
+- Severity-tinted inbox cards now pick light or deep tints based on the
+  active preset: under dark themes the old pastel fills no longer render
+  light text on light cards.
+- Small primary-colored text (links, source names, avatars, badges, the
+  selected tab label, and the guest button) now uses a text-safe primary
+  tone, fixing sub-AA contrast in the Neon and Sunset presets; hero and
+  profile subtitles on primary fills stay white for the same reason.
+- Marshmallow's accent and the shared danger/success tones are deepened so
+  category badges, error boxes, and sign-out rows clear WCAG AA, and the
+  active source filter chip uses an inverted foreground that passes in Neon.
+- The sign-in Apple button's pressed state keeps its inverted-surface pairing
+  readable instead of flashing light-on-light (or dark-on-dark).
 - The Neon theme is usable on light surfaces again: hardcoded light hexes are
   gone, inverted surfaces pair background foregrounds correctly, and the neon
   mint primary is deepened so white-on-primary passes WCAG AA.
@@ -24,7 +39,13 @@ to use semantic application versions. Build numbers are managed by EAS.
 ### Changed
 
 - Every theme preset is now guarded by an automated WCAG contrast test that
-  locks the audited color pairings going forward.
+  locks the audited color pairings going forward, including the text-safe
+  primary tone, semantic tint badges, severity card fills, and inverted chip
+  foregrounds; documented exceptions must still fail, so a fixed palette
+  forces the exception to be removed and the pairing asserted again.
+- Themed styles are memoized per preset instead of being rebuilt on every
+  render, so inbox rows no longer reallocate their style graphs on each list
+  update.
 
 ## [0.0.12] - 2026-08-05 (re-released 2026-08-06)
 

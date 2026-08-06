@@ -224,10 +224,11 @@ const createStyles = () => StyleSheet.create({
   capabilityLoader: { marginVertical: 12 },
   // Invariant: a `colors.text` background must always pair with a `colors.background`
   // foreground so inverted surfaces remain readable in every preset (locked by
-  // WS3's contrast test).
+  // the contrast test). The pressed state slides to `colors.textSoft` — the
+  // background-on-textSoft pairing is asserted at >= 4.5:1 for every preset.
   providerDark: { alignItems: 'center', backgroundColor: colors.text, borderRadius: radius.medium, flexDirection: 'row', gap: 9, justifyContent: 'center', minHeight: 51, padding: 13 },
   providerDarkText: { color: colors.background, fontSize: 14, fontWeight: '700' },
-  pressedDark: { backgroundColor: colors.surfaceMuted },
+  pressedDark: { backgroundColor: colors.textSoft },
   provider: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 9, justifyContent: 'center', marginTop: 9, minHeight: 51, padding: 13 },
   providerPressed: { backgroundColor: colors.surfaceMuted },
   providerMark: { color: colors.text, fontSize: 16, fontWeight: '900', textAlign: 'center', width: 20 },
@@ -241,10 +242,13 @@ const createStyles = () => StyleSheet.create({
   button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.medium, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 53, padding: 14 },
   emailButton: { marginTop: 10 },
   modeButton: { alignItems: 'center', minHeight: 38, justifyContent: 'center' },
-  modeText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  modeText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
   guestDivider: { backgroundColor: colors.border, height: 1, marginVertical: 12 },
+  // Invariant: the guest button pairs a `colors.primarySoft` background with
+  // `colors.primaryText` foreground — locked at >= 4.5:1 for every preset by
+  // the contrast test (plain primary-on-primarySoft fails in neon and sunset).
   guestButton: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, justifyContent: 'center', minHeight: 51, padding: 10 },
-  guestText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  guestText: { color: colors.primaryText, fontSize: 13, fontWeight: '700' },
   guestPressed: { backgroundColor: colors.surfaceMuted },
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   pressed: { backgroundColor: colors.primaryDark, transform: [{ scale: 0.995 }] },

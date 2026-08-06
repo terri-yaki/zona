@@ -87,21 +87,21 @@ const createStyles = () => StyleSheet.create({
   card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
   cardCompact: { gap: 10, paddingHorizontal: 13, paddingVertical: 11 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.995 }] },
-  // Invariant: avatar uses `colors.primarySoft` background + `colors.primary`
-  // foreground so the pairing is locked by WS3's contrast test; the badge
-  // uses a surfaced outline so it reads on dark neon cards.
+  // Invariant: avatar uses a `colors.primarySoft` background + `colors.primaryText`
+  // foreground, a pairing locked at >= 4.5:1 for every preset by the contrast
+  // test; the badge uses a surfaced outline so it reads on dark neon cards.
   avatar: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 13, borderWidth: 1, height: 44, justifyContent: 'center', position: 'relative', width: 44 },
-  avatarText: { color: colors.primary, fontSize: 17, fontWeight: '800' },
+  avatarText: { color: colors.primaryText, fontSize: 17, fontWeight: '800' },
   bellBadge: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 9, borderWidth: 1, bottom: -4, height: 18, justifyContent: 'center', position: 'absolute', right: -4, width: 18 },
   content: { flex: 1 },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginBottom: 5 },
   sourceRow: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 7 },
-  source: { color: colors.primary, flexShrink: 1, fontSize: 12, fontWeight: '700' },
+  source: { color: colors.primaryText, flexShrink: 1, fontSize: 12, fontWeight: '700' },
   category: { backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 11, fontWeight: '700', maxWidth: 110, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3, textTransform: 'uppercase' },
   time: { color: colors.mutedLight, fontSize: 11 },
   title: { color: colors.text, fontSize: 15, fontWeight: '600', marginBottom: 3 },
   titleRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-  repeatCount: { backgroundColor: colors.primarySoft, borderRadius: radius.full, color: colors.primary, fontSize: 11, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+  repeatCount: { backgroundColor: colors.primarySoft, borderRadius: radius.full, color: colors.primaryText, fontSize: 11, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
   unreadTitle: { fontWeight: '800' },
   body: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   dot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, marginTop: 5, width: 8 },

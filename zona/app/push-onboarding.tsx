@@ -83,7 +83,7 @@ const createStyles = () => StyleSheet.create({
   ringOuter: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.full, height: 112, justifyContent: 'center', width: 112 },
   bell: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 25, height: 62, justifyContent: 'center', width: 62 },
   accentDot: { backgroundColor: colors.accent, borderColor: colors.background, borderRadius: radius.full, borderWidth: 5, height: 28, position: 'absolute', right: 3, top: 3, width: 28 },
-  eyebrow: { color: colors.primary, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginBottom: 10, textAlign: 'center' },
+  eyebrow: { color: colors.primaryText, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginBottom: 10, textAlign: 'center' },
   title: { color: colors.text, fontSize: 29, fontWeight: '800', letterSpacing: -0.7, lineHeight: 34, marginBottom: 11, textAlign: 'center' },
   body: { color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 24, paddingHorizontal: 8, textAlign: 'center' },
   featureCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, marginBottom: 24, paddingHorizontal: 17 },

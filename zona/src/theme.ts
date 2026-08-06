@@ -12,11 +12,16 @@ export const colors = {
   primary: '#2F6B5F',
   primaryDark: '#25564C',
   primarySoft: '#DDECE6',
-  accent: '#D98556',
+  // Primary-colored foreground for text/links on background, surface,
+  // surfaceMuted, and primarySoft. Differs from `primary` only where the
+  // brand primary is itself a dark, surface-oriented color (sunset, neon) —
+  // every pairing is asserted in theme-contrast.test.ts.
+  primaryText: '#2F6B5F',
+  accent: '#A34A28',
   accentSoft: '#F8E8DE',
-  danger: '#B84A4A',
+  danger: '#A93E3E',
   dangerSoft: '#F9E8E7',
-  success: '#2B7A61',
+  success: '#2A7259',
   successSoft: '#E2F2EA',
   unread: '#EDF7F2',
   white: '#FFFFFF',

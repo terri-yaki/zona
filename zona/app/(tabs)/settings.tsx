@@ -90,6 +90,23 @@ export default function SettingsScreen() {
       setCacheBytes(bytes);
       setCacheOwnerUserId(userId);
     }).catch(() => undefined);
+    // The options load runs in its own branch: a hung push-health check or
+    // legacy migration must never leave the notification toggles greyed out.
+    // getAppOptions is itself bounded by withTimeout, so a hung RPC rejects
+    // and the catch seeds safe enabled-by-default options instead of waiting
+    // forever.
+    void (async () => {
+      try {
+        const nextOptions = await getAppOptions(userId);
+        setOptions(nextOptions);
+        setOptionsOwnerUserId(userId);
+        setOptionsError(null);
+      } catch (error) {
+        setOptions({ ...sanitizeAppOptions({}), user_id: userId });
+        setOptionsOwnerUserId(userId);
+        setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
+      }
+    })();
     try {
       setHealth(await getPushRegistrationHealth(userId));
     } catch {
@@ -98,17 +115,7 @@ export default function SettingsScreen() {
     try {
       await migrateLegacyLiveActivityPreference(userId);
     } catch {
-      // Migration failures must not block the options load.
-    }
-    try {
-      const nextOptions = await getAppOptions(userId);
-      setOptions(nextOptions);
-      setOptionsOwnerUserId(userId);
-      setOptionsError(null);
-    } catch (error) {
-      setOptions({ ...sanitizeAppOptions({}), user_id: userId });
-      setOptionsOwnerUserId(userId);
-      setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
+      // Migration failures must not block the rest of the status refresh.
     }
     if (liveActivitySupported) {
       try {
@@ -718,7 +725,9 @@ const createStyles = () => StyleSheet.create({
   profileIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 22, height: 44, justifyContent: 'center', marginRight: 12, width: 44 },
   profileCopy: { flex: 1 },
   profileTitle: { color: colors.white, fontSize: 15, fontWeight: '800' },
-  profileEmail: { color: colors.primarySoft, fontSize: 12, marginTop: 3 },
+  // White on the primary profile header: primarySoft-on-primary fails WCAG AA
+  // in dark presets (neon ~3.1:1), so the header keeps white-only text.
+  profileEmail: { color: colors.white, fontSize: 12, marginTop: 3 },
   section: { color: colors.mutedLight, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 7, marginLeft: 5, marginTop: 18 },
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, overflow: 'hidden', paddingHorizontal: 14 },
   row: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
@@ -733,7 +742,7 @@ const createStyles = () => StyleSheet.create({
   liveActivityHint: { color: colors.accent, fontSize: 11, lineHeight: 16, paddingBottom: 12, paddingLeft: 0 },
   optionsError: { color: colors.danger, fontSize: 11, lineHeight: 16, paddingBottom: 12 },
   registerRow: { alignItems: 'center', flexDirection: 'row', minHeight: 56 },
-  link: { color: colors.primary, flex: 1, fontSize: 13, fontWeight: '700' },
+  link: { color: colors.primaryText, flex: 1, fontSize: 13, fontWeight: '700' },
   cacheCopy: { flex: 1, paddingRight: 8 },
   cacheDescription: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },

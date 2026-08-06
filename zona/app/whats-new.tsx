@@ -104,15 +104,15 @@ export default function WhatsNewScreen() {
 
 const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
-  // Invariant: on `colors.primary` hero surfaces white titles are kept (WS3
-  // darkens neon's primary to maintain 4.5:1 against white), and `primarySoft`
-  // is the luminance-inverse companion of `primary` in every preset (asserted by
-  // WS3's contrast test).
+  // Invariant: on `colors.primary` hero surfaces all text stays white — the
+  // white-on-primary pairing is asserted at >= 4.5:1 for every preset by the
+  // contrast test. primarySoft-on-primary is NOT readable in dark presets
+  // (neon ~3.1:1), so it is never used for hero text.
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, paddingHorizontal: 23, paddingVertical: 28 },
   heroIcon: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 20, height: 54, justifyContent: 'center', marginBottom: 15, width: 54 },
-  eyebrow: { color: colors.primarySoft, fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
+  eyebrow: { color: colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
   title: { color: colors.white, fontSize: 28, fontWeight: '800', letterSpacing: -0.7, lineHeight: 33, marginTop: 8, textAlign: 'center' },
-  intro: { color: colors.primarySoft, fontSize: 13, lineHeight: 20, marginTop: 9, maxWidth: 320, textAlign: 'center' },
+  intro: { color: colors.white, fontSize: 13, lineHeight: 20, marginTop: 9, maxWidth: 320, textAlign: 'center' },
   versionPill: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: radius.full, flexDirection: 'row', gap: 7, marginTop: 18, paddingHorizontal: 11, paddingVertical: 7 },
   versionDot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, width: 8 },
   versionText: { color: colors.white, fontSize: 11, fontWeight: '700' },
@@ -120,7 +120,7 @@ const createStyles = () => StyleSheet.create({
   releaseHeading: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, paddingHorizontal: 3 },
   releaseHeadingCopy: { flex: 1 },
   releaseMeta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  version: { color: colors.primary, fontSize: 11, fontWeight: '800' },
+  version: { color: colors.primaryText, fontSize: 11, fontWeight: '800' },
   date: { color: colors.mutedLight, fontSize: 11, fontWeight: '600' },
   releaseTitle: { color: colors.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.4, marginTop: 5 },
   latest: { backgroundColor: colors.accentSoft, borderRadius: radius.full, color: colors.accent, fontSize: 9, fontWeight: '800', overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },

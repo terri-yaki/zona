@@ -30,18 +30,20 @@ export default function TabsLayout() {
       disableTransparentOnScrollEdge={false}
       iconColor={{
         default: colors.mutedLight,
-        selected: colors.primary,
+        selected: colors.primaryText,
       }}
       indicatorColor={colors.primarySoft}
       labelVisibilityMode="labeled"
       labelStyle={{
         default: { color: colors.mutedLight, fontSize: 11, fontWeight: '600' },
-        selected: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+        // primaryText is the text-safe member of the primary family: neon's
+        // deep primary only reaches ~3.7:1 on the dark tab bar.
+        selected: { color: colors.primaryText, fontSize: 11, fontWeight: '700' },
       }}
       minimizeBehavior="automatic"
       rippleColor={colors.primarySoft}
       tabBarRespectsIMEInsets
-      tintColor={colors.primary}
+      tintColor={colors.primaryText}
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon md={{ default: 'inbox', selected: 'inbox' }} sf={{ default: 'tray', selected: 'tray.full.fill' }} />

@@ -452,15 +452,15 @@ function AccountAction({ danger = false, label, onPress }: { danger?: boolean; l
 const createStyles = () => StyleSheet.create({
   safeArea: { backgroundColor: colors.background, flex: 1 },
   page: { alignSelf: 'center', maxWidth: 680, padding: 18, paddingBottom: 42, width: '100%' },
-  // Invariant: on `colors.primary` hero surfaces white titles are kept (WS3
-  // darkens neon's primary to maintain 4.5:1 against white), and `primarySoft`
-  // is the luminance-inverse companion of `primary` in every preset (asserted by
-  // WS3's contrast test).
+  // Invariant: on `colors.primary` hero surfaces all text stays white — the
+  // white-on-primary pairing is asserted at >= 4.5:1 for every preset by the
+  // contrast test. primarySoft-on-primary is NOT readable in dark presets
+  // (neon ~3.1:1), so it is never used for hero text.
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', padding: 18 },
   heroIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
   heroCopy: { flex: 1, marginLeft: 12 },
   heroTitle: { color: colors.white, fontSize: 16, fontWeight: '800' },
-  heroBody: { color: colors.primarySoft, fontSize: 12, lineHeight: 17, marginTop: 3 },
+  heroBody: { color: colors.white, fontSize: 12, lineHeight: 17, marginTop: 3 },
   protectedBadge: { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: radius.full, marginLeft: 8, paddingHorizontal: 9, paddingVertical: 5 },
   protectedText: { color: colors.white, fontSize: 11, fontWeight: '800' },
   section: { color: colors.muted, fontSize: 12, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginLeft: 4, marginTop: 20 },
@@ -470,10 +470,10 @@ const createStyles = () => StyleSheet.create({
   rowTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
   rowBody: { color: colors.muted, fontSize: 11, marginTop: 3 },
   methodIcon: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 16, height: 34, justifyContent: 'center', width: 34 },
-  methodInitial: { color: colors.primary, fontSize: 14, fontWeight: '900' },
+  methodInitial: { color: colors.primaryText, fontSize: 14, fontWeight: '900' },
   deviceIcon: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 16, height: 36, justifyContent: 'center', width: 36 },
   rowAction: { borderRadius: radius.small, paddingHorizontal: 8, paddingVertical: 7 },
-  rowActionText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  rowActionText: { color: colors.primaryText, fontSize: 11, fontWeight: '700' },
   dangerActionText: { color: colors.danger, fontSize: 11, fontWeight: '700' },
   revoked: { color: colors.mutedLight, fontSize: 11, fontWeight: '700' },
   divider: { backgroundColor: colors.border, height: 1 },
@@ -486,7 +486,7 @@ const createStyles = () => StyleSheet.create({
   primaryButtonText: { color: colors.white, fontSize: 13, fontWeight: '700' },
   linkProviderRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 56, paddingVertical: 8 },
   actionRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 54, paddingVertical: 8 },
-  actionText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  actionText: { color: colors.primaryText, fontSize: 14, fontWeight: '700' },
   dangerText: { color: colors.danger },
   errorBox: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 10, marginTop: 12, padding: 12 },
   errorText: { color: colors.danger, flex: 1, fontSize: 11 },
@@ -499,7 +499,7 @@ const createStyles = () => StyleSheet.create({
   usageMetric: { flexBasis: '48%', minHeight: 64, paddingHorizontal: 5, paddingVertical: 9 },
   usageMetricEmphasized: { backgroundColor: colors.primarySoft, borderRadius: radius.small, flex: 1, minHeight: 76, paddingHorizontal: 12 },
   usageValue: { color: colors.text, fontSize: 16, fontWeight: '800' },
-  usageValueEmphasized: { color: colors.primary, fontSize: 23 },
+  usageValueEmphasized: { color: colors.primaryText, fontSize: 23 },
   usageLabel: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 },
   usageError: { alignItems: 'center', flexDirection: 'row', gap: 9, minHeight: 58, paddingVertical: 8 },
   usageErrorText: { color: colors.danger, flex: 1, fontSize: 11, lineHeight: 16 },

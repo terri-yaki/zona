@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { liveActivityPalette } from '../lib/live-activity-presentation';
+import { severityAppearancesFor } from '../lib/notification-severity';
 import { themePresets, type ThemePresetColors } from '../theme-presets';
+
+// Storage boundary mock (same in-memory pattern as offline-cache.test.ts) —
+// notification-severity imports theme-preference, which loads AsyncStorage.
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn(async () => null),
+    setItem: vi.fn(async () => undefined),
+    removeItem: vi.fn(async () => undefined),
+  },
+}));
 
 /**
  * WCAG 2.1 relative luminance for an sRGB hex color.
@@ -33,7 +44,11 @@ const TEXT_ROLES: ColorRole[] = ['text', 'textSoft', 'muted'];
  * Pre-existing pairings that fall just below the WCAG AA target. These are
  * deliberately preserved rather than recolored so shipped themes stay stable.
  * Each entry records the actual failing combination and the reason it is
- * accepted.
+ * accepted. None of these pairings may be used for text: components render
+ * text with `primaryText`/`white`/inverted-surface colors instead, which the
+ * assertions below lock at 4.5:1. The documentation test verifies that every
+ * exception still fails, so a fixed palette forces the exception to be
+ * removed and the pairing to be asserted again.
  */
 type ContrastException = {
   presetId: string;
@@ -58,7 +73,7 @@ const CONTRAST_EXCEPTIONS: ContrastException[] = [
 
   // Sunset: primarySoft is a warm highlight surface paired with the existing
   // orange primary; mutedLight remains an icon-only color.
-  { presetId: 'sunset', foreground: 'primarySoft', background: 'primary', reason: 'pre-existing warm highlight surface on orange primary' },
+  { presetId: 'sunset', foreground: 'primarySoft', background: 'primary', reason: 'surface-to-surface pairing only; text uses primaryText instead' },
   { presetId: 'sunset', foreground: 'mutedLight', background: 'background', reason: 'pre-existing placeholder/icon color' },
   { presetId: 'sunset', foreground: 'mutedLight', background: 'surface', reason: 'pre-existing placeholder/icon color' },
   { presetId: 'sunset', foreground: 'mutedLight', background: 'surfaceMuted', reason: 'pre-existing placeholder/icon color' },
@@ -77,10 +92,10 @@ const CONTRAST_EXCEPTIONS: ContrastException[] = [
   { presetId: 'minimalist', foreground: 'mutedLight', background: 'surfaceMuted', reason: 'pre-existing placeholder/icon color' },
 
   // Neon: the primary was darkened to make white-on-primary pass WCAG AA.
-  // primarySoft stays a very dark green surface so that bright primary text
-  // and icons remain visible; the pairing with the new deeper primary is
-  // slightly below the strict 4.5:1 surface-to-surface target.
-  { presetId: 'neon', foreground: 'primarySoft', background: 'primary', reason: 'dark neon highlight surface on the deepened primary' },
+  // primarySoft stays a very dark green surface; the two deep greens sit at
+  // ~3.1:1 against each other, so this surface-to-surface pairing is kept for
+  // fills only — text on either color uses primaryText or white instead.
+  { presetId: 'neon', foreground: 'primarySoft', background: 'primary', reason: 'surface-to-surface pairing only; text uses primaryText or white instead' },
 ];
 
 function isExcepted(
@@ -94,6 +109,11 @@ function isExcepted(
       entry.foreground === foreground &&
       entry.background === background,
   )?.reason;
+}
+
+/** Threshold an exception is allowed to fall below (mutedLight targets 3:1). */
+function exceptionThreshold(entry: ContrastException): number {
+  return entry.foreground === 'mutedLight' ? 3 : 4.5;
 }
 
 describe('theme contrast', () => {
@@ -130,11 +150,58 @@ describe('theme contrast', () => {
       // Inverted-surface pairings (e.g. text-colored cards with background
       // foregrounds) must also be readable.
       expect(contrastRatio(c.background, c.text), `${preset.id} background on text`).toBeGreaterThanOrEqual(4.5);
+      // Sign-in's pressed provider button slides from text to textSoft while
+      // keeping the background-colored foreground.
+      expect(contrastRatio(c.background, c.textSoft), `${preset.id} background on textSoft`).toBeGreaterThanOrEqual(4.5);
 
       // primarySoft is used as a tinted surface against the primary color.
       const primarySoftReason = isExcepted(preset.id, 'primarySoft', 'primary');
       if (!primarySoftReason) {
         expect(contrastRatio(c.primarySoft, c.primary), `${preset.id} primarySoft on primary`).toBeGreaterThanOrEqual(4.5);
+      }
+
+      // primaryText is the primary family's text-safe foreground: links,
+      // source names, avatars, badges, and the selected tab label render it
+      // on plain surfaces and on primarySoft fills.
+      for (const background of [...SURFACE_ROLES, 'primarySoft'] as ColorRole[]) {
+        expect(
+          contrastRatio(c.primaryText, c[background]),
+          `${preset.id} primaryText on ${background}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+
+      // Active source filter chips pair the accent fill with the inverted
+      // background color (white-on-accent fails AA in neon).
+      expect(contrastRatio(c.background, c.accent), `${preset.id} background on accent`).toBeGreaterThanOrEqual(4.5);
+
+      // Tinted text badges: category chips, paused labels, error boxes, and
+      // sign-out rows render the strong color on its soft companion.
+      expect(contrastRatio(c.accent, c.accentSoft), `${preset.id} accent on accentSoft`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.danger, c.dangerSoft), `${preset.id} danger on dangerSoft`).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.success, c.successSoft), `${preset.id} success on successSoft`).toBeGreaterThanOrEqual(4.5);
+
+      // Severity-tinted notification cards: titles use `colors.text` and the
+      // primaryText source name sits on the same fill.
+      const severities = severityAppearancesFor(preset.appearance);
+      for (const [level, appearance] of Object.entries(severities)) {
+        expect(
+          contrastRatio(c.text, appearance.background),
+          `${preset.id} text on ${level} severity card`,
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrastRatio(c.primaryText, appearance.background),
+          `${preset.id} primaryText on ${level} severity card`,
+        ).toBeGreaterThanOrEqual(4.5);
+        // Body copy uses `colors.muted`; on the deep dark-preset tints it
+        // must hold the full AA target. Light-preset pastels keep the
+        // accepted sub-AA muted treatment already documented on plain
+        // surfaces (see CONTRAST_EXCEPTIONS), so they are not asserted here.
+        if (preset.appearance === 'dark') {
+          expect(
+            contrastRatio(c.muted, appearance.background),
+            `${preset.id} muted on ${level} severity card`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
       }
 
       // Live Activity title and subtitle on the lock-screen background.
@@ -149,6 +216,14 @@ describe('theme contrast', () => {
       const preset = themePresets.find((candidate) => candidate.id === entry.presetId);
       expect(preset, `exception references a real preset: ${entry.presetId}`).toBeDefined();
       expect(entry.reason.length, `rationale for ${entry.presetId} ${entry.foreground}/${entry.background}`).toBeGreaterThan(0);
+      // Stale-exception guard: an exception is only legitimate while the
+      // pairing actually fails its threshold. If a palette change fixes the
+      // pairing, the exception must be removed so the pairing is asserted.
+      const ratio = contrastRatio(preset!.colors[entry.foreground], preset!.colors[entry.background]);
+      expect(
+        ratio,
+        `stale exception: ${entry.presetId} ${entry.foreground} on ${entry.background} now meets its threshold`,
+      ).toBeLessThan(exceptionThreshold(entry));
     }
   });
 });
