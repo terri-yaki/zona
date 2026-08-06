@@ -176,10 +176,13 @@ const createStyles = () => StyleSheet.create({
   help: { color: colors.muted, fontSize: 14, lineHeight: 21, marginBottom: 22 },
   label: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginTop: 14 },
   input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, color: colors.text, fontSize: 16, paddingHorizontal: 15, paddingVertical: 14 },
+  // Invariant: a `colors.text` background must always pair with a `colors.background`
+  // foreground so inverted code/token surfaces remain readable in every preset
+  // (locked by WS3's contrast test).
   tokenBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 16 },
-  token: { color: '#DDECE6', fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 12, lineHeight: 18 },
+  token: { color: colors.background, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 12, lineHeight: 18 },
   codeBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 15 },
-  code: { color: '#E7ECE9', fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 10, lineHeight: 16 },
+  code: { color: colors.background, fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }), fontSize: 10, lineHeight: 16 },
   templateHelp: { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 9 },
   templateTabs: { gap: 7, paddingBottom: 10 },
   templateTab: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.full, borderWidth: 1, minHeight: 36, justifyContent: 'center', paddingHorizontal: 12 },

@@ -31,11 +31,15 @@ export const radius = {
 
 const webShadow = (boxShadow: string) => ({ boxShadow }) as ViewStyle;
 
+// Shadows are intentionally preset-neutral: `shadows` is a static module export
+// and is not live-bound to the active theme preset, so tints from one preset
+// would look wrong on another. Black shadows at low opacity read acceptably on
+// both light and dark surfaces.
 export const shadows: Record<'card' | 'floating', ViewStyle> = {
   card: Platform.OS === 'web'
-    ? webShadow('0 5px 14px rgba(23, 56, 47, 0.06)')
-    : { shadowColor: '#17382F', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2 },
+    ? webShadow('0 5px 14px rgba(0, 0, 0, 0.06)')
+    : { shadowColor: '#000000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.06, shadowRadius: 14, elevation: 2 },
   floating: Platform.OS === 'web'
-    ? webShadow('0 8px 18px rgba(23, 56, 47, 0.16)')
-    : { shadowColor: '#17382F', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 5 },
+    ? webShadow('0 8px 18px rgba(0, 0, 0, 0.16)')
+    : { shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 5 },
 };
