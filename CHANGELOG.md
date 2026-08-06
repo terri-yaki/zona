@@ -17,6 +17,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
+- Scrolling the inbox now tucks away the status header, search bar, and filter
+  chips with the list instead of leaving them pinned at the top of the screen.
 - Setting a password on a guest account now works for later sign-in: Zona
   confirms the email first (as Supabase requires), then attaches the password
   after the code check instead of dropping it.

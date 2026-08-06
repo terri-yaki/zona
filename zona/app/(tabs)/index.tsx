@@ -188,8 +188,10 @@ export default function InboxScreen() {
     );
   }
 
-  return (
-    <TabScreen>
+  // Chrome (summary, search, filters) lives in ListHeaderComponent so it scrolls
+  // away with the list instead of staying pinned above the FlatList.
+  const listHeader = (
+    <View>
       {isVisible('inbox.summary') ? <View style={styles.summary}>
         <View style={[styles.summaryIcon, inbox.unreadCount === 0 && styles.summaryIconQuiet]}>
           <AppIcon
@@ -286,6 +288,7 @@ export default function InboxScreen() {
         accessibilityLabel={t('inbox.filtersA11y')}
         contentContainerStyle={styles.filters}
         horizontal
+        nestedScrollEnabled
         pointerEvents={filtersEnabled ? 'auto' : 'none'}
         showsHorizontalScrollIndicator={false}
         style={[styles.filtersScroll, !filtersEnabled && styles.disabled]}
@@ -313,7 +316,7 @@ export default function InboxScreen() {
         )) : null}
       </ScrollView></> : null}
 
-      {savedFilterVisible && (savedFiltersLoading || savedFilters.length) ? <ScrollView contentContainerStyle={styles.savedFilters} horizontal showsHorizontalScrollIndicator={false} style={styles.savedFiltersScroll}>
+      {savedFilterVisible && (savedFiltersLoading || savedFilters.length) ? <ScrollView contentContainerStyle={styles.savedFilters} horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} style={styles.savedFiltersScroll}>
         <Text style={styles.savedLabel}>{t('inbox.saved')}</Text>
         {savedFiltersLoading ? <ActivityIndicator color={colors.primary} size="small" /> : savedFilters.map((saved) => <Pressable accessibilityHint={t('inbox.savedFilterDeleteHint')} accessibilityRole="button" key={saved.id} onLongPress={() => removeSavedFilter(saved)} onPress={() => applySavedFilter(saved, Date.now())} style={({ pressed }) => [styles.savedChip, pressed && styles.pressed]}>
           <AppIcon color={colors.primary} fallback="S" name="bookmark.fill" size={12} />
@@ -323,7 +326,11 @@ export default function InboxScreen() {
 
       {sourceState.error ? <ErrorState compact error={sourceState.error} onRetry={() => void sourceState.load()} /> : null}
       {inbox.error ? <ErrorState compact error={inbox.error} onRetry={() => void inbox.retry()} /> : null}
+    </View>
+  );
 
+  return (
+    <TabScreen>
       <FlatList
         accessibilityLabel={t('inbox.notificationsA11y')}
         contentContainerStyle={[
@@ -332,6 +339,7 @@ export default function InboxScreen() {
         ]}
         data={groups}
         keyExtractor={(group) => group.id}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           inbox.filterLoading ? (
             <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
@@ -356,6 +364,7 @@ export default function InboxScreen() {
             </Pressable>
           </View>
         ) : null}
+        ListHeaderComponent={listHeader}
         refreshControl={isVisible('inbox.pull_to_refresh') && isEnabled('inbox.pull_to_refresh') ? (
           <RefreshControl
             onRefresh={() => void inbox.refresh()}

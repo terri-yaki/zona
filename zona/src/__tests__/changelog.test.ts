@@ -119,6 +119,7 @@ describe('bundledChangelog', () => {
       'Sign in with email and password',
       'Protect a guest account',
       'Confirm by email code',
+      'A steadier everyday experience',
     ]);
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 
