@@ -24,7 +24,13 @@ import { getLocaleTag } from '@/i18n';
 import { colors, radius, shadows } from '@/theme';
 import { useThemedStyles } from '@/theme-preference';
 import type { InboxNotification } from '@/types';
-import { deliveryCardVisible, deliveryQueuedPollExpired, type NotificationDeliveryState, type NotificationDeliverySummary } from '@/lib/notification-delivery';
+import {
+  DELIVERY_QUEUED_POLL_CAP_MS,
+  deliveryCardVisible,
+  deliveryQueuedPollExpired,
+  type NotificationDeliveryState,
+  type NotificationDeliverySummary,
+} from '@/lib/notification-delivery';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -143,7 +149,11 @@ export default function NotificationDetailScreen() {
   }, [id, load, userId]);
 
   useEffect(() => {
-    if (!deliveryVisible || !id || delivery?.state !== 'queued') return;
+    if (!deliveryVisible || !id || delivery?.state !== 'queued' || (delivery.pending ?? 0) <= 0) return;
+    // Do not keep re-checking handoff for alerts that are already past the
+    // short "on its way" window — the inbox copy is the durable record.
+    const createdAt = item?.created_at ? Date.parse(item.created_at) : Number.NaN;
+    if (Number.isFinite(createdAt) && Date.now() - createdAt > DELIVERY_QUEUED_POLL_CAP_MS) return;
     deliveryFirstPollAt.current = Date.now();
     const timer = setInterval(() => {
       if (deliveryQueuedPollExpired(deliveryFirstPollAt.current, Date.now())) {
@@ -153,7 +163,7 @@ export default function NotificationDetailScreen() {
       void loadDelivery(id);
     }, deliveryPollMilliseconds);
     return () => clearInterval(timer);
-  }, [delivery?.state, deliveryPollCycle, deliveryPollMilliseconds, deliveryVisible, id, loadDelivery]);
+  }, [delivery?.pending, delivery?.state, deliveryPollCycle, deliveryPollMilliseconds, deliveryVisible, id, item?.created_at, loadDelivery]);
 
   useEffect(() => {
     const path = item?.attachment_path;
@@ -348,6 +358,7 @@ export default function NotificationDetailScreen() {
       {deliveryVisible ? <DeliveryCard
           error={deliveryError}
           loading={deliveryLoading}
+          notificationCreatedAt={item.created_at}
           onRetry={() => {
             deliveryFirstPollAt.current = Date.now();
             setDeliveryPollCycle((cycle) => cycle + 1);
@@ -509,17 +520,19 @@ function deliveryBodyKey(summary: NotificationDeliverySummary) {
 function DeliveryCard({
   error,
   loading,
+  notificationCreatedAt,
   onRetry,
   summary,
 }: {
   error: boolean;
   loading: boolean;
+  notificationCreatedAt?: string | null;
   onRetry: () => void;
   summary: NotificationDeliverySummary | null;
 }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
-  if (!deliveryCardVisible(summary, error)) return null;
+  if (!deliveryCardVisible(summary, error, { notificationCreatedAt })) return null;
 
   if (error && !summary) {
     return (

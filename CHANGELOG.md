@@ -21,6 +21,9 @@ to use semantic application versions. Build numbers are managed by EAS.
   chips with the list instead of leaving them pinned at the top of the screen.
 - The inbox loading skeleton now matches the real layout (status, search,
   filters, and card rows) instead of a centered card-only placeholder.
+- Opening an alert no longer keeps the Delivery card stuck on "On its way":
+  success and plain no-push outcomes stay quiet, and a queued handoff hides
+  after about two minutes so the inbox copy is not framed as still in flight.
 - Setting a password on a guest account now works for later sign-in: Zona
   confirms the email first (as Supabase requires), then attaches the password
   after the code check instead of dropping it.

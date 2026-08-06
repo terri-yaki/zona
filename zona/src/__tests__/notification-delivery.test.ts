@@ -67,20 +67,74 @@ describe('queued delivery polling cap', () => {
 });
 
 describe('delivery card visibility', () => {
-  const summary = {
+  const now = Date.parse('2026-08-06T12:00:00.000Z');
+  const freshCreatedAt = new Date(now - 30_000).toISOString();
+  const staleCreatedAt = new Date(now - DELIVERY_QUEUED_POLL_CAP_MS - 1).toISOString();
+
+  const queued = {
     failed: 0,
     pending: 1,
     providerAccepted: 0,
     reason: null,
     state: 'queued' as const,
     targetedPhones: 1,
-    updatedAt: null,
+    updatedAt: freshCreatedAt,
   };
 
   it('renders nothing until a real summary or an error exists', () => {
     expect(deliveryCardVisible(null, false)).toBe(false);
     expect(deliveryCardVisible(null, true)).toBe(true);
-    expect(deliveryCardVisible(summary, false)).toBe(true);
-    expect(deliveryCardVisible(summary, true)).toBe(true);
+  });
+
+  it('always shows failures and fetch errors', () => {
+    expect(deliveryCardVisible({
+      ...queued,
+      state: 'needs_attention',
+      pending: 0,
+      failed: 1,
+      reason: 'device_unavailable',
+    }, false)).toBe(true);
+    expect(deliveryCardVisible(queued, true, { now, notificationCreatedAt: freshCreatedAt })).toBe(true);
+  });
+
+  it('hides successful sent and plain not_sent (inbox already has the alert)', () => {
+    expect(deliveryCardVisible({
+      ...queued,
+      state: 'sent',
+      pending: 0,
+      providerAccepted: 1,
+    }, false, { now, notificationCreatedAt: freshCreatedAt })).toBe(false);
+    expect(deliveryCardVisible({
+      ...queued,
+      state: 'not_sent',
+      pending: 0,
+      targetedPhones: 0,
+    }, false, { now, notificationCreatedAt: freshCreatedAt })).toBe(false);
+  });
+
+  it('shows not_sent only when a suppress reason explains the quiet handoff', () => {
+    expect(deliveryCardVisible({
+      ...queued,
+      state: 'not_sent',
+      pending: 0,
+      targetedPhones: 0,
+      reason: 'quiet_hours',
+    }, false, { now, notificationCreatedAt: freshCreatedAt })).toBe(true);
+  });
+
+  it('shows queued only while the alert is young and work remains pending', () => {
+    expect(deliveryCardVisible(queued, false, { now, notificationCreatedAt: freshCreatedAt })).toBe(true);
+    expect(deliveryCardVisible({
+      ...queued,
+      pending: 0,
+    }, false, { now, notificationCreatedAt: freshCreatedAt })).toBe(false);
+    expect(deliveryCardVisible(queued, false, { now, notificationCreatedAt: staleCreatedAt })).toBe(false);
+  });
+
+  it('hides queued when age cannot be determined rather than claiming forever', () => {
+    expect(deliveryCardVisible({
+      ...queued,
+      updatedAt: null,
+    }, false, { now, notificationCreatedAt: null })).toBe(false);
   });
 });

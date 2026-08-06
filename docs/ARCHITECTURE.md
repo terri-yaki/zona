@@ -180,14 +180,16 @@ The v0.0.10 app reads one notification's delivery state only through
 jobs to safe counts and one of `not_sent`, `queued`, `sent`, or
 `needs_attention`; it never exposes push tokens, ticket IDs, worker leases, or
 raw provider messages. `sent` means APNs or FCM accepted at least one delivery,
-not that a person saw it. The notification-detail Delivery card renders nothing
-until a real summary (or an error) exists, so an alert already landed in the
-inbox never claims to be "still delivering" from a placeholder state; a `queued`
-summary is re-polled on the configured interval for at most 120 seconds per
-notification, with the window restarting on a manual retry. The
-notification-detail and Settings delivery surfaces render only on app version
-0.0.10 or later (gated in `src/lib/app-version.ts`) and remain subject to the
-`notification.delivery_status` runtime control.
+not that a person saw it. The notification-detail Delivery card stays silent for
+successful `sent` and plain `not_sent` summaries (the inbox already holds the
+alert), surfaces `needs_attention` and suppress reasons such as quiet hours, and
+only shows a `queued` handoff while the alert is still within a 120-second
+window and pending work remains — so an old or stuck queue never claims
+"still delivering." A `queued` summary is also re-polled on the configured
+interval for at most 120 seconds per notification, with the window restarting
+on a manual retry. The notification-detail and Settings delivery surfaces
+render only on app version 0.0.10 or later (gated in `src/lib/app-version.ts`)
+and remain subject to the `notification.delivery_status` runtime control.
 
 ### Database
 
