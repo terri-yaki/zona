@@ -623,7 +623,9 @@ const createStyles = () => StyleSheet.create({
     width: 44,
     ...Platform.select({
       ios: {
-        shadowColor: '#C46F42',
+        // Preset-neutral shadow: `shadows` is static, so tint it black instead
+        // of a warm accent color that clashes with some presets.
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.28,
         shadowRadius: 8,
@@ -638,7 +640,7 @@ const createStyles = () => StyleSheet.create({
   },
   list: { flexGrow: 1 },
   emptyList: { flexGrow: 1 },
-  card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: '#E7ECE9', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
+  card: { ...shadows.card, alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 13, marginHorizontal: 16, marginVertical: 6, padding: 15 },
   revoked: { backgroundColor: colors.surfaceMuted },
   avatar: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: 14, height: 48, justifyContent: 'center', position: 'relative', width: 48 },
   avatarText: { color: colors.primary, fontSize: 18, fontWeight: '800' },
@@ -695,7 +697,7 @@ const createStyles = () => StyleSheet.create({
   testAction: { color: colors.accent },
   danger: { color: colors.danger },
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
-  sheetBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(23,34,30,0.42)' },
+  sheetBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0, 0, 0, 0.42)' },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.large,
@@ -705,7 +707,9 @@ const createStyles = () => StyleSheet.create({
     paddingTop: 10,
     ...Platform.select({
       ios: {
-        shadowColor: '#17382F',
+        // Preset-neutral shadow: `shadows` is static, so tint it black instead
+        // of a green tint that only matched the meadow preset.
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: -6 },
         shadowOpacity: 0.12,
         shadowRadius: 16,

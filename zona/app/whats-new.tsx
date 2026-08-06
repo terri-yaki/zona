@@ -104,13 +104,17 @@ export default function WhatsNewScreen() {
 
 const createStyles = () => StyleSheet.create({
   page: { backgroundColor: colors.background, flexGrow: 1, padding: 16 },
+  // Invariant: on `colors.primary` hero surfaces white titles are kept (WS3
+  // darkens neon's primary to maintain 4.5:1 against white), and `primarySoft`
+  // is the luminance-inverse companion of `primary` in every preset (asserted by
+  // WS3's contrast test).
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, paddingHorizontal: 23, paddingVertical: 28 },
   heroIcon: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 20, height: 54, justifyContent: 'center', marginBottom: 15, width: 54 },
-  eyebrow: { color: '#D8EAE4', fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
+  eyebrow: { color: colors.primarySoft, fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
   title: { color: colors.white, fontSize: 28, fontWeight: '800', letterSpacing: -0.7, lineHeight: 33, marginTop: 8, textAlign: 'center' },
-  intro: { color: '#D8EAE4', fontSize: 13, lineHeight: 20, marginTop: 9, maxWidth: 320, textAlign: 'center' },
+  intro: { color: colors.primarySoft, fontSize: 13, lineHeight: 20, marginTop: 9, maxWidth: 320, textAlign: 'center' },
   versionPill: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.13)', borderRadius: radius.full, flexDirection: 'row', gap: 7, marginTop: 18, paddingHorizontal: 11, paddingVertical: 7 },
-  versionDot: { backgroundColor: '#8FE0BE', borderRadius: 4, height: 8, width: 8 },
+  versionDot: { backgroundColor: colors.accent, borderRadius: 4, height: 8, width: 8 },
   versionText: { color: colors.white, fontSize: 11, fontWeight: '700' },
   release: { marginTop: 26 },
   releaseHeading: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, paddingHorizontal: 3 },

@@ -629,9 +629,9 @@ const createStyles = () => StyleSheet.create({
   title: { color: colors.text, fontSize: 25, fontWeight: '800', letterSpacing: -0.4, lineHeight: 30, marginBottom: 13 },
   body: { color: colors.textSoft, fontSize: 16, lineHeight: 25 },
   deliveryCard: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 11, marginTop: 14, padding: 13 },
-  deliveryCardDanger: { backgroundColor: colors.dangerSoft, borderColor: '#EECFCD' },
+  deliveryCardDanger: { backgroundColor: colors.dangerSoft, borderColor: colors.danger },
   deliveryIcon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 18, height: 36, justifyContent: 'center', width: 36 },
-  deliveryIconDanger: { backgroundColor: '#FFF8F7' },
+  deliveryIconDanger: { backgroundColor: colors.surface },
   deliveryCopy: { flex: 1 },
   deliveryLabel: { color: colors.muted, fontSize: 11, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
   deliveryTitle: { color: colors.primary, fontSize: 13, fontWeight: '800', marginTop: 2 },
@@ -640,7 +640,7 @@ const createStyles = () => StyleSheet.create({
   deliveryMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
   deliveryRetry: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.small, justifyContent: 'center', minHeight: 42, minWidth: 58, paddingHorizontal: 10 },
   deliveryRetryText: { color: colors.primary, fontSize: 11, fontWeight: '800' },
-  readError: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: '#EECFCD', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: 16, padding: 12 },
+  readError: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: colors.danger, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, marginTop: 16, padding: 12 },
   readErrorCopy: { flex: 1 },
   readErrorTitle: { color: colors.danger, fontSize: 12, fontWeight: '700' },
   readErrorMessage: { color: colors.textSoft, fontSize: 11, lineHeight: 16, marginTop: 2 },
@@ -651,8 +651,11 @@ const createStyles = () => StyleSheet.create({
   attachmentCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, justifyContent: 'center', minHeight: 120, overflow: 'hidden', padding: 8 },
   attachment: { alignSelf: 'center', height: 320, width: '100%' },
   attachmentError: { color: colors.muted, fontSize: 12, padding: 20, textAlign: 'center' },
+  // Invariant: a `colors.text` background must always pair with a `colors.background`
+  // foreground so inverted code surfaces remain readable in every preset (locked
+  // by WS3's contrast test).
   codeBox: { backgroundColor: colors.text, borderRadius: radius.medium, padding: 14 },
-  code: { color: '#E7ECE9', fontSize: 11, lineHeight: 17 },
+  code: { color: colors.background, fontSize: 11, lineHeight: 17 },
   quickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 22 },
   quickAction: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.medium, flexBasis: '46%', flexGrow: 1, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
   quickActionText: { color: colors.primary, fontSize: 13, fontWeight: '700' },

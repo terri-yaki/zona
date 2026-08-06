@@ -528,7 +528,7 @@ const createStyles = () => StyleSheet.create({
   },
   chipSource: {
     backgroundColor: colors.accentSoft,
-    borderColor: '#E8D0C0',
+    borderColor: colors.border,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipSourceActive: { backgroundColor: colors.accent, borderColor: colors.accent },
@@ -546,7 +546,7 @@ const createStyles = () => StyleSheet.create({
   pressed: { opacity: 0.68 },
   disabled: { opacity: 0.55 },
   modalRoot: { alignItems: 'center', flex: 1, justifyContent: 'center', padding: 22 },
-  modalBackdrop: { backgroundColor: 'rgba(23,34,30,0.45)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
+  modalBackdrop: { backgroundColor: 'rgba(0, 0, 0, 0.45)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   modalCard: { backgroundColor: colors.surface, borderRadius: radius.large, padding: 20, width: '100%' },
   modalTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },
   modalBody: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 5 },

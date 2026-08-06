@@ -198,7 +198,7 @@ export default function SignInScreen() {
 
             {capabilities?.anonymous ? <>
               {capabilities.email || capabilities.apple || capabilities.google || capabilities.github ? <View style={styles.guestDivider} /> : null}
-              <Pressable accessibilityRole="button" disabled={signingIn} onPress={continueAnonymously} style={({ pressed }) => [styles.guestButton, signingIn && styles.disabled, pressed && styles.providerPressed]}>
+              <Pressable accessibilityRole="button" disabled={signingIn} onPress={continueAnonymously} style={({ pressed }) => [styles.guestButton, signingIn && styles.disabled, pressed && styles.guestPressed]}>
                 <Text style={styles.guestText}>{t('auth.tryPrivately')}</Text>
               </Pressable>
               <Text style={styles.privacy}>{t('auth.privateAccount')}</Text>
@@ -220,11 +220,14 @@ const createStyles = () => StyleSheet.create({
   brand: { color: colors.text, fontSize: 21, fontWeight: '800', letterSpacing: -0.4 },
   title: { color: colors.text, fontSize: 34, fontWeight: '800', letterSpacing: -1.1, lineHeight: 39, marginBottom: 11, maxWidth: 340 },
   subtitle: { color: colors.muted, fontSize: 16, lineHeight: 23, marginBottom: 28, maxWidth: 345 },
-  formCard: { backgroundColor: colors.surface, borderColor: '#E7ECE9', borderRadius: radius.large, borderWidth: 1, padding: 18 },
+  formCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, padding: 18 },
   capabilityLoader: { marginVertical: 12 },
+  // Invariant: a `colors.text` background must always pair with a `colors.background`
+  // foreground so inverted surfaces remain readable in every preset (locked by
+  // WS3's contrast test).
   providerDark: { alignItems: 'center', backgroundColor: colors.text, borderRadius: radius.medium, flexDirection: 'row', gap: 9, justifyContent: 'center', minHeight: 51, padding: 13 },
-  providerDarkText: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  pressedDark: { backgroundColor: '#28352F' },
+  providerDarkText: { color: colors.background, fontSize: 14, fontWeight: '700' },
+  pressedDark: { backgroundColor: colors.surfaceMuted },
   provider: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 9, justifyContent: 'center', marginTop: 9, minHeight: 51, padding: 13 },
   providerPressed: { backgroundColor: colors.surfaceMuted },
   providerMark: { color: colors.text, fontSize: 16, fontWeight: '900', textAlign: 'center', width: 20 },
@@ -240,8 +243,9 @@ const createStyles = () => StyleSheet.create({
   modeButton: { alignItems: 'center', minHeight: 38, justifyContent: 'center' },
   modeText: { color: colors.primary, fontSize: 12, fontWeight: '700' },
   guestDivider: { backgroundColor: colors.border, height: 1, marginVertical: 12 },
-  guestButton: { alignItems: 'center', borderRadius: radius.medium, justifyContent: 'center', minHeight: 45, padding: 10 },
-  guestText: { color: colors.textSoft, fontSize: 13, fontWeight: '700' },
+  guestButton: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, justifyContent: 'center', minHeight: 51, padding: 10 },
+  guestText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  guestPressed: { backgroundColor: colors.surfaceMuted },
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   pressed: { backgroundColor: colors.primaryDark, transform: [{ scale: 0.995 }] },
   disabled: { opacity: 0.6 },

@@ -2,6 +2,8 @@ import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { createElement, type ReactElement, type ReactNode } from 'react';
 import { Platform, type ColorValue, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '@/theme';
+
 type Props = {
   name: SFSymbol;
   color?: ColorValue;
@@ -108,16 +110,19 @@ function FallbackIcon({ color, size, fallback }: { color: ColorValue; size: numb
   );
 }
 
-export function AppIcon({ name, color = '#17221E', size = 22, fallback = '•' }: Props) {
+export function AppIcon({ name, color, size = 22, fallback = '•' }: Props) {
+  // Resolve the default inside the function body so it stays live-bound to the
+  // active theme preset; explicit `color` overrides still take precedence.
+  const tint = color ?? colors.text;
   const view = loadSymbolView();
-  if (!view) return <FallbackIcon color={color} fallback={fallback} size={size} />;
+  if (!view) return <FallbackIcon color={tint} fallback={fallback} size={size} />;
 
   return createElement(view, {
-    fallback: <FallbackIcon color={color} fallback={fallback} size={size} />,
+    fallback: <FallbackIcon color={tint} fallback={fallback} size={size} />,
     name: crossPlatformName(name),
     resizeMode: 'scaleAspectFit',
     size,
-    tintColor: color,
+    tintColor: tint,
     weight: Platform.OS === 'ios' ? 'semibold' : undefined,
   });
 }

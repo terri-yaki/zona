@@ -339,7 +339,7 @@ const createStyles = () => StyleSheet.create({
   dangerText: { color: colors.danger, fontSize: 12, fontWeight: '700' },
   pressed: { opacity: 0.7 },
   modalRoot: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(17, 29, 24, 0.38)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.38)' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 23, width: '100%' },
   secretSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 25, width: '100%' },
   secretIcon: { alignItems: 'center', alignSelf: 'center', backgroundColor: colors.primarySoft, borderRadius: 20, height: 58, justifyContent: 'center', marginBottom: 14, width: 58 },

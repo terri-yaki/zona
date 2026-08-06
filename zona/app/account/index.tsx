@@ -452,11 +452,15 @@ function AccountAction({ danger = false, label, onPress }: { danger?: boolean; l
 const createStyles = () => StyleSheet.create({
   safeArea: { backgroundColor: colors.background, flex: 1 },
   page: { alignSelf: 'center', maxWidth: 680, padding: 18, paddingBottom: 42, width: '100%' },
+  // Invariant: on `colors.primary` hero surfaces white titles are kept (WS3
+  // darkens neon's primary to maintain 4.5:1 against white), and `primarySoft`
+  // is the luminance-inverse companion of `primary` in every preset (asserted by
+  // WS3's contrast test).
   hero: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.large, flexDirection: 'row', padding: 18 },
   heroIcon: { alignItems: 'center', backgroundColor: colors.white, borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
   heroCopy: { flex: 1, marginLeft: 12 },
   heroTitle: { color: colors.white, fontSize: 16, fontWeight: '800' },
-  heroBody: { color: '#D8EAE4', fontSize: 12, lineHeight: 17, marginTop: 3 },
+  heroBody: { color: colors.primarySoft, fontSize: 12, lineHeight: 17, marginTop: 3 },
   protectedBadge: { backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: radius.full, marginLeft: 8, paddingHorizontal: 9, paddingVertical: 5 },
   protectedText: { color: colors.white, fontSize: 11, fontWeight: '800' },
   section: { color: colors.muted, fontSize: 12, fontWeight: '800', letterSpacing: 0.7, marginBottom: 7, marginLeft: 4, marginTop: 20 },

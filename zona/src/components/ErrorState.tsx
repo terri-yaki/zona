@@ -24,7 +24,7 @@ export function ErrorState({ error, onRetry, compact = false }: { error: unknown
 }
 
 const createStyles = () => StyleSheet.create({
-  container: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: '#EECFCD', borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, margin: 16, padding: 14 },
+  container: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderColor: colors.danger, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', gap: 10, margin: 16, padding: 14 },
   compact: { marginBottom: 8, marginTop: 4 },
   icon: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, height: 34, justifyContent: 'center', width: 34 },
   copy: { flex: 1 },
