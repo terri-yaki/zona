@@ -169,13 +169,14 @@ export default function InboxScreen() {
   }
 
   // Full-screen only on first open of the inbox — never when switching filter chips.
+  // Include chrome placeholders so the first paint matches real summary/search/filters.
   if (inbox.bootstrapping && inbox.items.length === 0 && !inbox.error) {
     return (
       <TabScreen>
         {/* The skeleton hides itself from assistive technology, so the wrapper
             carries the loading announcement like the filter-loading branch. */}
-        <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
-          <InboxSkeleton />
+        <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.bootstrapLoading}>
+          <InboxSkeleton showChrome />
         </View>
       </TabScreen>
     );
@@ -342,8 +343,9 @@ export default function InboxScreen() {
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           inbox.filterLoading ? (
+            // Chrome already scrolls in ListHeaderComponent — only card rows here.
             <View accessibilityLabel={t('inbox.loadingFiltered')} style={styles.filterListLoading}>
-              <InboxSkeleton />
+              <InboxSkeleton showChrome={false} />
             </View>
           ) : (
             <EmptyState title={t('inbox.emptyTitle')} message={emptyMessage} />
@@ -510,7 +512,9 @@ const createStyles = () => StyleSheet.create({
     paddingTop: 8,
   },
   filterLoading: { alignItems: 'center', height: 40, justifyContent: 'center', width: 44 },
-  filterListLoading: { alignItems: 'center', flexGrow: 1, justifyContent: 'center', minHeight: 160, paddingVertical: 40 },
+  // Top-aligned skeleton so placeholders sit where real cards will land.
+  bootstrapLoading: { flex: 1 },
+  filterListLoading: { alignSelf: 'stretch', flexGrow: 1, minHeight: 160, width: '100%' },
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,

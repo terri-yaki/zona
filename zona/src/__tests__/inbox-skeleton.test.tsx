@@ -27,4 +27,19 @@ describe('InboxSkeleton', () => {
     expect(container.props.accessibilityElementsHidden).toBe(true);
     expect(container.props.importantForAccessibility).toBe('no-hide-descendants');
   });
+
+  it('renders chrome placeholders by default and omits them when showChrome is false', async () => {
+    let withChrome: ReturnType<typeof create> | undefined;
+    let withoutChrome: ReturnType<typeof create> | undefined;
+    await act(async () => {
+      withChrome = create(<InboxSkeleton showChrome />);
+      withoutChrome = create(<InboxSkeleton showChrome={false} />);
+    });
+
+    // Full chrome skeleton has more Views (summary/search/filters + 6 cards)
+    // than the cards-only variant used under an existing list header.
+    const chromeViews = withChrome!.root.findAll((node) => (node.type as unknown) === 'View').length;
+    const cardsOnlyViews = withoutChrome!.root.findAll((node) => (node.type as unknown) === 'View').length;
+    expect(chromeViews).toBeGreaterThan(cardsOnlyViews);
+  });
 });
