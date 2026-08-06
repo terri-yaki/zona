@@ -438,6 +438,7 @@ export const zhHant = {
   'settings.themePreset.sunset': '日落',
   'settings.themePreset.violet': '紫羅蘭',
   'settings.themePreset.minimalist': '極簡',
+  'settings.themePreset.marshmallow': '棉花糖',
   'settings.themePreset.neon': '霓虹',
   'whatsNew.eyebrow': 'ZONA 新鮮事',
   'whatsNew.title': '多了新本領，收件匣依然清爽。',

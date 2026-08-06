@@ -4,6 +4,28 @@ All notable changes to Zona are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) structure and intends
 to use semantic application versions. Build numbers are managed by EAS.
 
+## [Unreleased]
+
+### Added
+
+- New **Marshmallow** theme: a soft pink-lavender, Discord-inspired palette with
+  full contrast auditing and light status-bar chrome.
+
+### Fixed
+
+- New accounts no longer arrive at a greyed-out Settings button when the
+  push-health or options load fails; safe defaults keep the toggles enabled.
+- The Neon theme is usable on light surfaces again: hardcoded light hexes are
+  gone, inverted surfaces pair background foregrounds correctly, and the neon
+  mint primary is deepened so white-on-primary passes WCAG AA.
+- After deleting an account, the "Use Zona on this device" control on the
+  new-user screen now looks like a real button.
+
+### Changed
+
+- Every theme preset is now guarded by an automated WCAG contrast test that
+  locks the audited color pairings going forward.
+
 ## [0.0.12] - 2026-08-05 (re-released 2026-08-06)
 
 ### Added

@@ -436,6 +436,7 @@ export const en = {
   'settings.themePreset.sunset': 'Sunset',
   'settings.themePreset.violet': 'Violet',
   'settings.themePreset.minimalist': 'Minimalist',
+  'settings.themePreset.marshmallow': 'Marshmallow',
   'settings.themePreset.neon': 'Neon',
   'whatsNew.eyebrow': 'FRESH FROM ZONA',
   'whatsNew.title': 'New tricks, same calm inbox.',
