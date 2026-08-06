@@ -8,7 +8,7 @@ import { clearCachedContent } from '@/cache/session';
 import { getUserCacheSize } from '@/cache/store';
 import { TabScreen, useBottomSafePadding, useTabBarContentPadding } from '@/components/TabScreen';
 import { listNotifications, unreadNotificationCount } from '@/data/notifications';
-import { getAppOptions, getCachedAppOptions, updateAppOptions, type AppOptionFlags } from '@/data/options';
+import { getAppOptions, getCachedAppOptions, sanitizeAppOptions, updateAppOptions, type AppOptionFlags } from '@/data/options';
 import { deleteAccount } from '@/lib/api';
 import { clearPrivateUserState } from '@/cache/private-state';
 import { checkForAppUpdateInteractive } from '@/lib/app-updates';
@@ -92,12 +92,22 @@ export default function SettingsScreen() {
     }).catch(() => undefined);
     try {
       setHealth(await getPushRegistrationHealth(userId));
+    } catch {
+      setHealth(null);
+    }
+    try {
       await migrateLegacyLiveActivityPreference(userId);
+    } catch {
+      // Migration failures must not block the options load.
+    }
+    try {
       const nextOptions = await getAppOptions(userId);
       setOptions(nextOptions);
       setOptionsOwnerUserId(userId);
       setOptionsError(null);
     } catch (error) {
+      setOptions({ ...sanitizeAppOptions({}), user_id: userId });
+      setOptionsOwnerUserId(userId);
       setOptionsError(error instanceof Error ? error.message : t('settings.optionsLoadError'));
     }
     if (liveActivitySupported) {
@@ -728,7 +738,7 @@ const createStyles = () => StyleSheet.create({
   cacheDescription: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   languageValue: { color: colors.muted, fontSize: 12, marginRight: 8, maxWidth: '45%' },
   themeDot: { borderRadius: 999, height: 18, marginRight: 10, width: 18 },
-  modalBackdrop: { backgroundColor: 'rgba(18, 35, 29, 0.3)', flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { backgroundColor: 'rgba(0, 0, 0, 0.3)', flex: 1, justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.large, borderTopRightRadius: radius.large, paddingHorizontal: 18, paddingTop: 18 },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   modalTitle: { color: colors.text, fontSize: 20, fontWeight: '800' },

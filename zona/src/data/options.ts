@@ -26,7 +26,7 @@ function isFresh(entry: PreferenceCacheEntry) {
 }
 
 /** Validate RPC preference payloads field-by-field before caching. */
-function sanitizeAppOptions(value: unknown): AppOptions {
+export function sanitizeAppOptions(value: unknown): AppOptions {
   const record = typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
