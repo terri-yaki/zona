@@ -43,7 +43,12 @@ import { isSensitiveAccountAction, sensitiveAccountActions } from '../lib/accoun
 // eslint-disable-next-line import/first
 import { parseAccountTransferResponse } from '../lib/account-transfer';
 // eslint-disable-next-line import/first
-import { fallbackAuthCapabilities, parseAuthCapabilities } from '../lib/auth-capabilities';
+import {
+  fallbackAuthCapabilities,
+  firstJoinShowsNonGuestMethods,
+  nonGuestAuthMethodsEnabled,
+  parseAuthCapabilities,
+} from '../lib/auth-capabilities';
 // eslint-disable-next-line import/first
 import { normalizeAuthEmail } from '../lib/auth-flow';
 // eslint-disable-next-line import/first
@@ -112,17 +117,46 @@ describe('account transfer response parsing', () => {
 });
 
 describe('auth capabilities parsing', () => {
-  it('reads Auth settings external flags with safe defaults', () => {
+  it('reads Auth settings external flags with product-safe defaults', () => {
     expect(parseAuthCapabilities({
       external: { email: true, google: true, apple: 'yes', anonymous_users: false },
     })).toEqual({
       anonymous: false,
-      apple: false,
+      // Non-boolean apple falls back to product default (enabled).
+      apple: true,
       email: true,
-      github: false,
+      github: true,
       google: true,
     });
     expect(parseAuthCapabilities(null)).toEqual(fallbackAuthCapabilities);
+  });
+
+  it('keeps email and OAuth visible when settings omit keys or fail (fallback)', () => {
+    expect(fallbackAuthCapabilities.email).toBe(true);
+    expect(fallbackAuthCapabilities.anonymous).toBe(true);
+    expect(nonGuestAuthMethodsEnabled(fallbackAuthCapabilities)).toBe(true);
+    expect(firstJoinShowsNonGuestMethods(fallbackAuthCapabilities)).toBe(true);
+    expect(firstJoinShowsNonGuestMethods(parseAuthCapabilities({}))).toBe(true);
+  });
+
+  it('honors explicit server disables', () => {
+    const disabled = parseAuthCapabilities({
+      external: {
+        anonymous_users: true,
+        apple: false,
+        email: false,
+        github: false,
+        google: false,
+      },
+    });
+    expect(disabled).toEqual({
+      anonymous: true,
+      apple: false,
+      email: false,
+      github: false,
+      google: false,
+    });
+    expect(firstJoinShowsNonGuestMethods(disabled)).toBe(false);
   });
 });
 

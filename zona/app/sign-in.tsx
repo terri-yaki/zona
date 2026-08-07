@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppIcon } from '@/components/AppIcon';
-import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { fallbackAuthCapabilities, getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
 import { describeAuthError, resendSignupConfirmation } from '@/lib/auth-flow';
 import { validateAuthPassword } from '@/lib/validation';
 import { useAuth } from '@/providers/AuthProvider';
@@ -22,7 +22,9 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [usePasswordMode, setUsePasswordMode] = useState(false);
-  const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
+  // Seed product defaults so email/OAuth rows appear before settings returns;
+  // server flags still refine (or explicitly disable) after the fetch.
+  const [capabilities, setCapabilities] = useState<AuthCapabilities>(fallbackAuthCapabilities);
 
   useEffect(() => {
     let active = true;
@@ -137,21 +139,20 @@ export default function SignInScreen() {
           <Text style={styles.title}>{t('auth.title')}</Text>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
           <View style={styles.formCard}>
-            {!capabilities ? <ActivityIndicator color={colors.primary} style={styles.capabilityLoader} /> : null}
-            {Platform.OS === 'ios' && capabilities?.apple ? (
+            {Platform.OS === 'ios' && capabilities.apple ? (
               <Pressable accessibilityRole="button" disabled={signingIn} onPress={() => void continueWithProvider('apple')} style={({ pressed }) => [styles.providerDark, signingIn && styles.disabled, pressed && styles.pressedDark]}>
                 <AppIcon color={colors.white} fallback="A" name="apple.logo" size={18} />
                 <Text style={styles.providerDarkText}>{t('auth.continueApple')}</Text>
               </Pressable>
             ) : null}
-            {capabilities?.google ? <Pressable accessibilityRole="button" disabled={signingIn} onPress={() => void continueWithProvider('google')} style={({ pressed }) => [styles.provider, signingIn && styles.disabled, pressed && styles.providerPressed]}>
+            {capabilities.google ? <Pressable accessibilityRole="button" disabled={signingIn} onPress={() => void continueWithProvider('google')} style={({ pressed }) => [styles.provider, signingIn && styles.disabled, pressed && styles.providerPressed]}>
               <Text style={styles.providerMark}>G</Text><Text style={styles.providerText}>{t('auth.continueGoogle')}</Text>
             </Pressable> : null}
-            {capabilities?.github ? <Pressable accessibilityRole="button" disabled={signingIn} onPress={() => void continueWithProvider('github')} style={({ pressed }) => [styles.provider, signingIn && styles.disabled, pressed && styles.providerPressed]}>
+            {capabilities.github ? <Pressable accessibilityRole="button" disabled={signingIn} onPress={() => void continueWithProvider('github')} style={({ pressed }) => [styles.provider, signingIn && styles.disabled, pressed && styles.providerPressed]}>
               <Text style={styles.providerMark}>⌘</Text><Text style={styles.providerText}>{t('auth.continueGithub')}</Text>
             </Pressable> : null}
 
-            {capabilities?.email ? <>
+            {capabilities.email ? <>
               {capabilities.apple || capabilities.google || capabilities.github ? <View style={styles.dividerRow}><View style={styles.divider} /><Text style={styles.dividerText}>{t('auth.orEmail')}</Text><View style={styles.divider} /></View> : <View style={styles.emailSpacer} />}
               <TextInput
                 accessibilityLabel={t('auth.email')}
@@ -196,7 +197,7 @@ export default function SignInScreen() {
               </Pressable>
             </> : null}
 
-            {capabilities?.anonymous ? <>
+            {capabilities.anonymous ? <>
               {capabilities.email || capabilities.apple || capabilities.google || capabilities.github ? <View style={styles.guestDivider} /> : null}
               <Pressable accessibilityRole="button" disabled={signingIn} onPress={continueAnonymously} style={({ pressed }) => [styles.guestButton, signingIn && styles.disabled, pressed && styles.guestPressed]}>
                 <Text style={styles.guestText}>{t('auth.tryPrivately')}</Text>

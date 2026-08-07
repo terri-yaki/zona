@@ -16,7 +16,7 @@ import {
   type AccountInstallation,
   type AccountSummary,
 } from '@/data/account';
-import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { fallbackAuthCapabilities, getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
 import { formatAccountUsageBytes, type AccountUsage } from '@/lib/account-usage';
 import { relativeTime } from '@/lib/format';
 import { unregisterThisInstallation } from '@/lib/push';
@@ -51,7 +51,7 @@ export default function AccountScreen() {
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [identities, setIdentities] = useState<UserIdentity[]>([]);
   const [installations, setInstallations] = useState<AccountInstallation[]>([]);
-  const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
+  const [capabilities, setCapabilities] = useState<AuthCapabilities>(fallbackAuthCapabilities);
   const [email, setEmail] = useState('');
   const [passwordEmail, setPasswordEmail] = useState('');
   const [password, setPassword] = useState('');

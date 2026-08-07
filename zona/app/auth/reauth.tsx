@@ -8,7 +8,7 @@ import { clearPrivateUserState } from '@/cache/private-state';
 import { AppIcon } from '@/components/AppIcon';
 import { createReauthGrant, performAccountSecurityAction, type SensitiveAccountAction } from '@/lib/account-security';
 import { deleteAccount } from '@/lib/api';
-import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { fallbackAuthCapabilities, getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
 import {
   authenticateSecondaryProvider,
   sendSecondaryEmailCode,
@@ -52,7 +52,7 @@ export default function ReauthScreen() {
   const { t } = useI18n();
   const action = parseAction(first(params.action));
   const target = first(params.target);
-  const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
+  const [capabilities, setCapabilities] = useState<AuthCapabilities>(fallbackAuthCapabilities);
   const [typedEmail, setTypedEmail] = useState('');
   const email = typedEmail.trim() ? typedEmail : proofEmailFromSession(session);
   const [code, setCode] = useState('');

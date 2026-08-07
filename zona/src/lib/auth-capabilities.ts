@@ -8,12 +8,18 @@ export type AuthCapabilities = {
   google: boolean;
 };
 
+/**
+ * Defaults when /auth/v1/settings is slow, fails, or omits flags.
+ * Product always offers guest + email/password; OAuth providers are on by
+ * default so first-join and Account link rows stay visible until the server
+ * explicitly disables them. Explicit `false` from settings still wins.
+ */
 export const fallbackAuthCapabilities: AuthCapabilities = {
   anonymous: true,
-  apple: false,
-  email: false,
-  github: false,
-  google: false,
+  apple: true,
+  email: true,
+  github: true,
+  google: true,
 };
 
 let cached: { expiresAt: number; value: AuthCapabilities } | null = null;
@@ -32,11 +38,24 @@ export function parseAuthCapabilities(payload: unknown): AuthCapabilities {
     : {};
   return {
     anonymous: enabled(external, 'anonymous_users', fallbackAuthCapabilities.anonymous),
-    apple: enabled(external, 'apple', false),
+    apple: enabled(external, 'apple', fallbackAuthCapabilities.apple),
     email: enabled(external, 'email', fallbackAuthCapabilities.email),
-    github: enabled(external, 'github', false),
-    google: enabled(external, 'google', false),
+    github: enabled(external, 'github', fallbackAuthCapabilities.github),
+    google: enabled(external, 'google', fallbackAuthCapabilities.google),
   };
+}
+
+/** Non-guest methods the product can surface (sign-in or Account link). */
+export function nonGuestAuthMethodsEnabled(capabilities: AuthCapabilities) {
+  return capabilities.email
+    || capabilities.apple
+    || capabilities.google
+    || capabilities.github;
+}
+
+/** First-join: at least one recoverable path besides guest. */
+export function firstJoinShowsNonGuestMethods(capabilities: AuthCapabilities) {
+  return nonGuestAuthMethodsEnabled(capabilities);
 }
 
 export async function getAuthCapabilities(): Promise<AuthCapabilities> {
@@ -57,4 +76,9 @@ export async function getAuthCapabilities(): Promise<AuthCapabilities> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/** Test helper: drop the in-memory settings cache. */
+export function clearAuthCapabilitiesCache() {
+  cached = null;
 }

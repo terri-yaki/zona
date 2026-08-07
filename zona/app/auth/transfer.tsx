@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { clearPrivateUserState } from '@/cache/private-state';
 import { AppIcon } from '@/components/AppIcon';
 import { cancelGuestTransfer, commitGuestTransfer, previewGuestTransfer, type AccountTransfer } from '@/lib/account-transfer';
-import { getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
+import { fallbackAuthCapabilities, getAuthCapabilities, type AuthCapabilities } from '@/lib/auth-capabilities';
 import {
   authenticateSecondaryProvider,
   sendSecondaryEmailCode,
@@ -27,7 +27,7 @@ export default function AccountTransferScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const { t } = useI18n();
-  const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
+  const [capabilities, setCapabilities] = useState<AuthCapabilities>(fallbackAuthCapabilities);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeSent, setCodeSent] = useState(false);
