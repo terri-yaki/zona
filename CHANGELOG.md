@@ -12,9 +12,13 @@ to use semantic application versions. Build numbers are managed by EAS.
   top-level orientation setting keeps the app in portrait (landscape stays
   locked; iPadOS still permits upside-down portrait rotation on iPad), and
   iPad runs full-screen only via `ios.requireFullScreen` (Split View and Slide
-  Over are disabled by design and accepted as a product limitation). The iPad
-  enablement smoke run on the iPad simulator found no content overlap with the
-  native tab bar on any tab, so no iPad-specific layout branching was needed.
+  Over are disabled by design and accepted as a product limitation).
+  `TabScreen` now resolves its bottom content padding by device type: because
+  iPadOS 18+ can float the tab bar at the top or collapse it into a sidebar,
+  iPad content relies on the safe-area insets instead of the iPhone's fixed
+  floating-bar cushion. The `app.json` flags are locked by a unit test, and
+  physical iPad verification (orientation lock, push/APNs, Live Status,
+  tab-bar placement) remains a release gate in `docs/TEST_PLAN.md`.
 - New **Marshmallow** theme: a soft pink-lavender, Discord-inspired palette with
   full contrast auditing and light status-bar chrome.
 

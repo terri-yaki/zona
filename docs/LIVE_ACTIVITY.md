@@ -1,7 +1,8 @@
 # Live Status (iOS Live Activity)
 
-Zona can show a **Live Status** surface on the iPhone **Lock Screen** and
-**Dynamic Island**: unread count, latest source name, and latest alert title.
+Zona can show a **Live Status** surface on the **Lock Screen** (iPhone and
+iPad) and the iPhone **Dynamic Island**: unread count, latest source name,
+and latest alert title.
 
 ## User experience
 
@@ -27,7 +28,7 @@ Screen chrome.
 
 | Topic | Behavior |
 | --- | --- |
-| Platform | **iOS only** (iOS 16.2+ for ActivityKit). Android/web are no-ops. |
+| Platform | **iOS/iPadOS only** (16.2+ for ActivityKit). Android/web are no-ops. |
 | Binary | Requires a **development / preview / production** native build. **Not Expo Go.** |
 | Updates | **App-driven** while JS can run (open app, Realtime, mark read). If the app is **killed**, the activity may stay stale until the next launch. |
 | Lifetime | Session timer about **8 hours** (Apple Live Activity limit). Next open can restart if still unread and enabled. |

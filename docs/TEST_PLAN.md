@@ -332,10 +332,13 @@ EAS build URL, account, time, and evidence link.
 | iPad tab-bar placement | On the inbox, sources, and settings tabs, scrolling to the end of each list leaves every row fully visible and clear of the native tab bar, wherever iPadOS places it |
 
 The tab-bar placement row is also the recorded decision point from the iPad
-enablement smoke run: on the iPad simulator the native tab bar overlapped no
-content on any tab, so no `Device.deviceType` layout branch was added. The
-bottom content cushion in `TabScreen` assumes a bottom tab bar and remains
-harmless extra padding if iPadOS places the bar at the top or in a sidebar.
+enablement work: an iPad-simulator smoke run could not be executed in the
+development environment, so `TabScreen` takes the conservative path and
+resolves bottom content padding by `Device.deviceType` — iPad content relies
+on the safe-area insets instead of the iPhone's fixed floating-bar cushion,
+which is safe whether iPadOS places the bar at the bottom, at the top, or in
+a sidebar. This row is the acceptance gate for that decision on physical
+hardware.
 
 Expo Go results do not satisfy any remote-push row.
 
