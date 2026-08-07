@@ -84,7 +84,7 @@ export const en = {
   'account.usageOfLimit': '%{count} of %{limit}',
   'account.signInMethods': 'SIGN-IN METHODS',
   'account.connected': 'Connected',
-  'account.noMethods': 'No recovery method is connected yet.',
+  'account.noMethods': 'No recovery method is connected yet. Use an option below to protect this Zona.',
   'account.protectWithEmail': 'Protect this Zona with email',
   'account.addEmail': 'Add a recovery email',
   'account.emailHelp': 'We will send a one-time code. Your sources, keys, and inbox stay with this same account.',

@@ -15,15 +15,14 @@ import { useThemedStyles } from '@/theme-preference';
 export default function SignInScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { session, authError, clearAuthError, continueAsGuest, sendEmailAuth, startPasswordAuth, startProvider } = useAuth();
+  const { session, authError, clearAuthError, sendEmailAuth, startPasswordAuth, startProvider } = useAuth();
   const { t } = useI18n();
   const [signingIn, setSigningIn] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [usePasswordMode, setUsePasswordMode] = useState(false);
-  // Seed product defaults so email/OAuth rows appear before settings returns;
-  // server flags still refine (or explicitly disable) after the fetch.
+  // Seed product defaults so email/OAuth rows appear before settings returns.
   const [capabilities, setCapabilities] = useState<AuthCapabilities>(fallbackAuthCapabilities);
 
   useEffect(() => {
@@ -36,18 +35,6 @@ export default function SignInScreen() {
 
   if (session) return <Redirect href="/" />;
 
-  async function continueAnonymously() {
-    if (capabilities?.anonymous !== true) return;
-    setSigningIn(true);
-    clearAuthError();
-    try {
-      await continueAsGuest();
-    } catch (error) {
-      Alert.alert(t('auth.signInError'), error instanceof Error ? error.message : t('auth.connectionError'));
-    } finally {
-      setSigningIn(false);
-    }
-  }
 
   async function continueWithEmail() {
     if (signingIn || capabilities?.email !== true) return;
@@ -195,14 +182,6 @@ export default function SignInScreen() {
               <Pressable accessibilityRole="button" onPress={() => setCreatingAccount((value) => !value)} style={styles.modeButton}>
                 <Text style={styles.modeText}>{creatingAccount ? t('auth.haveAccount') : t('auth.needAccount')}</Text>
               </Pressable>
-            </> : null}
-
-            {capabilities.anonymous ? <>
-              {capabilities.email || capabilities.apple || capabilities.google || capabilities.github ? <View style={styles.guestDivider} /> : null}
-              <Pressable accessibilityRole="button" disabled={signingIn} onPress={continueAnonymously} style={({ pressed }) => [styles.guestButton, signingIn && styles.disabled, pressed && styles.guestPressed]}>
-                <Text style={styles.guestText}>{t('auth.tryPrivately')}</Text>
-              </Pressable>
-              <Text style={styles.privacy}>{t('auth.privateAccount')}</Text>
             </> : null}
           </View>
           {authError ? <View accessibilityLiveRegion="polite" style={styles.errorBox}><AppIcon color={colors.danger} fallback="!" name="exclamationmark.triangle.fill" size={17} /><Text style={styles.errorText}>{authError}</Text></View> : null}

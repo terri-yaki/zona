@@ -122,25 +122,21 @@ describe('auth capabilities parsing', () => {
       external: { email: true, google: true, apple: 'yes', anonymous_users: false },
     })).toEqual({
       anonymous: false,
-      // Non-boolean apple falls back to product default (enabled).
-      apple: true,
+      // Non-boolean apple falls back to product default (off for OAuth).
+      apple: false,
       email: true,
-      github: true,
+      github: false,
       google: true,
     });
-    expect(parseAuthCapabilities(null)).toEqual(fallbackAuthCapabilities);
+    expect(parseAuthCapabilities(null)).toEqual({
+      ...fallbackAuthCapabilities,
+      email: true,
+    });
   });
 
-  it('keeps email and OAuth visible when settings omit keys or fail (fallback)', () => {
-    expect(fallbackAuthCapabilities.email).toBe(true);
-    expect(fallbackAuthCapabilities.anonymous).toBe(true);
-    expect(nonGuestAuthMethodsEnabled(fallbackAuthCapabilities)).toBe(true);
-    expect(firstJoinShowsNonGuestMethods(fallbackAuthCapabilities)).toBe(true);
-    expect(firstJoinShowsNonGuestMethods(parseAuthCapabilities({}))).toBe(true);
-  });
-
-  it('honors explicit server disables', () => {
-    const disabled = parseAuthCapabilities({
+  it('keeps email visible even when the public settings payload disables it', () => {
+    // Live GoTrue can report external.email=false while Zona still needs recovery.
+    const fromServer = parseAuthCapabilities({
       external: {
         anonymous_users: true,
         apple: false,
@@ -149,14 +145,24 @@ describe('auth capabilities parsing', () => {
         google: false,
       },
     });
-    expect(disabled).toEqual({
-      anonymous: true,
-      apple: false,
-      email: false,
-      github: false,
-      google: false,
+    expect(fromServer.email).toBe(true);
+    expect(fromServer.anonymous).toBe(true);
+    expect(firstJoinShowsNonGuestMethods(fromServer)).toBe(true);
+    expect(fallbackAuthCapabilities.email).toBe(true);
+    expect(nonGuestAuthMethodsEnabled(fallbackAuthCapabilities)).toBe(true);
+  });
+
+  it('still surfaces OAuth only when the server enables it', () => {
+    const caps = parseAuthCapabilities({
+      external: { email: false, google: true, apple: true, github: false, anonymous_users: false },
     });
-    expect(firstJoinShowsNonGuestMethods(disabled)).toBe(false);
+    expect(caps).toEqual({
+      anonymous: false,
+      apple: true,
+      email: true,
+      github: false,
+      google: true,
+    });
   });
 });
 

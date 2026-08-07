@@ -86,7 +86,7 @@ export const zhHant = {
   'account.usageOfLimit': '%{count} / %{limit}',
   'account.signInMethods': '登入方式',
   'account.connected': '已連接',
-  'account.noMethods': '尚未連接復原方式。',
+  'account.noMethods': '尚未連接復原方式。請使用下方選項保護此 Zona。',
   'account.protectWithEmail': '使用電郵保護此 Zona',
   'account.addEmail': '新增復原電郵',
   'account.emailHelp': '我們會傳送一次性代碼，你的來源、金鑰和收件匣會保留在同一帳戶。',

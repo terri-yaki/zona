@@ -8,8 +8,9 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Fixed
 
-- First join and Account now show email and provider sign-in methods by default
-  when Auth settings are slow or fail, instead of leaving only the guest path.
+- First join and Account always offer email recovery (settings no longer hide it
+  behind a guest-only path). The private “Try Zona on this device” control is
+  removed from sign-in so real sign-in methods are not blocked.
 - iPad can rotate to landscape; iPhone stays portrait-only.
 
 ## [0.0.12] - 2026-08-05 (re-released 2026-08-07)

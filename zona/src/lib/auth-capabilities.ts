@@ -9,17 +9,17 @@ export type AuthCapabilities = {
 };
 
 /**
- * Defaults when /auth/v1/settings is slow, fails, or omits flags.
- * Product always offers guest + email/password; OAuth providers are on by
- * default so first-join and Account link rows stay visible until the server
- * explicitly disables them. Explicit `false` from settings still wins.
+ * Defaults when /auth/v1/settings is slow or fails.
+ * Email is a product recovery path and stays available even when the public
+ * settings payload incorrectly reports email off (common GoTrue misconfig).
+ * OAuth follows the server. Guest is optional and not required for first join.
  */
 export const fallbackAuthCapabilities: AuthCapabilities = {
-  anonymous: true,
-  apple: true,
+  anonymous: false,
+  apple: false,
   email: true,
-  github: true,
-  google: true,
+  github: false,
+  google: false,
 };
 
 let cached: { expiresAt: number; value: AuthCapabilities } | null = null;
@@ -29,6 +29,14 @@ function enabled(record: Record<string, unknown>, key: string, defaultValue: boo
   return typeof value === 'boolean' ? value : defaultValue;
 }
 
+/** Product floor: always offer email recovery; OAuth only when server enables it. */
+export function applyProductAuthFloor(capabilities: AuthCapabilities): AuthCapabilities {
+  return {
+    ...capabilities,
+    email: true,
+  };
+}
+
 export function parseAuthCapabilities(payload: unknown): AuthCapabilities {
   const external = payload && typeof payload === 'object' && !Array.isArray(payload)
     && (payload as { external?: unknown }).external
@@ -36,13 +44,14 @@ export function parseAuthCapabilities(payload: unknown): AuthCapabilities {
     && !Array.isArray((payload as { external?: unknown }).external)
     ? (payload as { external: Record<string, unknown> }).external
     : {};
-  return {
+  const parsed: AuthCapabilities = {
     anonymous: enabled(external, 'anonymous_users', fallbackAuthCapabilities.anonymous),
     apple: enabled(external, 'apple', fallbackAuthCapabilities.apple),
     email: enabled(external, 'email', fallbackAuthCapabilities.email),
     github: enabled(external, 'github', fallbackAuthCapabilities.github),
     google: enabled(external, 'google', fallbackAuthCapabilities.google),
   };
+  return applyProductAuthFloor(parsed);
 }
 
 /** Non-guest methods the product can surface (sign-in or Account link). */
@@ -53,7 +62,7 @@ export function nonGuestAuthMethodsEnabled(capabilities: AuthCapabilities) {
     || capabilities.github;
 }
 
-/** First-join: at least one recoverable path besides guest. */
+/** First-join: at least one recoverable path. */
 export function firstJoinShowsNonGuestMethods(capabilities: AuthCapabilities) {
   return nonGuestAuthMethodsEnabled(capabilities);
 }
@@ -72,7 +81,7 @@ export async function getAuthCapabilities(): Promise<AuthCapabilities> {
     cached = { expiresAt: Date.now() + 5 * 60_000, value };
     return value;
   } catch {
-    return fallbackAuthCapabilities;
+    return applyProductAuthFloor(fallbackAuthCapabilities);
   } finally {
     clearTimeout(timeout);
   }
