@@ -1,3 +1,4 @@
+import * as Device from 'expo-device';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,13 +30,36 @@ export function TabScreen({
   );
 }
 
+/**
+ * Extra cushion (pt) so iPhone content clears the floating tab bar
+ * (roughly 49pt of bar above the home-indicator inset).
+ */
+export const IPHONE_TAB_BAR_CUSHION = 56;
+
+/**
+ * Bottom padding for content under the native tab bar, by platform/device.
+ * - Android: NativeTabs already applies the bottom system/tab-bar inset.
+ * - iPad: iPadOS 18+ can float the tab bar at the top or collapse it into a
+ *   sidebar, so the iPhone's fixed bar + home-indicator cushion does not
+ *   hold; the safe-area insets (and TabScreen's top edge) carry whichever
+ *   placement the system picks.
+ * - iPhone (and unknown devices): keep the floating-bar cushion.
+ */
+export function resolveTabBarContentPadding(
+  platform: string,
+  deviceType: Device.DeviceType | null,
+  bottomInset: number,
+  extra: number,
+): number {
+  if (platform === 'android') return extra;
+  if (deviceType === Device.DeviceType.TABLET) return Math.max(bottomInset, 8) + extra;
+  return Math.max(bottomInset, 8) + IPHONE_TAB_BAR_CUSHION + extra;
+}
+
 /** Bottom padding for scroll/list content under the native tab bar. */
 export function useTabBarContentPadding(extra = 24) {
   const insets = useSafeAreaInsets();
-  // NativeTabs already applies Android's bottom system/tab-bar inset.
-  if (Platform.OS === 'android') return extra;
-  // Native tab bar is roughly 49pt content + home indicator; keep a cushion.
-  return Math.max(insets.bottom, 8) + 56 + extra;
+  return resolveTabBarContentPadding(Platform.OS, Device.deviceType, insets.bottom, extra);
 }
 
 /** Bottom padding for stack screens and sheets rendered outside NativeTabs. */
