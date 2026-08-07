@@ -325,6 +325,10 @@ OS, build ID, EAS build URL, account, time, and evidence link.
 | Seven-day boundary | Expired item disappears and current item remains |
 | VoiceOver and large text | Primary flows remain understandable and operable |
 | Lock-screen preview settings | Content exposure matches documented user expectations |
+| iPad portrait full-screen | App launches and rotates to portrait; `requireFullScreen` keeps Split View and Slide Over unavailable |
+| iPad push/APNs evidence | Physical iPad registers a push token and receives a background/terminated alert with correct source |
+| iPad Live Activity lock screen | Lock-screen Live Activity starts, updates, and ends as it does on iPhone |
+| iPad tab-bar placement | Native tab bar appears at the bottom, in a top bar, or in a sidebar as iPadOS decides; no content overlap from whichever placement is active |
 
 Expo Go results do not satisfy any remote-push row.
 
