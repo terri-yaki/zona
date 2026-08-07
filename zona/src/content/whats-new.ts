@@ -21,9 +21,22 @@ export type WhatsNewRelease = {
 /** Add new releases at the top. Copy stays in the language catalogs. */
 export const whatsNewReleases: WhatsNewRelease[] = [
   {
+    id: '2026-08-tablet',
+    version: '0.0.13',
+    latest: true,
+    dateKey: 'whatsNew.releaseTablet.date',
+    titleKey: 'whatsNew.releaseTablet.title',
+    summaryKey: 'whatsNew.releaseTablet.summary',
+    items: [
+      { icon: 'ipad', titleKey: 'whatsNew.ipad.title', bodyKey: 'whatsNew.ipad.body' },
+      { icon: 'paintpalette.fill', titleKey: 'whatsNew.marshmallow.title', bodyKey: 'whatsNew.marshmallow.body' },
+      { icon: 'eye.fill', titleKey: 'whatsNew.contrast.title', bodyKey: 'whatsNew.contrast.body' },
+      { icon: 'switch.2', titleKey: 'whatsNew.readySwitches.title', bodyKey: 'whatsNew.readySwitches.body' },
+    ],
+  },
+  {
     id: '2026-08-password',
     version: '0.0.12',
-    latest: true,
     dateKey: 'whatsNew.releasePassword.date',
     titleKey: 'whatsNew.releasePassword.title',
     summaryKey: 'whatsNew.releasePassword.summary',
