@@ -115,11 +115,16 @@ describe('bundledChangelog', () => {
     expect(en[0].latest).toBe(true);
     expect(en[0].title).toBe('Zona, now on iPad');
     expect(en[0].dateLabel).toBe('August 2026');
+    expect(en[0].version).toBe('0.0.12');
     expect(en[0].items.map((item) => item.title)).toEqual([
       'Zona on iPad',
       'Meet Marshmallow',
       'Clearer in every theme',
       'Settings that work right away',
+      'Sign in with email and password',
+      'Protect a guest account',
+      'Confirm by email code',
+      'A steadier everyday experience',
     ]);
     expect(en.filter((release) => release.latest)).toHaveLength(1);
 

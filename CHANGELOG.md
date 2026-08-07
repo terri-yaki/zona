@@ -6,6 +6,8 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ## [Unreleased]
 
+## [0.0.12] - 2026-08-05 (re-released 2026-08-07)
+
 ### Added
 
 - Universal iOS app support: Zona now runs on iPhone and iPad. The existing
@@ -21,6 +23,12 @@ to use semantic application versions. Build numbers are managed by EAS.
   tab-bar placement) remains a release gate in `docs/TEST_PLAN.md`.
 - New **Marshmallow** theme: a soft pink-lavender, Discord-inspired palette with
   full contrast auditing and light status-bar chrome.
+- Save your Zona with an email address and password, then sign back in on
+  another phone and pick up where you left off.
+- Started privately as a guest? Add an email and password whenever you are
+  ready, without losing your sources or history.
+- New email addresses are confirmed with a short code sent to your inbox
+  before they can protect your account.
 
 ### Fixed
 
@@ -46,31 +54,6 @@ to use semantic application versions. Build numbers are managed by EAS.
   primary is deepened so white-on-primary passes WCAG AA.
 - After deleting an account, the "Use Zona on this device" control on the
   new-user screen now looks like a real button.
-
-### Changed
-
-- Every theme preset is now guarded by an automated WCAG contrast test that
-  locks the audited color pairings going forward, including the text-safe
-  primary tone, semantic tint badges, severity card fills, and inverted chip
-  foregrounds; documented exceptions must still fail, so a fixed palette
-  forces the exception to be removed and the pairing asserted again.
-- Themed styles are memoized per preset instead of being rebuilt on every
-  render, so inbox rows no longer reallocate their style graphs on each list
-  update.
-
-## [0.0.12] - 2026-08-05 (re-released 2026-08-06)
-
-### Added
-
-- Save your Zona with an email address and password, then sign back in on
-  another phone and pick up where you left off.
-- Started privately as a guest? Add an email and password whenever you are
-  ready, without losing your sources or history.
-- New email addresses are confirmed with a short code sent to your inbox
-  before they can protect your account.
-
-### Fixed
-
 - Scrolling the inbox now tucks away the status header, search bar, and filter
   chips with the list instead of leaving them pinned at the top of the screen.
 - The inbox loading skeleton now matches the real layout (status, search,
@@ -105,6 +88,14 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Changed
 
+- Every theme preset is now guarded by an automated WCAG contrast test that
+  locks the audited color pairings going forward, including the text-safe
+  primary tone, semantic tint badges, severity card fills, and inverted chip
+  foregrounds; documented exceptions must still fail, so a fixed palette
+  forces the exception to be removed and the pairing asserted again.
+- Themed styles are memoized per preset instead of being rebuilt on every
+  render, so inbox rows no longer reallocate their style graphs on each list
+  update.
 - Inbox loading states now show skeleton placeholder rows that mirror the
   notification-card layout instead of a centered spinner, keeping the existing
   accessibility loading announcement intact.
