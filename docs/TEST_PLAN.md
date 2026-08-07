@@ -297,10 +297,11 @@ The suite must delete its synthetic Auth users and data after completion.
 
 ## Physical iOS and Android matrix
 
-Run on at least one currently supported physical iPhone/iOS version and one
-physical Android device with configured FCM credentials. Before external
-reliance, also exercise the oldest supported OS versions. Record device model,
-OS, build ID, EAS build URL, account, time, and evidence link.
+Run on at least one currently supported physical iPhone/iOS version, one
+physical iPad (required by the iPad rows below), and one physical Android
+device with configured FCM credentials. Before external reliance, also
+exercise the oldest supported OS versions. Record device model, OS, build ID,
+EAS build URL, account, time, and evidence link.
 
 | Scenario | Expected result |
 | --- | --- |
@@ -325,10 +326,16 @@ OS, build ID, EAS build URL, account, time, and evidence link.
 | Seven-day boundary | Expired item disappears and current item remains |
 | VoiceOver and large text | Primary flows remain understandable and operable |
 | Lock-screen preview settings | Content exposure matches documented user expectations |
-| iPad portrait full-screen | App launches and rotates to portrait; `requireFullScreen` keeps Split View and Slide Over unavailable |
+| iPad portrait full-screen | App launches in portrait and never rotates to landscape (iPadOS may still allow upside-down portrait); `requireFullScreen` keeps Split View and Slide Over unavailable |
 | iPad push/APNs evidence | Physical iPad registers a push token and receives a background/terminated alert with correct source |
 | iPad Live Activity lock screen | Lock-screen Live Activity starts, updates, and ends as it does on iPhone |
-| iPad tab-bar placement | Native tab bar appears at the bottom, in a top bar, or in a sidebar as iPadOS decides; no content overlap from whichever placement is active |
+| iPad tab-bar placement | On the inbox, sources, and settings tabs, scrolling to the end of each list leaves every row fully visible and clear of the native tab bar, wherever iPadOS places it |
+
+The tab-bar placement row is also the recorded decision point from the iPad
+enablement smoke run: on the iPad simulator the native tab bar overlapped no
+content on any tab, so no `Device.deviceType` layout branch was added. The
+bottom content cushion in `TabScreen` assumes a bottom tab bar and remains
+harmless extra padding if iPadOS places the bar at the top or in a sidebar.
 
 Expo Go results do not satisfy any remote-push row.
 
