@@ -201,7 +201,6 @@ const createStyles = () => StyleSheet.create({
   title: { color: colors.text, fontSize: 34, fontWeight: '800', letterSpacing: -1.1, lineHeight: 39, marginBottom: 11, maxWidth: 340 },
   subtitle: { color: colors.muted, fontSize: 16, lineHeight: 23, marginBottom: 28, maxWidth: 345 },
   formCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.large, borderWidth: 1, padding: 18 },
-  capabilityLoader: { marginVertical: 12 },
   // Invariant: a `colors.text` background must always pair with a `colors.background`
   // foreground so inverted surfaces remain readable in every preset (locked by
   // the contrast test). The pressed state slides to `colors.textSoft` — the
@@ -223,17 +222,9 @@ const createStyles = () => StyleSheet.create({
   emailButton: { marginTop: 10 },
   modeButton: { alignItems: 'center', minHeight: 38, justifyContent: 'center' },
   modeText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
-  guestDivider: { backgroundColor: colors.border, height: 1, marginVertical: 12 },
-  // Invariant: the guest button pairs a `colors.primarySoft` background with
-  // `colors.primaryText` foreground — locked at >= 4.5:1 for every preset by
-  // the contrast test (plain primary-on-primarySoft fails in neon and sunset).
-  guestButton: { alignItems: 'center', backgroundColor: colors.primarySoft, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, justifyContent: 'center', minHeight: 51, padding: 10 },
-  guestText: { color: colors.primaryText, fontSize: 13, fontWeight: '700' },
-  guestPressed: { backgroundColor: colors.surfaceMuted },
   buttonText: { color: colors.white, fontSize: 15, fontWeight: '700' },
   pressed: { backgroundColor: colors.primaryDark, transform: [{ scale: 0.995 }] },
   disabled: { opacity: 0.6 },
-  privacy: { color: colors.mutedLight, fontSize: 11, lineHeight: 16, marginTop: 12, textAlign: 'center' },
   errorBox: { alignItems: 'center', backgroundColor: colors.dangerSoft, borderRadius: radius.medium, flexDirection: 'row', gap: 8, marginTop: 14, padding: 12 },
   errorText: { color: colors.danger, flex: 1, fontSize: 12, lineHeight: 17 },
 });
