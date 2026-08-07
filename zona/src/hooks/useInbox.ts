@@ -196,19 +196,22 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
     if (widgetEligible && widgetEnabled) syncInboxWidget(page.items, page.unreadCount);
   }, [userId, widgetEligible, widgetEnabled]);
 
-  const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' = 'initial') => {
+  const load = useCallback(async (mode: 'initial' | 'refresh' | 'realtime' | 'soft' | 'background' = 'initial') => {
     const key = cacheKeyRef.current;
     const inFlight = loadInFlightRef.current;
+    // `refresh` is pull-to-refresh only (shows the spinner). `background` /
+    // `realtime` still force a network pull but keep the list quiet.
+    const forceNetwork = mode === 'refresh' || mode === 'realtime' || mode === 'background';
     if (inFlight && inFlight.key === key) {
       if (mode === 'refresh') {
         inFlight.refresh = true;
         setRefreshing(true);
-      } else if (mode === 'realtime') {
+      } else if (forceNetwork) {
         inFlight.refresh = true;
       }
       return;
     }
-    const context = { key, refresh: mode === 'refresh' || mode === 'realtime' };
+    const context = { key, refresh: forceNetwork };
     loadInFlightRef.current = context;
     const request = ++generation.current;
     const loadRequest = ++loadGeneration.current;
@@ -361,10 +364,11 @@ export function useInbox(userId: string, filters: InboxFilters, pageSize = 30, w
 
   useEffect(() => {
     if (!userId) return;
-    // Fresh open and every return to the foreground pull the server, no
-    // matter how fresh the cache is; cached rows still paint first.
+    // Fresh open and every return to the foreground pull the server quietly —
+    // cached rows paint first and the pull-to-refresh spinner is reserved for
+    // an explicit user gesture.
     return runOnForeground(() => {
-      void loadRef.current('refresh');
+      void loadRef.current('background');
     });
   }, [userId]);
 

@@ -21,6 +21,25 @@ enable_anonymous_sign_ins = true
 enable_manual_linking = true
 minimum_password_length = 8
 
+# Hosted Auth (project gerncrjtrdjtjvybvseb) is configured via Management API to
+# match these product settings. OAuth Apple/Google need provider credentials
+# before they can be enabled; GitHub is already configured on the hosted project.
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 3600
+
+[auth.external.apple]
+enabled = false
+
+[auth.external.google]
+enabled = false
+
+[auth.external.github]
+enabled = true
+# client_id / secret live only in the hosted project (never commit them)
+
 [functions.create-source]
 verify_jwt = false
 

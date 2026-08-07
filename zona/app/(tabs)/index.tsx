@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, FlatList, Modal, Pressable, RefreshControl, S
 import { AppIcon } from '@/components/AppIcon';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { InboxFilterMenus, type FilterMenuId } from '@/components/InboxFilterMenus';
 import { InboxSkeleton } from '@/components/InboxSkeleton';
 import { NotificationCard } from '@/components/NotificationCard';
 import { TabScreen, useTabBarContentPadding } from '@/components/TabScreen';
@@ -41,8 +42,9 @@ export default function InboxScreen() {
   const [saveFilterName, setSaveFilterName] = useState('');
   const [savingFilter, setSavingFilter] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set());
-  // Stores the cutoff timestamp when the chip is toggled on; null when off.
+  // Stores the cutoff timestamp when the status filter is toggled on; null when off.
   const [since, setSince] = useState<string | null>(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState<FilterMenuId | null>(null);
   const filtersVisible = isVisible('inbox.filters');
   const filtersEnabled = isEnabled('inbox.filters');
   const sourceFilterVisible = filtersVisible && isVisible('inbox.source_filter');
@@ -98,7 +100,28 @@ export default function InboxScreen() {
     setSeverity(null);
     setSearchQuery('');
     setDebouncedSearch('');
+    setOpenFilterMenu(null);
   }
+
+  const selectedSourceName = useMemo(() => {
+    if (!effectiveSource) return null;
+    return sourceOptions.find((source) => source.id === effectiveSource)?.display_name ?? null;
+  }, [effectiveSource, sourceOptions]);
+
+  const statusSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (effectiveUnreadOnly) parts.push(t('inbox.unreadOnly'));
+    if (filters.pinnedOnly) parts.push(t('inbox.pinnedOnly'));
+    if (last24Hours) parts.push(t('inbox.last24Hours'));
+    return parts.length ? parts.join(' · ') : t('inbox.statusAny');
+  }, [effectiveUnreadOnly, filters.pinnedOnly, last24Hours, t]);
+
+  const severitySummary = filters.severity
+    ? t(`severity.${filters.severity}`)
+    : t('inbox.severityAny');
+
+  const sourceSummary = selectedSourceName
+    ?? (effectiveSource ? t('inbox.sourceSelected') : t('inbox.allSources'));
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
@@ -249,73 +272,144 @@ export default function InboxScreen() {
         </Pressable> : null}
       </View> : null}
 
-      {filtersVisible && (sourceFilterVisible || unreadFilterVisible || timeFilterVisible || pinnedFilterVisible || severityFilterVisible) ? <><View style={styles.filterLabelRow}>
-        <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
-        <View style={styles.filterHeaderActions}>
-          {/* Always mount action slots so showing/hiding them never shifts the chip row. */}
-          {savedFilterVisible ? (
+      {filtersVisible && (sourceFilterVisible || unreadFilterVisible || timeFilterVisible || pinnedFilterVisible || severityFilterVisible) ? <>
+        <View style={styles.filterLabelRow}>
+          <Text style={styles.filterLabel}>{t('inbox.filters')}</Text>
+          <View style={styles.filterHeaderActions}>
+            {savedFilterVisible ? (
+              <Pressable
+                accessibilityElementsHidden={!filtersActive}
+                accessibilityRole="button"
+                disabled={!filtersActive || !isEnabled('inbox.saved_filters')}
+                importantForAccessibility={filtersActive ? 'auto' : 'no-hide-descendants'}
+                onPress={() => setSaveFilterOpen(true)}
+                pointerEvents={filtersActive ? 'auto' : 'none'}
+                style={[styles.clearButton, !filtersActive && styles.filterActionHidden]}
+              >
+                <Text style={styles.saveFilter}>{t('inbox.saveFilter')}</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityElementsHidden={!filtersActive}
+              accessibilityLabel={t('inbox.clearFiltersA11y')}
               accessibilityRole="button"
-              disabled={!filtersActive || !isEnabled('inbox.saved_filters')}
+              disabled={!filtersActive}
+              hitSlop={4}
               importantForAccessibility={filtersActive ? 'auto' : 'no-hide-descendants'}
-              onPress={() => setSaveFilterOpen(true)}
+              onPress={clearFilters}
               pointerEvents={filtersActive ? 'auto' : 'none'}
-              style={[styles.clearButton, !filtersActive && styles.filterActionHidden]}
+              style={({ pressed }) => [
+                styles.clearButton,
+                !filtersActive && styles.filterActionHidden,
+                filtersActive && pressed && styles.pressed,
+              ]}
             >
-              <Text style={styles.saveFilter}>{t('inbox.saveFilter')}</Text>
+              <Text style={styles.clear}>{t('inbox.clear')}</Text>
             </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityElementsHidden={!filtersActive}
-            accessibilityLabel={t('inbox.clearFiltersA11y')}
-            accessibilityRole="button"
-            disabled={!filtersActive}
-            hitSlop={4}
-            importantForAccessibility={filtersActive ? 'auto' : 'no-hide-descendants'}
-            onPress={clearFilters}
-            pointerEvents={filtersActive ? 'auto' : 'none'}
-            style={({ pressed }) => [
-              styles.clearButton,
-              !filtersActive && styles.filterActionHidden,
-              filtersActive && pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.clear}>{t('inbox.clear')}</Text>
-          </Pressable>
-        </View>
-      </View>
-      <ScrollView
-        accessibilityLabel={t('inbox.filtersA11y')}
-        contentContainerStyle={styles.filters}
-        horizontal
-        nestedScrollEnabled
-        pointerEvents={filtersEnabled ? 'auto' : 'none'}
-        showsHorizontalScrollIndicator={false}
-        style={[styles.filtersScroll, !filtersEnabled && styles.disabled]}
-      >
-        {sourceFilterVisible ? <FilterChip active={!selectedSource} disabled={!filtersEnabled || !isEnabled('inbox.source_filter')} label={t('inbox.allSources')} onPress={() => setSelectedSource(null)} tone="default" /> : null}
-        {unreadFilterVisible ? <FilterChip active={unreadOnly} disabled={!filtersEnabled || !isEnabled('inbox.unread_filter')} label={t('inbox.unreadOnly')} onPress={() => setUnreadOnly((value) => !value)} tone="default" /> : null}
-        {pinnedFilterVisible ? <FilterChip active={pinnedOnly} disabled={!filtersEnabled || !isEnabled('inbox.pinned_filter')} label={t('inbox.pinnedOnly')} onPress={() => setPinnedOnly((value) => !value)} tone="default" /> : null}
-        {timeFilterVisible ? <FilterChip active={last24Hours} disabled={!filtersEnabled || !isEnabled('inbox.time_filter')} label={t('inbox.last24Hours')} onPress={() => setSince((value) => value ? null : new Date(Date.now() - timeFilterMilliseconds).toISOString())} tone="default" /> : null}
-        {severityFilterVisible ? (['critical', 'high', 'medium', 'low'] as const).map((level) => <FilterChip active={severity === level} disabled={!filtersEnabled || !isEnabled('inbox.severity_filter')} key={level} label={t(`severity.${level}`)} onPress={() => setSeverity((current) => current === level ? null : level)} tone="default" />) : null}
-        {sourceFilterVisible && sourceState.loading && sourceOptions.length === 0 ? (
-          <View accessibilityLabel={t('inbox.loadingFilters')} accessible style={styles.filterLoading}>
-            <ActivityIndicator color={colors.primary} size="small" />
           </View>
-        ) : null}
-        {sourceFilterVisible ? sourceOptions.map((source) => (
-          <FilterChip
-            active={selectedSource === source.id}
-            disabled={!filtersEnabled || !isEnabled('inbox.source_filter')}
-            key={source.id}
-            label={source.revoked_at ? `${source.display_name} · ${t('inbox.revokedSuffix')}` : source.display_name}
-            muted={Boolean(source.revoked_at)}
-            onPress={() => setSelectedSource(source.id)}
-            tone="source"
-          />
-        )) : null}
-      </ScrollView></> : null}
+        </View>
+        <InboxFilterMenus
+          accessibilityLabel={t('inbox.filtersA11y')}
+          disabled={!filtersEnabled}
+          onOpenChange={setOpenFilterMenu}
+          openMenu={openFilterMenu}
+          severity={{
+            active: Boolean(filters.severity),
+            disabled: !severityFilterVisible || !isEnabled('inbox.severity_filter'),
+            label: t('inbox.filterSeverity'),
+            onToggle: () => undefined,
+            open: openFilterMenu === 'severity',
+            options: [
+              {
+                active: !severity,
+                key: 'all',
+                label: t('inbox.severityAny'),
+                onPress: () => setSeverity(null),
+              },
+              ...((['critical', 'high', 'medium', 'low'] as const).map((level) => ({
+                active: severity === level,
+                key: level,
+                label: t(`severity.${level}`),
+                onPress: () => setSeverity((current) => (current === level ? null : level)),
+              }))),
+            ],
+            summary: severitySummary,
+          }}
+          source={{
+            active: Boolean(effectiveSource),
+            disabled: !sourceFilterVisible || !isEnabled('inbox.source_filter'),
+            label: t('inbox.filterSource'),
+            loading: sourceFilterVisible && sourceState.loading && sourceOptions.length === 0,
+            loadingLabel: t('inbox.loadingFilters'),
+            onToggle: () => undefined,
+            open: openFilterMenu === 'source',
+            options: [
+              {
+                active: !selectedSource,
+                key: 'all',
+                label: t('inbox.allSources'),
+                onPress: () => setSelectedSource(null),
+              },
+              ...sourceOptions.map((source) => ({
+                active: selectedSource === source.id,
+                key: source.id,
+                label: source.revoked_at
+                  ? `${source.display_name} · ${t('inbox.revokedSuffix')}`
+                  : source.display_name,
+                muted: Boolean(source.revoked_at),
+                onPress: () => setSelectedSource(source.id),
+              })),
+            ],
+            summary: sourceSummary,
+          }}
+          status={{
+            active: Boolean(effectiveUnreadOnly || filters.pinnedOnly || last24Hours),
+            disabled: !(unreadFilterVisible || pinnedFilterVisible || timeFilterVisible),
+            label: t('inbox.filterStatus'),
+            onToggle: () => undefined,
+            open: openFilterMenu === 'status',
+            options: [
+              {
+                active: !unreadOnly && !pinnedOnly && !last24Hours,
+                key: 'any',
+                label: t('inbox.statusAny'),
+                onPress: () => {
+                  setUnreadOnly(false);
+                  setPinnedOnly(false);
+                  setSince(null);
+                },
+              },
+              ...(unreadFilterVisible ? [{
+                active: unreadOnly,
+                disabled: !isEnabled('inbox.unread_filter'),
+                keepOpen: true,
+                key: 'unread',
+                label: t('inbox.unreadOnly'),
+                onPress: () => setUnreadOnly((value) => !value),
+              }] : []),
+              ...(pinnedFilterVisible ? [{
+                active: pinnedOnly,
+                disabled: !isEnabled('inbox.pinned_filter'),
+                keepOpen: true,
+                key: 'pinned',
+                label: t('inbox.pinnedOnly'),
+                onPress: () => setPinnedOnly((value) => !value),
+              }] : []),
+              ...(timeFilterVisible ? [{
+                active: last24Hours,
+                disabled: !isEnabled('inbox.time_filter'),
+                keepOpen: true,
+                key: 'since',
+                label: t('inbox.last24Hours'),
+                onPress: () => setSince((value) => (
+                  value ? null : new Date(Date.now() - timeFilterMilliseconds).toISOString()
+                )),
+              }] : []),
+            ],
+            summary: statusSummary,
+          }}
+        />
+      </> : null}
 
       {savedFilterVisible && (savedFiltersLoading || savedFilters.length) ? <ScrollView contentContainerStyle={styles.savedFilters} horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} style={styles.savedFiltersScroll}>
         <Text style={styles.savedLabel}>{t('inbox.saved')}</Text>
@@ -409,55 +503,6 @@ export default function InboxScreen() {
   );
 }
 
-function FilterChip({
-  active,
-  disabled = false,
-  label,
-  muted = false,
-  onPress,
-  tone,
-}: {
-  active: boolean;
-  disabled?: boolean;
-  label: string;
-  muted?: boolean;
-  onPress: () => void;
-  tone: 'default' | 'source';
-}) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled, selected: active }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.chip,
-        tone === 'source' && styles.chipSource,
-        active && (tone === 'source' ? styles.chipSourceActive : styles.chipActive),
-        muted && styles.chipMuted,
-        disabled && styles.disabled,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text
-        numberOfLines={1}
-        style={[
-          styles.chipText,
-          tone === 'source' && styles.chipSourceText,
-          // White-on-accent fails WCAG AA in neon (~3.3:1); the active source
-          // chip therefore uses the inverted background-on-accent pairing,
-          // which the contrast test asserts at >= 4.5:1 for every preset.
-          active && (tone === 'source' ? styles.chipSourceTextActive : styles.chipTextActive),
-          muted && styles.chipTextMuted,
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const createStyles = () => StyleSheet.create({
   summary: {
     alignItems: 'center',
@@ -498,50 +543,15 @@ const createStyles = () => StyleSheet.create({
   searchBox: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.medium, borderWidth: 1, flexDirection: 'row', marginBottom: 10, marginHorizontal: 16, minHeight: 48, paddingLeft: 13 },
   searchInput: { color: colors.text, flex: 1, fontSize: 14, minHeight: 46, paddingHorizontal: 10, paddingVertical: 8 },
   searchClear: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44 },
-  // Fixed height keeps the chip strip from jumping when a chip's fill/text style changes.
-  filtersScroll: { flexGrow: 0, height: 60, marginBottom: 4 },
   savedFiltersScroll: { flexGrow: 0, marginBottom: 6 },
   savedFilters: { alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   savedLabel: { color: colors.mutedLight, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   savedChip: { alignItems: 'center', backgroundColor: colors.primarySoft, borderRadius: radius.full, flexDirection: 'row', gap: 5, maxWidth: 170, minHeight: 34, paddingHorizontal: 11 },
   savedChipText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
   groupChildren: { borderLeftColor: colors.primarySoft, borderLeftWidth: 3, marginLeft: 29 },
-  filters: {
-    alignItems: 'center',
-    gap: 8,
-    height: 60,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  filterLoading: { alignItems: 'center', height: 40, justifyContent: 'center', width: 44 },
   // Top-aligned skeleton so placeholders sit where real cards will land.
   bootstrapLoading: { flex: 1 },
   filterListLoading: { alignSelf: 'stretch', flexGrow: 1, minHeight: 160, width: '100%' },
-  chip: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: 'center',
-    maxWidth: 180,
-    paddingHorizontal: 14,
-  },
-  chipSource: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipSourceActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipMuted: { opacity: 0.52 },
-  // Keep weight/metrics identical across states so selection only repaints color.
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '600', includeFontPadding: false, lineHeight: 16, textAlign: 'center' },
-  chipSourceText: { color: colors.accent },
-  chipTextActive: { color: colors.white },
-  chipSourceTextActive: { color: colors.background },
-  chipTextMuted: { color: colors.muted },
   list: { flexGrow: 1 },
   emptyList: { flexGrow: 1 },
   pagination: { alignItems: 'center', padding: 14 },

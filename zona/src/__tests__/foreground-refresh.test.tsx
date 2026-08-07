@@ -272,7 +272,9 @@ describe('foreground re-sync (network-first on open and resume)', () => {
       create(<InboxProbe />);
     });
     await flush();
-    expect(inboxState!.refreshing).toBe(true);
+    // Open/resume reloads quietly — only pull-to-refresh sets refreshing.
+    expect(inboxState!.refreshing).toBe(false);
+    expect(inboxState!.bootstrapping).toBe(true);
     expect(server.inboxCalls).toBe(1);
 
     // The focus effect fires while the foreground refresh is still in flight:
@@ -287,11 +289,12 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     await flush();
 
     expect(inboxState!.refreshing).toBe(false);
+    expect(inboxState!.bootstrapping).toBe(false);
     expect(inboxState!.items.map((item) => item.id)).toEqual(['server-1']);
     expect(server.inboxCalls).toBe(1);
   });
 
-  it('inbox: a resume during an in-flight refresh coalesces instead of double-fetching', async () => {
+  it('inbox: a resume during an in-flight background load coalesces instead of double-fetching', async () => {
     const first = deferred();
     server.inboxOverrides = [first.promise];
 
@@ -306,7 +309,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     const second = deferred();
     server.inboxOverrides = [second.promise];
     resumeApp();
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
     const callsDuringRefresh = server.inboxCalls;
 
     // A second resume while the refresh is still in flight joins it.
@@ -319,6 +322,26 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.refreshing).toBe(false);
     expect(inboxState!.items.map((item) => item.id)).toEqual(['server-2']);
     expect(inboxState!.unreadCount).toBe(2);
+  });
+
+  it('inbox: manual pull-to-refresh shows the spinner', async () => {
+    server.inboxSnapshot = { rows: [inboxRow('server-1', 'First fetch')], unreadCount: 1 };
+    await act(async () => {
+      create(<InboxProbe />);
+    });
+    await flush();
+
+    const gate = deferred();
+    server.inboxOverrides = [gate.promise];
+    act(() => {
+      void inboxState!.refresh();
+    });
+    expect(inboxState!.refreshing).toBe(true);
+
+    gate.resolve({ data: { rows: [inboxRow('server-2', 'Pulled')], hasMore: false, unreadCount: 1 }, error: null });
+    await flush();
+    expect(inboxState!.refreshing).toBe(false);
+    expect(inboxState!.items.map((item) => item.id)).toEqual(['server-2']);
   });
 
   it('inbox: returning to the foreground fetches again and applies newer server rows', async () => {
@@ -380,7 +403,8 @@ describe('foreground re-sync (network-first on open and resume)', () => {
       create(<SourcesProbe />);
     });
     await flush();
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
+    expect(sourcesState!.loading).toBe(true);
     expect(server.sourcesCalls).toBe(1);
 
     // The focus effect fires while the foreground load is still in flight: it
@@ -395,26 +419,26 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     await flush();
 
     expect(sourcesState!.refreshing).toBe(false);
+    expect(sourcesState!.loading).toBe(false);
     expect(sourcesState!.sources.map((source) => source.id)).toEqual(['source-1']);
     expect(server.sourcesCalls).toBe(1);
   });
 
-  it('inbox: refreshing and bootstrapping clear after a hung cold-open load', async () => {
+  it('inbox: bootstrapping clears after a hung cold-open load without a pull spinner', async () => {
     vi.useFakeTimers();
     server.hangInbox = true;
 
     await act(async () => {
       create(<InboxProbe />);
     });
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
     expect(inboxState!.bootstrapping).toBe(true);
 
-    // Halfway through the timeout both spinners must still be up: they clear
-    // because the timeout fires, not because something settled early.
+    // Halfway through the timeout the bootstrap placeholder must still be up.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS / 2);
     });
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
     expect(inboxState!.bootstrapping).toBe(true);
 
     await act(async () => {
@@ -426,7 +450,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.error?.message).toBe(translate('error.connection'));
   });
 
-  it('inbox: refreshing clears after a hung AppState resume load', async () => {
+  it('inbox: resume keeps the list quiet while a hung background load times out', async () => {
     vi.useFakeTimers();
     server.hangInbox = true;
 
@@ -439,7 +463,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.refreshing).toBe(false);
 
     resumeApp();
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
@@ -448,7 +472,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.refreshing).toBe(false);
   });
 
-  it('inbox: a hung disk-cache read does not strand the cold-open spinners', async () => {
+  it('inbox: a hung disk-cache read does not strand the cold-open bootstrap', async () => {
     vi.useFakeTimers();
     server.hangStorage = true;
     server.inboxSnapshot = { rows: [inboxRow('server-1', 'After storage hang')], unreadCount: 1 };
@@ -456,7 +480,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     await act(async () => {
       create(<InboxProbe />);
     });
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
     expect(inboxState!.bootstrapping).toBe(true);
 
     await act(async () => {
@@ -493,7 +517,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.error?.message).toBe(translate('error.connection'));
   });
 
-  it('inbox: a load-more during an in-flight refresh clears both spinners independently', async () => {
+  it('inbox: a load-more during an in-flight background load clears loadingMore independently', async () => {
     server.inboxPage = { rows: [inboxRow('page-1', 'First page')], hasMore: true, unreadCount: 1 };
 
     await act(async () => {
@@ -506,7 +530,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     const loadMoreGate = deferred();
     server.inboxOverrides = [refreshGate.promise, loadMoreGate.promise];
     resumeApp();
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
 
     // loadMore shares the generation counter with load: it supersedes the
     // in-flight refresh's result guards.
@@ -515,8 +539,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     });
     expect(inboxState!.loadingMore).toBe(true);
 
-    // The superseded refresh settles: refreshing clears via the load-only
-    // generation counter without touching loadingMore.
+    // The superseded background load settles without flipping the pull spinner.
     refreshGate.resolve({ data: { rows: [inboxRow('page-2', 'Refresh page')], hasMore: true, unreadCount: 2 }, error: null });
     await flush();
     expect(inboxState!.refreshing).toBe(false);
@@ -539,7 +562,8 @@ describe('foreground re-sync (network-first on open and resume)', () => {
       probe = create(<InboxProbe />);
     });
     await flush();
-    expect(inboxState!.refreshing).toBe(true);
+    expect(inboxState!.refreshing).toBe(false);
+    expect(inboxState!.bootstrapping).toBe(true);
 
     await act(async () => {
       probe!.update(<InboxProbe filters={{ ...inboxFilters, unreadOnly: true }} />);
@@ -593,21 +617,22 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(inboxState!.error?.message).toBe(translate('error.connection'));
   });
 
-  it('sources: loading and refreshing clear after a hung cold-open load', async () => {
+  it('sources: loading clears after a hung cold-open load without a pull spinner', async () => {
     vi.useFakeTimers();
     server.hangSources = true;
 
     await act(async () => {
       create(<SourcesProbe />);
     });
-    // Hydration finishes fast (disk miss); refreshing alone proves the hung
-    // network load is what keeps the spinner up.
-    expect(sourcesState!.refreshing).toBe(true);
+    // Empty-cache cold open still uses loading; open/resume never uses refreshing.
+    expect(sourcesState!.loading).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS / 2);
     });
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.loading).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
@@ -628,12 +653,12 @@ describe('foreground re-sync (network-first on open and resume)', () => {
       create(<SourcesProbe />);
     });
     await flushMicrotasks();
-    // Hydration is stuck on the disk read; the network load is gated.
+    // Hydration is stuck on the disk read; the network load is also in flight.
     expect(sourcesState!.loading).toBe(true);
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
 
     // The hydration disk read times out (and so does the gated network load):
-    // both spinners must clear without any follow-up focus load.
+    // loading must clear without any follow-up focus load.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
     });
@@ -651,7 +676,8 @@ describe('foreground re-sync (network-first on open and resume)', () => {
       probe = create(<SourcesProbe includeRevoked />);
     });
     await flushMicrotasks();
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.loading).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
 
     // Switching includeRevoked changes the cache key; hydration for the new
     // key hangs on the disk read while the old key's load is still in flight.
@@ -663,11 +689,11 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(sourcesState!.loading).toBe(true);
 
     // The stale load settles: guarded by the cache key, it must not apply its
-    // rows or clear the new key's loading/refreshing state.
+    // rows or clear the new key's loading state.
     staleGate.resolve({ data: [sourceOverviewRow('stale-source', 'Stale PC')], error: null });
     await flushMicrotasks();
     expect(sourcesState!.loading).toBe(true);
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
     expect(sourcesState!.sources).toEqual([]);
 
     // The hydration timeout fires: loading clears even without a follow-up load.
@@ -677,7 +703,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(sourcesState!.loading).toBe(false);
 
     // The follow-up focus load (which production fires once hydration lands)
-    // takes over and settles the remaining spinner.
+    // takes over quietly without a pull spinner.
     act(() => {
       focus.callback?.();
     });
@@ -685,7 +711,7 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(sourcesState!.refreshing).toBe(false);
   });
 
-  it('sources: refreshing clears after a hung AppState resume load', async () => {
+  it('sources: resume keeps quiet while a hung background load times out', async () => {
     vi.useFakeTimers();
     server.hangSources = true;
 
@@ -698,12 +724,32 @@ describe('foreground re-sync (network-first on open and resume)', () => {
     expect(sourcesState!.refreshing).toBe(false);
 
     resumeApp();
-    expect(sourcesState!.refreshing).toBe(true);
+    expect(sourcesState!.refreshing).toBe(false);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(FOREGROUND_REFRESH_TIMEOUT_MS);
     });
 
     expect(sourcesState!.refreshing).toBe(false);
+  });
+
+  it('sources: manual pull-to-refresh shows the spinner', async () => {
+    server.sourcesRows = [sourceOverviewRow('source-1', 'Server PC')];
+    await act(async () => {
+      create(<SourcesProbe />);
+    });
+    await flush();
+
+    const gate = deferred();
+    server.sourcesOverrides = [gate.promise];
+    act(() => {
+      void sourcesState!.refresh();
+    });
+    expect(sourcesState!.refreshing).toBe(true);
+
+    gate.resolve({ data: [sourceOverviewRow('source-2', 'Pulled')], error: null });
+    await flush();
+    expect(sourcesState!.refreshing).toBe(false);
+    expect(sourcesState!.sources.map((source) => source.id)).toEqual(['source-2']);
   });
 });

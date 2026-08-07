@@ -129,18 +129,21 @@ export function useSources(includeRevoked = true) {
       .catch((storageError) => console.warn('Could not cache sources.', storageError));
   }, [cacheKey, userId, variant]);
 
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (refresh = false, options?: { silent?: boolean }) => {
     if (!userId) return;
     const key = cacheKey;
+    const showRefreshSpinner = refresh && !options?.silent;
     if (loadInFlightKey.current === key) {
-      if (refresh) setRefreshing(true);
+      if (showRefreshSpinner) setRefreshing(true);
       return;
     }
     loadInFlightKey.current = key;
     const request = ++generation.current;
     const loadRequest = ++loadGeneration.current;
     const lease = currentCacheLease(userId);
-    if (refresh) setRefreshing(true);
+    // Silent background pulls never flip the pull-to-refresh spinner, but an
+    // empty cache still uses the normal loading placeholder.
+    if (showRefreshSpinner) setRefreshing(true);
     else if (!sourceCache.has(key)) setLoading(true);
     setError(null);
     try {
@@ -189,10 +192,10 @@ export function useSources(includeRevoked = true) {
 
   useEffect(() => {
     if (!userId) return;
-    // Fresh open and every return to the foreground pull the server, no
-    // matter how fresh the cache is; cached rows still paint first.
+    // Fresh open / resume: pull the server in the background. The spinner is
+    // only for an explicit pull-to-refresh gesture.
     return runOnForeground(() => {
-      void loadRef.current(true);
+      void loadRef.current(true, { silent: true });
     });
   }, [userId]);
 
