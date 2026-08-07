@@ -48,6 +48,8 @@ Do not start a production build until all are resolved:
 - hosted privacy policy and support URLs, App Store privacy answers, account
   deletion, reviewer instructions, age rating, and export compliance;
 - final icon, splash, screenshots, name/subtitle/description, and support contact;
+- iPad screenshots are now required for App Store Connect submission because
+  `ios.supportsTablet` is enabled;
 - named production owners, alerts, dashboard, backup plan, and runbook contacts.
 
 ## Change preparation
@@ -148,7 +150,11 @@ evidence. Use synthetic notification content only.
 ## Submission and staged rollout
 
 1. Confirm privacy/support URLs, App Store answers/metadata, reviewer access and
-   notes, screenshots, age rating, and export compliance match the build.
+   notes, screenshots, age rating, and export compliance match the build. iPad
+   screenshots are required because `ios.supportsTablet` is enabled. The app
+   sets `ios.requireFullScreen`, so Split View and Slide Over are disabled on
+   iPad; document this as an accepted product limitation in reviewer notes if
+   asked.
 2. Confirm production monitoring, backup, on-call contacts, and provider status
    links are operational.
 3. Submit only the tested build:
