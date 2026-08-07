@@ -8,10 +8,13 @@ to use semantic application versions. Build numbers are managed by EAS.
 
 ### Added
 
-- Universal iOS app support: Zona now runs on iPhone and iPad. Portrait-only
-  orientation is enforced by the existing top-level orientation setting, and
+- Universal iOS app support: Zona now runs on iPhone and iPad. The existing
+  top-level orientation setting keeps the app in portrait (landscape stays
+  locked; iPadOS still permits upside-down portrait rotation on iPad), and
   iPad runs full-screen only via `ios.requireFullScreen` (Split View and Slide
-  Over are disabled by design and accepted as a product limitation).
+  Over are disabled by design and accepted as a product limitation). The iPad
+  enablement smoke run on the iPad simulator found no content overlap with the
+  native tab bar on any tab, so no iPad-specific layout branching was needed.
 - New **Marshmallow** theme: a soft pink-lavender, Discord-inspired palette with
   full contrast auditing and light status-bar chrome.
 

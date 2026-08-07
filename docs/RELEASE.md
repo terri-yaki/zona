@@ -47,9 +47,9 @@ Do not start a production build until all are resolved:
   anonymous sign-in enabled, and rate/security settings;
 - hosted privacy policy and support URLs, App Store privacy answers, account
   deletion, reviewer instructions, age rating, and export compliance;
-- final icon, splash, screenshots, name/subtitle/description, and support contact;
-- iPad screenshots are now required for App Store Connect submission because
-  `ios.supportsTablet` is enabled;
+- final icon, splash, and screenshots (iPhone and iPad, because
+  `ios.supportsTablet` is enabled), name/subtitle/description, and support
+  contact;
 - named production owners, alerts, dashboard, backup plan, and runbook contacts.
 
 ## Change preparation
