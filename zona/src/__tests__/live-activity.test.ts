@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { relativeTimeShort } from '../lib/format';
+import {
+  attachLiveActivityStateListener,
+  getLiveActivityCapability,
+  stopLiveActivity,
+  syncLiveActivity,
+} from '../lib/live-activity';
 import {
   buildLiveActivityConfig,
   buildLiveActivityState,
@@ -11,6 +18,38 @@ import {
 } from '../lib/live-activity-presentation';
 import { findThemePreset, themePresets } from '../theme-presets';
 import { setActiveLanguage } from '../i18n';
+
+// Native-module fallback stubs: vitest has no ExpoLiveActivity native module,
+// so these hoisted flags drive the guarded paths in lib/live-activity.ts.
+// vi.mock/vi.hoisted are hoisted above the imports, so the stubs are in place
+// before lib/live-activity loads.
+const storage = vi.hoisted(() => new Map<string, string>());
+const nativeModule = vi.hoisted(() => ({ installed: false }));
+const ownership = vi.hoisted(() => ({ appOwnership: 'standalone' as string | null }));
+const optionsStore = vi.hoisted(() => ({ liveActivityEnabled: true }));
+
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn(async (key: string) => storage.get(key) ?? null),
+    setItem: vi.fn(async (key: string, value: string) => { storage.set(key, value); }),
+    removeItem: vi.fn(async (key: string) => { storage.delete(key); }),
+  },
+}));
+
+vi.mock('expo', () => ({
+  requireOptionalNativeModule: (name: string) => (nativeModule.installed ? { name } : null),
+}));
+
+vi.mock('expo-constants', () => ({ default: ownership }));
+
+vi.mock('@/data/options', () => ({
+  getAppOptions: vi.fn(async () => ({ live_activity_enabled: optionsStore.liveActivityEnabled })),
+  updateAppOptions: vi.fn(async (_userId: string, patch: { live_activity_enabled?: boolean }) => {
+    if (patch.live_activity_enabled !== undefined) {
+      optionsStore.liveActivityEnabled = patch.live_activity_enabled;
+    }
+  }),
+}));
 
 beforeEach(() => setActiveLanguage('en'));
 
@@ -127,6 +166,47 @@ describe('liveActivityPalette', () => {
     const meadowConfig = buildLiveActivityConfig(snapshot(), liveActivityPalette(findThemePreset('meadow')!));
     const neonConfig = buildLiveActivityConfig(snapshot(), liveActivityPalette(findThemePreset('neon')!));
     expect(meadowConfig.backgroundColor).not.toBe(neonConfig.backgroundColor);
+  });
+});
+
+describe('native module fallback', () => {
+  beforeEach(() => {
+    storage.clear();
+    nativeModule.installed = false;
+    ownership.appOwnership = 'standalone';
+    optionsStore.liveActivityEnabled = true;
+  });
+
+  it('reports native-missing when the ExpoLiveActivity module is absent', async () => {
+    await expect(getLiveActivityCapability()).resolves.toBe('native-missing');
+  });
+
+  it('reports expo-go before ever checking the native module', async () => {
+    ownership.appOwnership = 'expo';
+    await expect(getLiveActivityCapability()).resolves.toBe('expo-go');
+  });
+
+  it('no-ops a sync without the native module instead of starting an activity', async () => {
+    await expect(syncLiveActivity('user-1', snapshot())).resolves.toBeUndefined();
+    expect(await AsyncStorage.getItem('zona.live_activity_id')).toBeNull();
+  });
+
+  it('clears stored activity state on stop even without the native module', async () => {
+    await AsyncStorage.setItem('zona.live_activity_id', 'activity-1');
+    await expect(stopLiveActivity('Done')).resolves.toBeUndefined();
+    expect(await AsyncStorage.getItem('zona.live_activity_id')).toBeNull();
+  });
+
+  it('stops instead of syncing when the preference is disabled', async () => {
+    optionsStore.liveActivityEnabled = false;
+    await expect(syncLiveActivity('user-1', snapshot())).resolves.toBeUndefined();
+    expect(await AsyncStorage.getItem('zona.live_activity_id')).toBeNull();
+  });
+
+  it('returns a no-op unsubscribe for the state listener without the native module', async () => {
+    const unsubscribe = await attachLiveActivityStateListener();
+    expect(typeof unsubscribe).toBe('function');
+    expect(() => unsubscribe()).not.toThrow();
   });
 });
 
